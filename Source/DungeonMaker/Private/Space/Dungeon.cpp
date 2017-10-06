@@ -62,7 +62,7 @@ void ADungeon::BeginPlay()
 	// Dungeons grow exponentially; we need to create leaves to match
 	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
 	// x^2/1378 + (1319 x)/1378 + 26526/689
-	int32 x = RoomMap.Num() + 128;
+	int32 x = RoomMap.Num() + 4;
 	int32 dungeonSize = FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689));
 
 	UBSPLeaf* rootLeaf = UBSPLeaf::CreateLeaf(this, NULL, TEXT("Root Leaf"), 0, 0, dungeonSize, dungeonSize);
@@ -121,7 +121,7 @@ void ADungeon::BeginPlay()
 	{
 		entranceLeaf = entranceLeaf->LeftChild;
 	}
-	TSet<UBSPLeaf*> availableLeaves;
+	TArray<UBSPLeaf*> availableLeaves;
 	availableLeaves.Add(entranceLeaf);
 	// The toProcess array is now empty from the while loop we ran earlier
 	toProcess.Add(Mission->Head);
@@ -133,64 +133,37 @@ void ADungeon::BeginPlay()
 	rootLeaf->DrawDebugLeaf();
 }
 
-void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves)
+void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves)
 {
-	//AvailableLeaves = AvailableLeaves.Difference(ProcessedLeaves);
-
-	while (ToProcess.Num() > 0)
+	while (toProcess.Num() > 0)
 	{
-		checkf(AvailableLeaves.Num() > 0, TEXT("Not enough leaves for all the rooms we need to generate! You need to make the leaf BSP bigger."));
-		
 		UDungeonMissionNode* node = ToProcess[0];
 		ToProcess.RemoveAt(0);
 		if (ProcessedNodes.Contains(node))
 		{
 			// Already processed this node
-			continue;
+			return;
 		}
-
-		// First, try to find a leaf big enough for this room
-		TArray<UBSPLeaf*> leavesToTry = AvailableLeaves.Array();
-		/*int32 roomXY = ((UDungeonMissionSymbol*)node->Symbol.Symbol)->MinimumRoomSize.WallSize;
-		for (UBSPLeaf* availableLeaf : AvailableLeaves)
-		{
-			int32 leafWidth = availableLeaf->Room.XSize();
-			int32 leafHeight = availableLeaf->Room.YSize();
-
-			if (leafWidth >= roomXY && leafHeight >= roomXY)
-			{
-				// This leaf is big enough to contain this room
-				leavesToTry.Add(availableLeaf);
-			}
-		}
-		// If we have no rooms which are big enough, pull from the pool of all leaves
-		if (leavesToTry.Num() == 0)
-		{
-			UE_LOG(LogDungeonGen, Error, TEXT("No leaf was big enough to contain %s! Using a leaf at random."), *node->GetSymbolDescription());
-			leavesToTry.Append(AvailableLeaves.Array());
-		}*/
-
+		// Find an open leaf to add this to
 		UBSPLeaf* leaf = NULL;
 		while (leaf == NULL)
 		{
-			int32 leafIndex = Rng.RandRange(0, leavesToTry.Num() - 1);
-			leaf = leavesToTry[leafIndex];
-			leavesToTry.RemoveAt(leafIndex);
+			checkf(AvailableLeaves.Num() > 0, TEXT("Not enough leaves for all the rooms we need to generate! You need to make the leaf BSP bigger."));
+			int32 leafIndex = Rng.RandRange(0, AvailableLeaves.Num() - 1);
+			leaf = AvailableLeaves[leafIndex];
+			AvailableLeaves.RemoveAt(leafIndex);
 			if (ProcessedLeaves.Contains(leaf))
 			{
 				leaf = NULL;
 			}
 		}
-		AvailableLeaves.Remove(leaf);
-
 		// Let this leaf contain the room symbol
 		leaf->RoomSymbol = node;
 
 		ProcessedLeaves.Add(leaf);
 		ProcessedNodes.Add(node);
 
-		TSet<UBSPLeaf*> neighboringLeaves;
-		neighboringLeaves.Append(leaf->Neighbors);
+		TArray<UBSPLeaf*> neighboringLeaves = leaf->Neighbors;
 
 		TArray<UDungeonMissionNode*> tightlyCoupledNodes;
 		for (FMissionNodeData& neighborNode : node->NextNodes)
@@ -211,3 +184,4 @@ void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TSet<U
 		AvailableLeaves.Append(neighboringLeaves);
 	}
 }
+

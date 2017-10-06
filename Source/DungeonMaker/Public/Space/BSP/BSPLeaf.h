@@ -44,7 +44,7 @@ public:
 
 
 	UPROPERTY()
-	TSet<UBSPLeaf*> Neighbors;
+	TArray<UBSPLeaf*> Neighbors;
 
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
