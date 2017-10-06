@@ -135,7 +135,7 @@ void ADungeon::BeginPlay()
 
 void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves)
 {
-	while (toProcess.Num() > 0)
+	while (ToProcess.Num() > 0)
 	{
 		UDungeonMissionNode* node = ToProcess[0];
 		ToProcess.RemoveAt(0);
