@@ -30,7 +30,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	void PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves);
+	void PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves);
+
+	UBSPLeaf* GetOpenLeaf(UDungeonMissionNode* node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
 
 	TMap<UDungeonMissionNode*, FDungeonRoom*> RoomMap;
 };

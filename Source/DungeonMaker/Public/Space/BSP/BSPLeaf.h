@@ -30,6 +30,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FDungeonRoom Room;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FIntVector RoomOffset;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<FDungeonRoom> Hallways;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -44,7 +46,7 @@ public:
 
 
 	UPROPERTY()
-	TArray<UBSPLeaf*> Neighbors;
+	TSet<UBSPLeaf*> Neighbors;
 
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
@@ -55,6 +57,7 @@ public:
 
 	bool Split(FRandomStream& Rng);
 	void DetermineNeighbors();
+	void SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng);
 	bool HasChildren() const;
 	bool SideIsLargerThan(int32 Size);
 	bool ContainsPosition(int32 XPos, int32 YPos) const;
@@ -64,5 +67,5 @@ public:
 	int32 GetLeafCount() const;
 	int32 GetChildLeafCount() const;
 	FString ToString() const;
-	void DrawDebugLeaf(float ZPos = 0.0f) const;
+	void DrawDebugLeaf(float ZPos = 0.0f, bool bDebugLeaf = false) const;
 };

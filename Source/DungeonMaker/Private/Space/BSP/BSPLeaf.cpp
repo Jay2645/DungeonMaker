@@ -2,6 +2,7 @@
 // Based on https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 
 #include "BSPLeaf.h"
+#include "DungeonMissionSymbol.h"
 #include <DrawDebugHelpers.h>
 
 int32 UBSPLeaf::NextId = 1;
@@ -32,6 +33,7 @@ UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* Parent, FName Name, int
 	newLeaf->XPosition = X;
 	newLeaf->YPosition = Y;
 	newLeaf->LeafSize = FDungeonFloor(Width, Height);
+	newLeaf->Room = FDungeonRoom(Width, Height);
 	newLeaf->ID = NextId;
 	newLeaf->Parent = Parent;
 	NextId++;
@@ -111,6 +113,25 @@ void UBSPLeaf::DetermineNeighbors()
 	if (westNeighbor != NULL)
 	{
 		Neighbors.Add(westNeighbor);
+	}
+}
+
+void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng)
+{
+	RoomSymbol = Node;
+	if (Node != NULL)
+	{
+		FMissionSpaceData minimumRoomSize = ((UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol)->MinimumRoomSize;
+		int32 xDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.XSize());
+		int32 yDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.YSize());
+		Room = FDungeonRoom(xDimension, yDimension);
+
+		// X Offset can be anywhere from our current X position to the start of the room
+		// That way we have enough space to place the room
+		int32 xOffset = Rng.RandRange(XPosition, LeafSize.XSize() - xDimension);
+		int32 yOffset = Rng.RandRange(YPosition, LeafSize.YSize() - yDimension);
+
+		RoomOffset = FIntVector(xOffset, yOffset, 0);
 	}
 }
 
@@ -314,7 +335,7 @@ FString UBSPLeaf::ToString() const
 	return output;
 }
 
-void UBSPLeaf::DrawDebugLeaf(float ZPos) const
+void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 {
 	if (HasChildren())
 	{
@@ -328,20 +349,42 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos) const
 			return;
 		}
 		FColor randomColor = FColor::MakeRandomColor();
-		for (int x = XPosition; x < XPosition + LeafSize.XSize() - 1; x++)
+		if (bDebugLeaf || RoomOffset.IsZero())
 		{
-			for (int y = YPosition; y < YPosition + LeafSize.YSize() - 1; y++)
+			for (int x = XPosition; x < XPosition + LeafSize.XSize() - 1; x++)
 			{
-				FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
-				FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
+				for (int y = YPosition; y < YPosition + LeafSize.YSize() - 1; y++)
+				{
+					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
+					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
 
-				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-				endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
-				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-				startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
-				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-				endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
-				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+				}
+			}
+		}
+		else
+		{
+			for (int x = RoomOffset.X; x < RoomOffset.X + Room.XSize() - 1; x++)
+			{
+				for (int y = RoomOffset.Y; y < RoomOffset.Y + Room.YSize() - 1; y++)
+				{
+					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
+					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
+
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+				}
 			}
 		}
 

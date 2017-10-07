@@ -62,7 +62,7 @@ void ADungeon::BeginPlay()
 	// Dungeons grow exponentially; we need to create leaves to match
 	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
 	// x^2/1378 + (1319 x)/1378 + 26526/689
-	int32 x = RoomMap.Num() + 4;
+	int32 x = RoomMap.Num() * 2;
 	int32 dungeonSize = FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689));
 
 	UBSPLeaf* rootLeaf = UBSPLeaf::CreateLeaf(this, NULL, TEXT("Root Leaf"), 0, 0, dungeonSize, dungeonSize);
@@ -121,19 +121,17 @@ void ADungeon::BeginPlay()
 	{
 		entranceLeaf = entranceLeaf->LeftChild;
 	}
-	TArray<UBSPLeaf*> availableLeaves;
+	TSet<UBSPLeaf*> availableLeaves;
 	availableLeaves.Add(entranceLeaf);
 	// The toProcess array is now empty from the while loop we ran earlier
 	toProcess.Add(Mission->Head);
 	TSet<UDungeonMissionNode*> processedNodes;
 	TSet<UBSPLeaf*> processedLeaves;
-
-	
 	PairNodesToLeaves(toProcess, availableLeaves, rng, processedNodes, processedLeaves);
 	rootLeaf->DrawDebugLeaf();
 }
 
-void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves)
+void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves)
 {
 	while (ToProcess.Num() > 0)
 	{
@@ -145,26 +143,15 @@ void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray
 			return;
 		}
 		// Find an open leaf to add this to
-		UBSPLeaf* leaf = NULL;
-		while (leaf == NULL)
-		{
-			checkf(AvailableLeaves.Num() > 0, TEXT("Not enough leaves for all the rooms we need to generate! You need to make the leaf BSP bigger."));
-			int32 leafIndex = Rng.RandRange(0, AvailableLeaves.Num() - 1);
-			leaf = AvailableLeaves[leafIndex];
-			AvailableLeaves.RemoveAt(leafIndex);
-			if (ProcessedLeaves.Contains(leaf))
-			{
-				leaf = NULL;
-			}
-		}
+		UBSPLeaf* leaf = GetOpenLeaf(node, AvailableLeaves, Rng, ProcessedLeaves);
+
 		// Let this leaf contain the room symbol
-		leaf->RoomSymbol = node;
+		leaf->SetMissionNode(node, Rng);
 
 		ProcessedLeaves.Add(leaf);
 		ProcessedNodes.Add(node);
 
-		TArray<UBSPLeaf*> neighboringLeaves = leaf->Neighbors;
-
+		TSet<UBSPLeaf*> neighboringLeaves = leaf->Neighbors.Difference(ProcessedLeaves);
 		TArray<UDungeonMissionNode*> tightlyCoupledNodes;
 		for (FMissionNodeData& neighborNode : node->NextNodes)
 		{
@@ -179,9 +166,46 @@ void ADungeon::PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TArray
 		}
 		if (tightlyCoupledNodes.Num() > 0)
 		{
+			checkf(tightlyCoupledNodes.Num() <= neighboringLeaves.Num(), TEXT("%s has more tightly coupled nodes (%d) than we do available leaves (%d)!"), *node->GetSymbolDescription(), tightlyCoupledNodes.Num(), neighboringLeaves.Num());
+			UE_LOG(LogDungeonGen, Log, TEXT("%s has %d tightly coupled nodes attached to it, and %d available leaves."), *node->GetSymbolDescription(), tightlyCoupledNodes.Num(), neighboringLeaves.Num());
 			PairNodesToLeaves(tightlyCoupledNodes, neighboringLeaves, Rng, ProcessedNodes, ProcessedLeaves);
 		}
 		AvailableLeaves.Append(neighboringLeaves);
 	}
+}
+
+UBSPLeaf* ADungeon::GetOpenLeaf(UDungeonMissionNode* Node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves)
+{
+
+	uint8 tightlyCoupledCount = 0;
+	for (FMissionNodeData& neighborNode : Node->NextNodes)
+	{
+		if (neighborNode.bTightlyCoupledToParent)
+		{
+			tightlyCoupledCount++;
+		}
+	}
+	UBSPLeaf* leaf = NULL;
+	do
+	{
+		checkf(AvailableLeaves.Num() > 0, TEXT("Not enough leaves for all the rooms we need to generate! We failed to generate room %s (ID %d). You may need to make the leaf BSP bigger."), *Node->GetSymbolDescription(), Node->Symbol.SymbolID);
+		int32 leafIndex = Rng.RandRange(0, AvailableLeaves.Num() - 1);
+		leaf = AvailableLeaves.Array()[leafIndex];
+		AvailableLeaves.Remove(leaf);
+		if (ProcessedLeaves.Contains(leaf))
+		{
+			// Already processed this leaf
+			leaf = NULL;
+			continue;
+		}
+		TSet<UBSPLeaf*> neighbors = leaf->Neighbors.Difference(ProcessedLeaves);
+		if (neighbors.Num() < tightlyCoupledCount)
+		{
+			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
+			leaf = NULL;
+			continue;
+		}
+	} while (leaf == NULL);
+	return leaf;
 }
 
