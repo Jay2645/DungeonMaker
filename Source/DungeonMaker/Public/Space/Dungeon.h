@@ -25,14 +25,16 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDungeonTile* DefaultRoomTile;
+	UPROPERTY()
+	UBSPLeaf* RootLeaf;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	void PairNodesToLeaves(TArray<UDungeonMissionNode*>& ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves);
+	bool PairNodesToLeaves(UDungeonMissionNode* ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<UBSPLeaf*>& AllOpenLeaves, bool bIsTightCoupling = false);
 
-	UBSPLeaf* GetOpenLeaf(UDungeonMissionNode* node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
+	UBSPLeaf* GetOpenLeaf(UDungeonMissionNode* Node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
 
 	TMap<UDungeonMissionNode*, FDungeonRoom*> RoomMap;
 };

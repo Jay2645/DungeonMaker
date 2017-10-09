@@ -418,6 +418,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 			{
 				toNode->Symbol = child.Symbol;
 			}
+			toNode->ParentNodes.Add(fromNode);
 			toNode->bTightlyCoupledToParent = child.bIsTightlyCoupled;
 
 			// Update parent node metadata

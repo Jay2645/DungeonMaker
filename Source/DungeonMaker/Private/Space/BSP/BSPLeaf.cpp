@@ -24,7 +24,7 @@ UBSPLeaf::UBSPLeaf()
 }
 
 
-UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* Parent, FName Name, int32 X, int32 Y, int32 Width, int32 Height)
+UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* ParentLeaf, FName Name, int32 X, int32 Y, int32 Width, int32 Height)
 {
 	UBSPLeaf* newLeaf = NewObject<UBSPLeaf>(Outer, Name);
 	newLeaf->RegisterComponent();
@@ -35,7 +35,7 @@ UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* Parent, FName Name, int
 	newLeaf->LeafSize = FDungeonFloor(Width, Height);
 	newLeaf->Room = FDungeonRoom(Width, Height);
 	newLeaf->ID = NextId;
-	newLeaf->Parent = Parent;
+	newLeaf->Parent = ParentLeaf;
 	NextId++;
 
 	return newLeaf;
@@ -100,19 +100,19 @@ void UBSPLeaf::DetermineNeighbors()
 
 	if (northNeighbor != NULL)
 	{
-		Neighbors.Add(northNeighbor);
+		LeafNeighbors.Add(northNeighbor);
 	}
 	if (southNeighbor != NULL)
 	{
-		Neighbors.Add(southNeighbor);
+		LeafNeighbors.Add(southNeighbor);
 	}
 	if (eastNeighbor != NULL)
 	{
-		Neighbors.Add(eastNeighbor);
+		LeafNeighbors.Add(eastNeighbor);
 	}
 	if (westNeighbor != NULL)
 	{
-		Neighbors.Add(westNeighbor);
+		LeafNeighbors.Add(westNeighbor);
 	}
 }
 
@@ -348,6 +348,11 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 		{
 			return;
 		}
+		float halfX = LeafSize.XSize() / 2.0f;
+		float halfY = LeafSize.YSize() / 2.0f;
+
+		float midX = (XPosition + halfX) * 100.0f;
+		float midY = (YPosition + halfY) * 100.0f;
 		FColor randomColor = FColor::MakeRandomColor();
 		if (bDebugLeaf || RoomOffset.IsZero())
 		{
@@ -386,19 +391,46 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
 				}
 			}
+			
+			FVector startingLocation = FVector(midX, midY, ZPos);
+			for (UBSPLeaf* neighbor : MissionNeighbors)
+			{
+				if (neighbor->RoomSymbol == NULL || neighbor->RoomSymbol->Symbol.Symbol == NULL)
+				{
+					continue;
+				}
+				float neighborHalfX = neighbor->LeafSize.XSize() / 2.0f;
+				float neighborHalfY = neighbor->LeafSize.YSize() / 2.0f;
+
+				float neighborMidX = (neighbor->XPosition + neighborHalfX) * 100.0f;
+				float neighborMidY = (neighbor->YPosition + neighborHalfY) * 100.0f;
+				FVector endingLocation = FVector(neighborMidX, neighborMidY, ZPos);
+				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true, -1.0f, (uint8)'\000', 100.0f);
+			}
 		}
 
-		float halfX = LeafSize.XSize() / 2.0f;
-		float halfY = LeafSize.YSize() / 2.0f;
-
-		float x = (XPosition + halfX) * 100.0f;
-		float y = (YPosition + halfY) * 100.0f;
-
-		FVector startingLocation = FVector(x, y, ZPos + 50.0f);
+		FVector startingLocation = FVector(midX, midY, ZPos + 50.0f);
 		DrawDebugString(GetWorld(), startingLocation, GetName());
 		if (RoomSymbol != NULL && RoomSymbol->Symbol.Symbol != NULL)
 		{
-			DrawDebugString(GetWorld(), FVector(x, y, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
+			DrawDebugString(GetWorld(), FVector(midX, midY, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
 		}
+	}
+}
+
+void UBSPLeaf::AddMissionLeaf(UBSPLeaf* Neighbor)
+{
+	MissionNeighbors.Add(Neighbor);
+}
+
+bool UBSPLeaf::AreChildrenAllowed() const
+{
+	if (RoomSymbol == NULL)
+	{
+		return false;
+	}
+	else
+	{
+		return ((UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol)->bAllowedToHaveChildren;
 	}
 }

@@ -45,27 +45,48 @@ public:
 	UBSPLeaf* Parent;
 
 
+	// The nearest leaves to us
 	UPROPERTY()
-	TSet<UBSPLeaf*> Neighbors;
+	TSet<UBSPLeaf*> LeafNeighbors;
+	// Any leaf which has a mission assigned and is connected to us
+	TSet<UBSPLeaf*> MissionNeighbors;
 
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
 	static int32 NextId;
 
-public:	
-	static UBSPLeaf* CreateLeaf(UObject* Outer, UBSPLeaf* Parent, FName Name, int32 X, int32 Y, int32 Width, int32 Height);
+public:
+	UFUNCTION()
+	static UBSPLeaf* CreateLeaf(UObject* Outer, UBSPLeaf* ParentLeaf, FName Name, int32 X, int32 Y, int32 Width, int32 Height);
 
-	bool Split(FRandomStream& Rng);
-	void DetermineNeighbors();
-	void SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng);
-	bool HasChildren() const;
-	bool SideIsLargerThan(int32 Size);
-	bool ContainsPosition(int32 XPos, int32 YPos) const;
-	void SetTile(int32 XPos, int32 YPos, const UDungeonTile* TileToSet);
-	UBSPLeaf* GetLeaf(int32 XPos, int32 YPos);
-	const UDungeonTile* GetTile(int32 XPos, int32 YPos);
-	int32 GetLeafCount() const;
-	int32 GetChildLeafCount() const;
-	FString ToString() const;
-	void DrawDebugLeaf(float ZPos = 0.0f, bool bDebugLeaf = false) const;
+	UFUNCTION()
+		bool Split(FRandomStream& Rng);
+	UFUNCTION()
+		void DetermineNeighbors();
+	UFUNCTION()
+		void SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng);
+	UFUNCTION()
+		bool HasChildren() const;
+	UFUNCTION()
+		bool SideIsLargerThan(int32 Size);
+	UFUNCTION()
+		bool ContainsPosition(int32 XPos, int32 YPos) const;
+	UFUNCTION()
+		void SetTile(int32 XPos, int32 YPos, const UDungeonTile* TileToSet);
+	UFUNCTION()
+		UBSPLeaf* GetLeaf(int32 XPos, int32 YPos);
+	//UFUNCTION()
+		const UDungeonTile* GetTile(int32 XPos, int32 YPos);
+	UFUNCTION()
+		int32 GetLeafCount() const;
+	UFUNCTION()
+		int32 GetChildLeafCount() const;
+	UFUNCTION()
+		FString ToString() const;
+	UFUNCTION()
+		void DrawDebugLeaf(float ZPos = 0.0f, bool bDebugLeaf = false) const;
+	UFUNCTION()
+		void AddMissionLeaf(UBSPLeaf* Neighbor);
+	UFUNCTION()
+		bool AreChildrenAllowed() const;
 };

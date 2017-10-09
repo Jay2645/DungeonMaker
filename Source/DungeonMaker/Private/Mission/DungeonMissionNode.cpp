@@ -44,14 +44,7 @@ void UDungeonMissionNode::PrintNode(int32 IndentLevel)
 	{
 		output.AppendChar(' ');
 	}
-	if (bTightlyCoupledToParent)
-	{
-		output.Append("=>");
-	}
-	else
-	{
-		output.Append("->");
-	}
+	output.Append("->");
 	output.Append(GetSymbolDescription());
 	output.Append(" (");
 	output.AppendInt(Symbol.SymbolID);

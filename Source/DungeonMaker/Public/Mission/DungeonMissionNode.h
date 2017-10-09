@@ -38,8 +38,12 @@ class DUNGEONMAKER_API UDungeonMissionNode : public UObject
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FNumberedGraphSymbol Symbol;
+	// True if we are tightly coupled to any of our parents
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bTightlyCoupledToParent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TSet<UDungeonMissionNode*> ParentNodes;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<FMissionNodeData> NextNodes;

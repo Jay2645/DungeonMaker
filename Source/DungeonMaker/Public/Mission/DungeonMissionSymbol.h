@@ -41,4 +41,7 @@ public:
 	// Only used if this is a terminal symbol.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FRoomReplacements> RoomReplacementPhases;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bAllowedToHaveChildren = true;
 };
