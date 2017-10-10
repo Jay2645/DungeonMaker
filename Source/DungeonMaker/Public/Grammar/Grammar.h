@@ -37,6 +37,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<UStateMachineSymbol*> GrammarInputShape;
+
+	FGrammarResult()
+	{
+		Grammar = NULL;
+		NextState = NULL;
+		GrammarResult = EGrammarResultType::Rejected;
+		GrammarInputShape = TArray<UStateMachineSymbol*>();
+	}
 };
 
 /**

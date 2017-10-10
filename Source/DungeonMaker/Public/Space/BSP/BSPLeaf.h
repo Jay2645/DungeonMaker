@@ -23,6 +23,12 @@ public:
 	UPROPERTY()
 	UBSPLeaf* FromLeaf;
 
+	FBSPLink()
+	{
+		AvailableLeaf = NULL;
+		FromLeaf = NULL;
+	}
+
 	bool operator==(const FBSPLink& Other) const
 	{
 		return AvailableLeaf == Other.AvailableLeaf;
@@ -48,15 +54,11 @@ public:
 	int32 YPosition;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FDungeonFloor LeafSize;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	int32 ID;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FDungeonRoom Room;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FIntVector RoomOffset;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TArray<FDungeonRoom> Hallways;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UDungeonMissionNode* RoomSymbol;
@@ -73,15 +75,15 @@ public:
 	UPROPERTY()
 	TSet<UBSPLeaf*> LeafNeighbors;
 	// Any leaf which has a mission assigned and is connected to us
+	UPROPERTY()
 	TSet<UBSPLeaf*> MissionNeighbors;
 
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
-	static int32 NextId;
 
 public:
 	UFUNCTION()
-	static UBSPLeaf* CreateLeaf(UObject* Outer, UBSPLeaf* ParentLeaf, FName Name, int32 X, int32 Y, int32 Width, int32 Height);
+	void InitializeLeaf(int32 X, int32 Y, int32 Width, int32 Height, UBSPLeaf* ParentLeaf);
 
 	UFUNCTION()
 		bool Split(FRandomStream& Rng);

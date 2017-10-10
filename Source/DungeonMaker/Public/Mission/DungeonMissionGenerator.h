@@ -13,6 +13,13 @@ struct DUNGEONMAKER_API FDungeonNodeCoupling
 {
 	GENERATED_BODY()
 public:
+	FDungeonNodeCoupling()
+	{
+		Parent = FNumberedGraphSymbol();
+		Child = FNumberedGraphSymbol();
+		bIsTightlyCoupled = false;
+	}
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dungeon Grammar")
 	FNumberedGraphSymbol Parent;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dungeon Grammar")
@@ -40,7 +47,7 @@ public:
 	TArray<const UDungeonMissionGrammar*> Grammars;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions")
-	void TryToCreateDungeon(int32 Seed);
+	void TryToCreateDungeon(FRandomStream& Stream);
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
 	void DrawDebugDungeon();

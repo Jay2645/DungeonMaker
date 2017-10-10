@@ -16,6 +16,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool bIsTightlyCoupled;
 
+	FGraphLink()
+	{
+		Symbol = FNumberedGraphSymbol();
+		bIsTightlyCoupled = false;
+	}
+
 	bool operator==(const FGraphLink& Other) const
 	{
 		return Symbol == Other.Symbol && bIsTightlyCoupled == Other.bIsTightlyCoupled;
@@ -39,6 +45,13 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 		TArray<FGraphLink> MatchedLinks;
+
+	FGraphOutput()
+	{
+		Grammar = NULL;
+		Weight = 0.0f;
+		MatchedLinks = TArray<FGraphLink>();
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -48,6 +61,11 @@ struct DUNGEONMAKER_API FNodeChildren
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<FGraphLink> Children;
+
+	FNodeChildren()
+	{
+		Children = TSet<FGraphLink>();
+	}
 };
 
 /**

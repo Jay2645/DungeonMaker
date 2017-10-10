@@ -16,14 +16,13 @@ UDungeonMissionGenerator::UDungeonMissionGenerator()
 	StartNode.Symbol = FName(TEXT("Start"));*/
 }
 
-void UDungeonMissionGenerator::TryToCreateDungeon(int32 Seed)
+void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 {
 	Head = NewObject<UDungeonMissionNode>();
 	Head->Symbol.Symbol = HeadSymbol.Symbol;
 	Head->bTightlyCoupledToParent = false;
-	FRandomStream stream(Seed);
 	GrammarUsageCount.Empty();
-	TryToCreateDungeon(Head, Grammars, stream, 255);
+	TryToCreateDungeon(Head, Grammars, Stream, 255);
 
 	// Relabel all the node IDs with their (hopefully final) IDs
 	int32 currentID = 1;

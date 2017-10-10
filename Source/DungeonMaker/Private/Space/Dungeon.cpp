@@ -23,31 +23,11 @@ ADungeon::~ADungeon()
 void ADungeon::BeginPlay()
 {
 	Super::BeginPlay();
+	FRandomStream rng(1234);
 
-	Mission->TryToCreateDungeon(1234);
+	Mission->TryToCreateDungeon(rng);
 
-	TArray<UDungeonMissionNode*> toProcess;
-	toProcess.Add(Mission->Head);
-
-	while (toProcess.Num() > 0)
-	{
-		UDungeonMissionNode* node = toProcess[0];
-		checkf(node->Symbol.Symbol != NULL, TEXT("Dungeon tried processing a null node! Did you set up your DungeonMissionGenerator correctly?"));
-		checkf(node->Symbol.Symbol->bIsTerminalNode, TEXT("Dungeon tried processing non-terminal node %s! Do all of your non-terminal nodes get replaced?"), *node->GetSymbolDescription());
-		toProcess.RemoveAt(0);
-		FDungeonRoom* room = FDungeonRoom::GenerateDungeonRoom((UDungeonMissionSymbol*)node->Symbol.Symbol, DefaultRoomTile);
-
-		RoomMap.Add(node, room);
-
-		for (FMissionNodeData& nextNode : node->NextNodes)
-		{
-			if (RoomMap.Contains(nextNode.Node))
-			{
-				continue;
-			}
-			toProcess.Add(nextNode.Node);
-		}
-	}
+	CreateRoomMap();
 
 	for (auto& kvp : RoomMap)
 	{
@@ -56,33 +36,25 @@ void ADungeon::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("%s (%d):\n%s"), *node->GetSymbolDescription(), node->Symbol.SymbolID, *room->ToString());
 	}
 
-	bool didSplit = true;
-	TArray<UBSPLeaf*> leaves;
-
 	// Dungeons grow exponentially; we need to create leaves to match
 	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
 	// x^2/1378 + (1319 x)/1378 + 26526/689
 	int32 x = RoomMap.Num() * DungeonSizeMultiplier;
 	int32 dungeonSize = FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689));
 
-	RootLeaf = UBSPLeaf::CreateLeaf(this, NULL, TEXT("Root Leaf"), 0, 0, dungeonSize, dungeonSize);
-	leaves.Add(RootLeaf);
-
-	FRandomStream rng(1234);
+	//RootLeaf = UBSPLeaf::CreateLeaf(this, NULL, TEXT("Root Leaf"), 0, 0, dungeonSize, dungeonSize);
+	RootLeaf = NewObject<UBSPLeaf>();
+	RootLeaf->InitializeLeaf(0, 0, dungeonSize, dungeonSize, NULL);
+	
+	bool didSplit = true;
+	Leaves.Add(RootLeaf);
 
 	while (didSplit)
 	{
-		TArray<UBSPLeaf*> nextLeaves;
+		TSet<UBSPLeaf*> nextLeaves;
 		didSplit = false;
-		for (int i = 0; i < leaves.Num(); i++)
+		for (UBSPLeaf* leaf : Leaves)
 		{
-			UBSPLeaf* leaf = leaves[i];
-			if (leaf == NULL)
-			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("Null leaf found!"));
-				continue;
-			}
-			nextLeaves.Add(leaf);
 			if (leaf->HasChildren())
 			{
 				// Already processed
@@ -101,31 +73,27 @@ void ADungeon::BeginPlay()
 			}
 		}
 		// Now that we're out of the for loop, update the array for the next pass
-		leaves = nextLeaves;
+		Leaves.Append(nextLeaves);
 	}
 
 	// Done splitting; find nearest neighbors
-	for (int i = 0; i < leaves.Num(); i++)
+	for (UBSPLeaf* leaf : Leaves)
 	{
-		leaves[i]->DetermineNeighbors();
+		leaf->DetermineNeighbors();
 	}
-
-	int32 leafCount = RootLeaf->GetChildLeafCount();
-	int32 roomCount = RoomMap.Num();
-	UE_LOG(LogDungeonGen, Warning, TEXT("Generated %d leaves and %d rooms."), leafCount, roomCount);
 
 	StartLeaf = RootLeaf;
 	while (StartLeaf->LeftChild != NULL)
 	{
 		StartLeaf = StartLeaf->LeftChild;
 	}
+
 	TSet<FBSPLink> availableLeaves;
 	FBSPLink start;
 	start.AvailableLeaf = StartLeaf;
 	start.FromLeaf = NULL;
 	availableLeaves.Add(start);
-	// The toProcess array is now empty from the while loop we ran earlier
-	//toProcess.Add(Mission->Head);
+
 	TSet<UDungeonMissionNode*> processedNodes;
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Mission->Head, availableLeaves, rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
@@ -175,7 +143,34 @@ void ADungeon::BeginPlay()
 			}
 		}
 	}*/
-	//RootLeaf->DrawDebugLeaf(this);
+	RootLeaf->DrawDebugLeaf(this);
+}
+
+
+void ADungeon::CreateRoomMap()
+{
+	TArray<UDungeonMissionNode*> toProcess;
+	toProcess.Add(Mission->Head);
+
+	while (toProcess.Num() > 0)
+	{
+		UDungeonMissionNode* node = toProcess[0];
+		checkf(node->Symbol.Symbol != NULL, TEXT("Dungeon tried processing a null node! Did you set up your DungeonMissionGenerator correctly?"));
+		checkf(node->Symbol.Symbol->bIsTerminalNode, TEXT("Dungeon tried processing non-terminal node %s! Do all of your non-terminal nodes get replaced?"), *node->GetSymbolDescription());
+		toProcess.RemoveAt(0);
+		FDungeonRoom* room = FDungeonRoom::GenerateDungeonRoom((UDungeonMissionSymbol*)node->Symbol.Symbol, DefaultRoomTile);
+
+		RoomMap.Add(node, room);
+
+		for (FMissionNodeData& nextNode : node->NextNodes)
+		{
+			if (RoomMap.Contains(nextNode.Node))
+			{
+				continue;
+			}
+			toProcess.Add(nextNode.Node);
+		}
+	}
 }
 
 bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node, 

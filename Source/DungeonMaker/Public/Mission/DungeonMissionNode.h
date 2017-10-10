@@ -15,6 +15,12 @@ struct FMissionNodeData
 {
 	GENERATED_BODY()
 public:
+	FMissionNodeData()
+	{
+		Node = NULL;
+		bTightlyCoupledToParent = false;
+	}
+
 	UPROPERTY(EditAnywhere)
 	UDungeonMissionNode* Node;
 	UPROPERTY(EditAnywhere)

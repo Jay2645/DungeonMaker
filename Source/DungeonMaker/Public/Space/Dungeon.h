@@ -41,8 +41,13 @@ protected:
 
 
 protected:
+	UPROPERTY()
+	TSet<UBSPLeaf*> Leaves;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void CreateRoomMap();
 
 	bool PairNodesToLeaves(UDungeonMissionNode* ToProcess, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves, bool bIsTightCoupling = false);
 

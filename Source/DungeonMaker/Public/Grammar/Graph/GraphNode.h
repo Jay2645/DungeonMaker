@@ -21,10 +21,17 @@ struct DUNGEONMAKER_API FNumberedGraphSymbol
 {
 	GENERATED_BODY()
 public:
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		UGraphNode* Symbol;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int32 SymbolID;
+
+	FNumberedGraphSymbol()
+	{
+		Symbol = NULL;
+		SymbolID = 0;
+	}
 
 	bool operator==(const FNumberedGraphSymbol &Other) const
 	{

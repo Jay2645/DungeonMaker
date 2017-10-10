@@ -12,16 +12,16 @@ struct DUNGEONMAKER_API FMissionSpaceData
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "3"))
-	int32 WallSize;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "1"))
-	int32 CeilingHeight;
-
 	FMissionSpaceData()
 	{
 		WallSize = 3;
 		CeilingHeight = 1;
 	}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "3"))
+	int32 WallSize;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "1"))
+	int32 CeilingHeight;
 };
 
 /**

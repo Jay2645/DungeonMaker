@@ -29,7 +29,10 @@ struct DUNGEONMAKER_API FDungeonRow
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<const UDungeonTile*> DungeonTiles;
 
-	FDungeonRow() {}
+	FDungeonRow()
+	{
+		DungeonTiles = TArray<const UDungeonTile*>();
+	}
 	FDungeonRow(int Size)
 	{
 		DungeonTiles.SetNum(Size);
@@ -84,10 +87,12 @@ struct DUNGEONMAKER_API FDungeonRoom
 
 	FDungeonRoom()
 	{
-		
+		DungeonRows = TArray<FDungeonRow>();
+		Symbol = NULL;
 	}
 	FDungeonRoom(int SizeX, int SizeY)
 	{
+		Symbol = NULL;
 		DungeonRows.SetNum(SizeY);
 		for (int i = 0; i < SizeY; i++)
 		{
@@ -144,7 +149,10 @@ struct DUNGEONMAKER_API FDungeonFloor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FDungeonRow> DungeonRows;
 
-	FDungeonFloor() {}
+	FDungeonFloor()
+	{
+		DungeonRows = TArray<FDungeonRow>();
+	}
 	FDungeonFloor(int SizeX, int SizeY)
 	{
 		DungeonRows.SetNum(SizeY);

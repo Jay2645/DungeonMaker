@@ -15,6 +15,11 @@ struct FRoomReplacements
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<URoomReplacementPattern*> ReplacementPatterns;
+
+	FRoomReplacements()
+	{
+		ReplacementPatterns = TArray<URoomReplacementPattern*>();
+	}
 };
 
 /**

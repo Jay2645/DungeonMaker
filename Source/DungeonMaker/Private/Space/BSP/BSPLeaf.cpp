@@ -5,38 +5,31 @@
 #include "DungeonMissionSymbol.h"
 #include <DrawDebugHelpers.h>
 
-int32 UBSPLeaf::NextId = 1;
-
-
-
 // Sets default values for this component's properties
 UBSPLeaf::UBSPLeaf()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-
 	LeftChild = NULL;
 	RightChild = NULL;
+	RoomSymbol = NULL;
+	Parent = NULL;
+
 	XPosition = 0;
 	YPosition = 0;
+
 	LeafSize = FDungeonFloor(MIN_LEAF_SIZE, MIN_LEAF_SIZE);
+	Room = FDungeonRoom();
+	RoomOffset = FIntVector();
+	LeafNeighbors = TSet<UBSPLeaf*>();
+	MissionNeighbors = TSet<UBSPLeaf*>();
 }
 
-
-UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* ParentLeaf, FName Name, int32 X, int32 Y, int32 Width, int32 Height)
+void  UBSPLeaf::InitializeLeaf(int32 X, int32 Y, int32 Width, int32 Height, UBSPLeaf* ParentLeaf)
 {
-	UBSPLeaf* newLeaf = NewObject<UBSPLeaf>(Outer, Name);
-	//newLeaf->AttachToComponent(Root, FAttachmentTransformRules::SnapToTargetIncludingScale);
-
-	newLeaf->XPosition = X;
-	newLeaf->YPosition = Y;
-	newLeaf->LeafSize = FDungeonFloor(Width, Height);
-	newLeaf->Room = FDungeonRoom(Width, Height);
-	newLeaf->ID = NextId;
-	newLeaf->Parent = ParentLeaf;
-	NextId++;
-
-	return newLeaf;
+	XPosition = X;
+	YPosition = Y;
+	LeafSize = FDungeonFloor(Width, Height);
+	Room = FDungeonRoom(Width, Height);
+	Parent = ParentLeaf;
 }
 
 bool UBSPLeaf::Split(FRandomStream& Rng)
@@ -71,19 +64,17 @@ bool UBSPLeaf::Split(FRandomStream& Rng)
 
 	int32 splitLocation = Rng.RandRange(MIN_LEAF_SIZE, max);
 	// Do the actual split, based on the direction we determined
-	FString leafString1 = "Leaf";
-	leafString1.AppendInt(NextId);
-	FString leafString2 = "Leaf";
-	leafString2.AppendInt(NextId + 1);
+	LeftChild = NewObject<UBSPLeaf>();
+	RightChild = NewObject<UBSPLeaf>();
 	if (splitHorizontal)
 	{
-		LeftChild = CreateLeaf(this, this, FName(*leafString1), XPosition, YPosition, LeafSize.XSize(), splitLocation);
-		RightChild = CreateLeaf(this, this, FName(*leafString2), XPosition, YPosition + splitLocation, LeafSize.XSize(), LeafSize.YSize() - splitLocation);
+		LeftChild->InitializeLeaf(XPosition, YPosition, LeafSize.XSize(), splitLocation, this);
+		RightChild->InitializeLeaf(XPosition, YPosition + splitLocation, LeafSize.XSize(), LeafSize.YSize() - splitLocation, this);
 	}
 	else
 	{
-		LeftChild = CreateLeaf(this, this, FName(*leafString1), XPosition, YPosition, splitLocation, LeafSize.YSize());
-		RightChild = CreateLeaf(this, this, FName(*leafString2), XPosition + splitLocation, YPosition, LeafSize.XSize() - splitLocation, LeafSize.YSize());
+		LeftChild->InitializeLeaf(XPosition, YPosition, splitLocation, LeafSize.YSize(), this);
+		RightChild->InitializeLeaf(XPosition + splitLocation, YPosition, LeafSize.XSize() - splitLocation, LeafSize.YSize(), this);
 	}
 	// Done splitting
 	return true;
