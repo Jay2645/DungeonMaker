@@ -105,23 +105,37 @@ void UBSPLeaf::DetermineNeighbors()
 	}
 }
 
-void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng)
+void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng)
 {
 	RoomSymbol = Node;
 	if (Node != NULL)
 	{
-		FMissionSpaceData minimumRoomSize = ((UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol)->MinimumRoomSize;
-		int32 xDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.XSize());
-		int32 yDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.YSize());
-		Room = FDungeonRoom(xDimension, yDimension);
-
-		// X Offset can be anywhere from our current X position to the start of the room
-		// That way we have enough space to place the room
-		int32 xOffset = Rng.RandRange(XPosition, LeafSize.XSize() - xDimension);
-		int32 yOffset = Rng.RandRange(YPosition, LeafSize.YSize() - yDimension);
-
-		RoomOffset = FIntVector(xOffset, yOffset, 0);
+		CreateRoom(DefaultRoomTile, Rng);
 	}
+}
+
+void UBSPLeaf::CreateRoom(const UDungeonTile* DefaultRoomTile, FRandomStream &Rng)
+{
+	FMissionSpaceData minimumRoomSize = ((UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol)->MinimumRoomSize;
+	int32 xDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.XSize());
+	int32 yDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.YSize());
+	Room = FDungeonRoom(xDimension, yDimension);
+	Room.Symbol = (UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol;
+
+	for (int x = 0; x < Room.XSize(); x++)
+	{
+		for (int y = 0; y < Room.YSize(); y++)
+		{
+			Room.Set(x, y, DefaultRoomTile);
+		}
+	}
+
+	// X Offset can be anywhere from our current X position to the start of the room
+	// That way we have enough space to place the room
+	int32 xOffset = Rng.RandRange(XPosition, LeafSize.XSize() - xDimension);
+	int32 yOffset = Rng.RandRange(YPosition, LeafSize.YSize() - yDimension);
+
+	RoomOffset = FIntVector(xOffset, yOffset, 0);
 }
 
 bool UBSPLeaf::HasChildren() const
@@ -324,7 +338,7 @@ FString UBSPLeaf::ToString() const
 	return output;
 }
 
-void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf) const
+void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf)
 {
 	if (HasChildren())
 	{
@@ -364,23 +378,35 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 		}
 		else
 		{
-			for (int x = RoomOffset.X; x < RoomOffset.X + Room.XSize() - 1; x++)
+			for (int x = 0; x < 0 + Room.XSize() - 1; x++)
 			{
-				for (int y = RoomOffset.Y; y < RoomOffset.Y + Room.YSize() - 1; y++)
+				for (int y = 0; y < 0 + Room.YSize() - 1; y++)
 				{
-					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
-					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					int32 xOffset = x + XPosition;
+					int32 yOffset = y + YPosition;
+					FVector startingLocation(xOffset * 100.0f, yOffset * 100.0f, ZPos);
+					FVector endingLocation(xOffset * 100.0f, (yOffset + 1) * 100.0f, ZPos);
 
+					// Draw a square
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
+					endingLocation = FVector((xOffset + 1) * 100.0f, yOffset * 100.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
+					startingLocation = FVector((xOffset + 1) * 100.0f, (yOffset + 1) * 100.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					endingLocation = FVector(xOffset * 100.0f, (yOffset + 1) * 100.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
+
+					// Label the center with the type of tile this is
+					FVector midpoint((xOffset + 0.5f) * 100.0f, (yOffset + 0.5f) * 100.0f, ZPos + 100.0f);
+					const UDungeonTile* tile = Room[y][x];
+					if (tile != NULL)
+					{
+						DrawDebugString(ReferenceActor->GetWorld(), midpoint, tile->TileID.ToString());
+					}
 				}
 			}
 			
+			// Draw lines connecting to our neighbors
 			FVector startingLocation = FVector(midX, midY, ZPos);
 			for (UBSPLeaf* neighbor : MissionNeighbors)
 			{
@@ -400,7 +426,7 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 
 		if (RoomSymbol != NULL && RoomSymbol->Symbol.Symbol != NULL)
 		{
-			DrawDebugString(ReferenceActor->GetWorld(), FVector(midX, midY, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
+			DrawDebugString(ReferenceActor->GetWorld(), FVector(midX, midY, ZPos + 200.0f), RoomSymbol->GetSymbolDescription());
 		}
 	}
 }

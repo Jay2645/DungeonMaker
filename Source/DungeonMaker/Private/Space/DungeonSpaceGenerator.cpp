@@ -147,7 +147,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	ProcessedLeaves.Add(leaf);
 	ProcessedNodes.Add(Node);
 	// Let this leaf contain the room symbol
-	leaf->SetMissionNode(Node, Rng);
+	leaf->SetMissionNode(Node, DefaultRoomTile, Rng);
 	if (leafLink.FromLeaf != NULL)
 	{
 		leaf->AddMissionLeaf(leafLink.FromLeaf);

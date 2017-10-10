@@ -90,7 +90,8 @@ public:
 	UFUNCTION()
 		void DetermineNeighbors();
 	UFUNCTION()
-		void SetMissionNode(UDungeonMissionNode* Node, FRandomStream& Rng);
+		void SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng);
+
 	UFUNCTION()
 		bool HasChildren() const;
 	UFUNCTION()
@@ -110,12 +111,15 @@ public:
 	UFUNCTION()
 		FString ToString() const;
 	UFUNCTION()
-		void DrawDebugLeaf(AActor* ReferenceActor, float ZPos = 0.0f, bool bDebugLeaf = false) const;
+		void DrawDebugLeaf(AActor* ReferenceActor, float ZPos = 0.0f, bool bDebugLeaf = false);
 	UFUNCTION()
 		void AddMissionLeaf(UBSPLeaf* Neighbor);
 	UFUNCTION()
 	bool AreChildrenAllowed() const;
+	UFUNCTION()
 	bool HasConnectionTo(UBSPLeaf* Root);
 protected:
 	bool HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted);
+	UFUNCTION()
+	void CreateRoom(const UDungeonTile* DefaultRoomTile, FRandomStream &Rng);
 };

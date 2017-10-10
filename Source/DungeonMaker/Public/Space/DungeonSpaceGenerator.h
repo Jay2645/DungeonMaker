@@ -16,8 +16,14 @@ class DUNGEONMAKER_API UDungeonSpaceGenerator : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UDungeonSpaceGenerator();
+
 	UBSPLeaf* RootLeaf;
 	UBSPLeaf* StartLeaf;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	const UDungeonTile* DefaultRoomTile;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxRoomSize;
 
 public:	
