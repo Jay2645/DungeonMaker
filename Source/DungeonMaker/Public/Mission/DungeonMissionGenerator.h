@@ -46,6 +46,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dungeon Grammar")
 	TArray<const UDungeonMissionGrammar*> Grammars;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dungeon Grammar")
+	int32 DungeonSize;
+
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions")
 	void TryToCreateDungeon(FRandomStream& Stream);
 
@@ -54,13 +57,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
 	void PrintDebugDungeon();
 
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dungeon Grammar")
-	FDungeonMission FullMission;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dungeon Grammar")
-	TArray<FDungeonMissionGrannar> MissionGrammars;
-
-	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions")
-	bool MissionMatchesGrammar(FDungeonMissionNode Mission, TArray<FDungeonMissionNode> Grammar);*/
 
 protected:
 	void TryToCreateDungeon(UDungeonMissionNode* StartingLocation, TArray<const UDungeonMissionGrammar*> AllowedGrammars, 

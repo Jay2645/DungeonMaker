@@ -21,6 +21,8 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 	Head = NewObject<UDungeonMissionNode>();
 	Head->Symbol.Symbol = HeadSymbol.Symbol;
 	Head->bTightlyCoupledToParent = false;
+	DungeonSize = 1;
+
 	GrammarUsageCount.Empty();
 	TryToCreateDungeon(Head, Grammars, Stream, 255);
 
@@ -45,6 +47,8 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 			nodes.Add(node.Node);
 		}
 		processed.Add(current);
+
+		DungeonSize++;
 	}
 
 #if !UE_BUILD_SHIPPING

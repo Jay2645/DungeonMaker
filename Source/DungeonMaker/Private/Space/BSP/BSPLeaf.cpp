@@ -398,8 +398,6 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 			}
 		}
 
-		FVector startingLocation = FVector(midX, midY, ZPos + 50.0f);
-		DrawDebugString(ReferenceActor->GetWorld(), startingLocation, GetName());
 		if (RoomSymbol != NULL && RoomSymbol->Symbol.Symbol != NULL)
 		{
 			DrawDebugString(ReferenceActor->GetWorld(), FVector(midX, midY, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
