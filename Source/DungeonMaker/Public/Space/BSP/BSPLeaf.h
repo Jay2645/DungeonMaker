@@ -9,8 +9,32 @@
 #include "DungeonTile.h"
 #include "BSPLeaf.generated.h"
 
+class UBSPLeaf;
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+USTRUCT()
+struct DUNGEONMAKER_API FBSPLink
+{
+	GENERATED_BODY()
+public:
+	// An open leaf, with no room assigned
+	UPROPERTY()
+	UBSPLeaf* AvailableLeaf;
+	// The room this is coming from
+	UPROPERTY()
+	UBSPLeaf* FromLeaf;
+
+	bool operator==(const FBSPLink& Other) const
+	{
+		return AvailableLeaf == Other.AvailableLeaf;
+	}
+
+	friend uint32 GetTypeHash(const FBSPLink& Other)
+	{
+		return GetTypeHash(Other.AvailableLeaf);
+	}
+};
+
+UCLASS()
 class DUNGEONMAKER_API UBSPLeaf : public USceneComponent
 {
 	GENERATED_BODY()
@@ -88,5 +112,8 @@ public:
 	UFUNCTION()
 		void AddMissionLeaf(UBSPLeaf* Neighbor);
 	UFUNCTION()
-		bool AreChildrenAllowed() const;
+	bool AreChildrenAllowed() const;
+	bool HasConnectionTo(UBSPLeaf* Root);
+protected:
+	bool HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted);
 };

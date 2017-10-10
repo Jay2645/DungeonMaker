@@ -25,16 +25,28 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDungeonTile* DefaultRoomTile;
+	// The maximum size of any room in this dungeon, in meters.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxRoomSize = 24;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DungeonSizeMultiplier = 3;
 	UPROPERTY()
 	UBSPLeaf* RootLeaf;
+
+protected:
+	// Where the leaf chain starts
+	UPROPERTY()
+	UBSPLeaf* StartLeaf;
+
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	bool PairNodesToLeaves(UDungeonMissionNode* ToProcess, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<UBSPLeaf*>& AllOpenLeaves, bool bIsTightCoupling = false);
+	bool PairNodesToLeaves(UDungeonMissionNode* ToProcess, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves, bool bIsTightCoupling = false);
 
-	UBSPLeaf* GetOpenLeaf(UDungeonMissionNode* Node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
+	FBSPLink GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
 
 	TMap<UDungeonMissionNode*, FDungeonRoom*> RoomMap;
 };

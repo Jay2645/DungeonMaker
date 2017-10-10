@@ -62,13 +62,11 @@ void ADungeon::BeginPlay()
 	// Dungeons grow exponentially; we need to create leaves to match
 	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
 	// x^2/1378 + (1319 x)/1378 + 26526/689
-	int32 x = RoomMap.Num() * 2;
+	int32 x = RoomMap.Num() * DungeonSizeMultiplier;
 	int32 dungeonSize = FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689));
 
 	RootLeaf = UBSPLeaf::CreateLeaf(this, NULL, TEXT("Root Leaf"), 0, 0, dungeonSize, dungeonSize);
 	leaves.Add(RootLeaf);
-
-	int32 maxLeafSize = 24;
 
 	FRandomStream rng(1234);
 
@@ -91,7 +89,7 @@ void ADungeon::BeginPlay()
 				continue;
 			}
 			// If this leaf is too big, or a 75% chance 
-			if (leaf->SideIsLargerThan(maxLeafSize) || rng.GetFraction() > 0.25f)
+			if (leaf->SideIsLargerThan(MaxRoomSize) || rng.GetFraction() > 0.25f)
 			{
 				if (leaf->Split(rng))
 				{
@@ -116,19 +114,22 @@ void ADungeon::BeginPlay()
 	int32 roomCount = RoomMap.Num();
 	UE_LOG(LogDungeonGen, Warning, TEXT("Generated %d leaves and %d rooms."), leafCount, roomCount);
 
-	UBSPLeaf* entranceLeaf = RootLeaf;
-	while (entranceLeaf->LeftChild != NULL)
+	StartLeaf = RootLeaf;
+	while (StartLeaf->LeftChild != NULL)
 	{
-		entranceLeaf = entranceLeaf->LeftChild;
+		StartLeaf = StartLeaf->LeftChild;
 	}
-	TSet<UBSPLeaf*> availableLeaves;
-	availableLeaves.Add(entranceLeaf);
+	TSet<FBSPLink> availableLeaves;
+	FBSPLink start;
+	start.AvailableLeaf = StartLeaf;
+	start.FromLeaf = NULL;
+	availableLeaves.Add(start);
 	// The toProcess array is now empty from the while loop we ran earlier
 	//toProcess.Add(Mission->Head);
 	TSet<UDungeonMissionNode*> processedNodes;
 	TSet<UBSPLeaf*> processedLeaves;
-	PairNodesToLeaves(Mission->Head, availableLeaves, rng, processedNodes, processedLeaves, entranceLeaf, availableLeaves);
-	for (UBSPLeaf* leaf : processedLeaves)
+	PairNodesToLeaves(Mission->Head, availableLeaves, rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
+	/*for (UBSPLeaf* leaf : processedLeaves)
 	{
 		// Check to see if all our mission neighbors are next to us
 		if (leaf->LeafNeighbors.Intersect(leaf->MissionNeighbors).Num() == leaf->MissionNeighbors.Num())
@@ -173,14 +174,14 @@ void ADungeon::BeginPlay()
 				}
 			}
 		}
-	}
+	}*/
 	RootLeaf->DrawDebugLeaf();
 }
 
 bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node, 
-								TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng,
+								TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng,
 								TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves,
-								UBSPLeaf* EntranceLeaf, TSet<UBSPLeaf*>& AllOpenLeaves,
+								UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves,
 								bool bIsTightCoupling)
 {
 		//UDungeonMissionNode* node = ToProcess[0];
@@ -212,23 +213,26 @@ bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node,
 		UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableLeaves.Num(), Node->NextNodes.Num());
 		// Find an open leaf to add this to
 		UBSPLeaf* leaf = NULL;
+		FBSPLink leafLink;
 		if (bIsTightCoupling)
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("%s is tightly coupled to its parent. Selecting from pool of %d available leaves."), *Node->GetSymbolDescription(), AvailableLeaves.Num());
-			leaf = GetOpenLeaf(Node, AvailableLeaves, Rng, ProcessedLeaves);
+			leafLink = GetOpenLeaf(Node, AvailableLeaves, Rng, ProcessedLeaves);
+			leaf = leafLink.AvailableLeaf;
 			if (leaf == NULL)
 			{
 				// No open leaf available for us; back out
+				UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
 				return false;
 			}
 		}
 		else
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("%s is loosely coupled to its parent. Selecting from pool of %d available leaves."), *Node->GetSymbolDescription(), AllOpenLeaves.Num());
-			leaf = GetOpenLeaf(Node, AllOpenLeaves, Rng, ProcessedLeaves);
+			leafLink = GetOpenLeaf(Node, AllOpenLeaves, Rng, ProcessedLeaves);
+			leaf = leafLink.AvailableLeaf;
 			if (leaf == NULL)
 			{
 				// No open leaf available for us; back out
+				UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
 				return false;
 			}
 		}
@@ -250,9 +254,67 @@ bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node,
 
 		ProcessedLeaves.Add(leaf);
 		ProcessedNodes.Add(Node);
+		// Let this leaf contain the room symbol
+		leaf->SetMissionNode(Node, Rng);
+		if (leafLink.FromLeaf != NULL)
+		{
+			leaf->AddMissionLeaf(leafLink.FromLeaf);
+		}
+		// Set up a connection to our "parent" leaf (the leaf the player enters this room from)
+		// This is one of the neighboring leaves that we have already processed
+		/*TSet<UBSPLeaf*> processedNeighbors;
+		for (UBSPLeaf* neighbor : leaf->LeafNeighbors.Intersect(ProcessedLeaves))
+		{
+			// This is a neighbor of ours which has been processed already
+			if (neighbor->RoomSymbol == NULL || neighbor->RoomSymbol->Symbol.Symbol == NULL)
+			{
+				continue;
+			}
+			UDungeonMissionSymbol* neighborSymbol = (UDungeonMissionSymbol*)neighbor->RoomSymbol->Symbol.Symbol;
+			if (!neighborSymbol->bAllowedToHaveChildren)
+			{
+				// We couldn't have come from this node, since it's not allowed to have children
+				continue;
+			}
+			if (Node->IsChildOf(neighbor->RoomSymbol))
+			{
+				processedNeighbors.Add(neighbor);
+			}
+		}
+		if (processedNeighbors.Num() > 0)
+		{
+			// Let this leaf contain the room symbol
+			leaf->SetMissionNode(Node, Rng);
+			UBSPLeaf* entrance = processedNeighbors.Array()[Rng.RandRange(0, processedNeighbors.Num() - 1)];
+			leaf->AddMissionLeaf(entrance);
+		}
+		else if (StartLeaf == leaf)
+		{
+			// This is the first leaf we're trying to process
+			leaf->SetMissionNode(Node, Rng);
+		}
+		else
+		{
+			// Failed to find a connection back to the entrance -- back out
+			ProcessedNodes.Remove(Node);
+			// Restart -- next time, we'll select a different leaf
+			UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find a path back to the entrance."), *Node->GetSymbolDescription());
+			return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+		}*/
 
 		// Grab all our neighbor leaves, excluding those which have already been processed
-		TSet<UBSPLeaf*> neighboringLeaves = leaf->LeafNeighbors.Difference(ProcessedLeaves);
+		TSet<FBSPLink> neighboringLeaves;
+		for (UBSPLeaf* neighbor : leaf->LeafNeighbors)
+		{
+			if (ProcessedLeaves.Contains(neighbor))
+			{
+				continue;
+			}
+			FBSPLink link;
+			link.AvailableLeaf = neighbor;
+			link.FromLeaf = leaf;
+			neighboringLeaves.Add(link);
+		}
 		// Find all the tightly coupled nodes attached to our current node
 		//TArray<UDungeonMissionNode*> tightlyCoupledNodes;
 		TArray<UDungeonMissionNode*> nextToProcess;
@@ -267,6 +329,7 @@ bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node,
 					// Failed to find a child leaf; back out
 					ProcessedNodes.Remove(Node);
 					// Restart -- next time, we'll select a different leaf
+					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
 					return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 				}
 				//tightlyCoupledNodes.Add(neighborNode.Node);
@@ -288,18 +351,6 @@ bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node,
 		{
 			AvailableLeaves.Append(neighboringLeaves);
 		}
-		else
-		{
-			for (UBSPLeaf* neighbor : leaf->LeafNeighbors)
-			{
-				//if (neighbor != EntranceLeaf)
-				//{
-					neighbor->LeafNeighbors.Remove(leaf);
-				//}
-			}
-			leaf->LeafNeighbors.Empty(1);
-			//leaf->LeafNeighbors.Add(EntranceLeaf);
-		}
 		AllOpenLeaves.Append(AvailableLeaves);
 		// Now we process all non-tightly coupled nodes
 		for (int i = 0; i < nextToProcess.Num(); i++)
@@ -310,18 +361,15 @@ bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node,
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
+				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
 				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 			}
 		}
-
-		// Let this leaf contain the room symbol
-		leaf->SetMissionNode(Node, Rng);
-		leaf->AddMissionLeaf(EntranceLeaf);
-		// Set up a connection to our "parent" leaf (the leaf the player enters this room from)
+		
 		return true;
 }
 
-UBSPLeaf* ADungeon::GetOpenLeaf(UDungeonMissionNode* Node, TSet<UBSPLeaf*>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves)
+FBSPLink ADungeon::GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves)
 {
 
 	TSet<UDungeonMissionNode*> nodesToCheck;
@@ -332,32 +380,33 @@ UBSPLeaf* ADungeon::GetOpenLeaf(UDungeonMissionNode* Node, TSet<UBSPLeaf*>& Avai
 			nodesToCheck.Add(neighborNode.Node);
 		}
 	}
-	UBSPLeaf* leaf = NULL;
+	FBSPLink leaf = FBSPLink();
 	do
 	{
 		if (AvailableLeaves.Num() == 0)
 		{
-			return NULL;
+			return FBSPLink();
 		}
 		//checkf(AvailableLeaves.Num() > 0, TEXT("Not enough leaves for all the rooms we need to generate! We failed to generate room %s (ID %d). You may need to make the leaf BSP bigger."), *Node->GetSymbolDescription(), Node->Symbol.SymbolID);
 		int32 leafIndex = Rng.RandRange(0, AvailableLeaves.Num() - 1);
-		leaf = AvailableLeaves.Array()[leafIndex];
-		AvailableLeaves.Remove(leaf);
-		if (ProcessedLeaves.Contains(leaf))
+		FBSPLink leafLink = AvailableLeaves.Array()[leafIndex];
+		AvailableLeaves.Remove(leafLink);
+		leaf = leafLink;
+		if (ProcessedLeaves.Contains(leaf.AvailableLeaf))
 		{
 			// Already processed this leaf
-			leaf = NULL;
+			leaf = FBSPLink();
 			continue;
 		}
-		TSet<UBSPLeaf*> neighbors = leaf->LeafNeighbors.Difference(ProcessedLeaves);
+		TSet<UBSPLeaf*> neighbors = leaf.AvailableLeaf->LeafNeighbors.Difference(ProcessedLeaves);
 		if (neighbors.Num() < nodesToCheck.Num())
 		{
 			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
-			UE_LOG(LogDungeonGen, Log, TEXT("Abandoning processing %s for node %s because it has fewer neighbors (%d) than it does tightly-coupled nodes (%d)."), *leaf->GetName(), *Node->GetSymbolDescription(), AvailableLeaves.Num(), nodesToCheck.Num());
-			leaf = NULL;
+			UE_LOG(LogDungeonGen, Warning, TEXT("Abandoning processing %s for node %s because it has fewer neighbors (%d) than it does tightly-coupled nodes (%d)."), *leaf.AvailableLeaf->GetName(), *Node->GetSymbolDescription(), AvailableLeaves.Num(), nodesToCheck.Num());
+			leaf = FBSPLink();
 			continue;
 		}
-	} while (leaf == NULL);
+	} while (leaf.AvailableLeaf == NULL);
 	return leaf;
 }
 

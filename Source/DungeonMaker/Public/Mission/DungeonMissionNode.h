@@ -60,4 +60,5 @@ public:
 	FString GetSymbolDescription();
 
 	int32 GetLevelCount();
+	bool IsChildOf(UDungeonMissionNode* ParentSymbol) const;
 };

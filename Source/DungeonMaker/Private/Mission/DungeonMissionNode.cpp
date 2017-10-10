@@ -72,6 +72,24 @@ int32 UDungeonMissionNode::GetLevelCount()
 	return biggest + 1;
 }
 
+
+bool UDungeonMissionNode::IsChildOf(UDungeonMissionNode* ParentSymbol) const
+{
+	for (UDungeonMissionNode* parent : ParentNodes)
+	{
+		if (parent == ParentSymbol)
+		{
+			return true;
+		}
+		// If our parent is a child of this symbol, so are we
+		if (parent->IsChildOf(ParentSymbol))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 FString UDungeonMissionNode::GetSymbolDescription()
 {
 	return Symbol.GetSymbolDescription();

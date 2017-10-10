@@ -420,7 +420,64 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 
 void UBSPLeaf::AddMissionLeaf(UBSPLeaf* Neighbor)
 {
+	//check(LeafNeighbors.Contains(Neighbor));
+	if (Neighbor == NULL)
+	{
+		return;
+	}
 	MissionNeighbors.Add(Neighbor);
+}
+
+bool UBSPLeaf::HasConnectionTo(UBSPLeaf* Root)
+{
+	TSet<UBSPLeaf*> attempted;
+	return HasConnectionTo(Root, attempted);
+}
+
+bool UBSPLeaf::HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted)
+{
+	if (Attempted.Contains(this))
+	{
+		return false;
+	}
+
+	// Make sure we don't get processed again
+	Attempted.Add(this);
+
+	if (Root == this)
+	{
+		// Hey, that's us!
+		return true;
+	}
+	if (HasChildren())
+	{
+		return false;
+	}
+
+	// Get all neighbors we haven't processed yet
+	TSet<UBSPLeaf*> neighbors = MissionNeighbors.Difference(Attempted);
+	if (neighbors.Num() == 0)
+	{
+		// Out of neighbors
+		return false;
+	}
+	if (neighbors.Contains(Root))
+	{
+		// We're directly connected to the root!
+		return true;
+	}
+	else
+	{
+		// See if one of our neighbors is connected to the root
+		for (UBSPLeaf* neighbor : neighbors)
+		{
+			if (neighbor->HasConnectionTo(Root))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 bool UBSPLeaf::AreChildrenAllowed() const
