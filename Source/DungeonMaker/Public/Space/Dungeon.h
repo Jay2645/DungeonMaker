@@ -24,10 +24,6 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDungeonSpaceGenerator* Space;
-
-	// The maximum size of any room in this dungeon, in meters.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 MaxRoomSize = 24;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Seed = 1234;
 

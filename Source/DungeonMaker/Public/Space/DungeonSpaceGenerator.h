@@ -22,9 +22,10 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultRoomTile;
-	
+
+	// The maximum size of any room in this dungeon, in meters.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 MaxRoomSize;
+	int32 MaxRoomSize = 24;
 
 public:	
 	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);
