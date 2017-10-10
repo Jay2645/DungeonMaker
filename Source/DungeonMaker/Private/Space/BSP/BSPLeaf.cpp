@@ -14,7 +14,6 @@ UBSPLeaf::UBSPLeaf()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
 
 	LeftChild = NULL;
 	RightChild = NULL;
@@ -27,7 +26,6 @@ UBSPLeaf::UBSPLeaf()
 UBSPLeaf* UBSPLeaf::CreateLeaf(UObject* Outer, UBSPLeaf* ParentLeaf, FName Name, int32 X, int32 Y, int32 Width, int32 Height)
 {
 	UBSPLeaf* newLeaf = NewObject<UBSPLeaf>(Outer, Name);
-	newLeaf->RegisterComponent();
 	//newLeaf->AttachToComponent(Root, FAttachmentTransformRules::SnapToTargetIncludingScale);
 
 	newLeaf->XPosition = X;
@@ -335,12 +333,12 @@ FString UBSPLeaf::ToString() const
 	return output;
 }
 
-void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
+void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf) const
 {
 	if (HasChildren())
 	{
-		LeftChild->DrawDebugLeaf(ZPos + 100.0f);
-		RightChild->DrawDebugLeaf(ZPos + 100.0f);
+		LeftChild->DrawDebugLeaf(ReferenceActor, ZPos + 100.0f, bDebugLeaf);
+		RightChild->DrawDebugLeaf(ReferenceActor, ZPos + 100.0f, bDebugLeaf);
 	}
 	else
 	{
@@ -363,13 +361,13 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
 					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
 
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 				}
 			}
 		}
@@ -382,13 +380,13 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
 					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
 
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
-					DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
+					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 				}
 			}
 			
@@ -405,15 +403,15 @@ void UBSPLeaf::DrawDebugLeaf(float ZPos, bool bDebugLeaf) const
 				float neighborMidX = (neighbor->XPosition + neighborHalfX) * 100.0f;
 				float neighborMidY = (neighbor->YPosition + neighborHalfY) * 100.0f;
 				FVector endingLocation = FVector(neighborMidX, neighborMidY, ZPos);
-				DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true, -1.0f, (uint8)'\000', 100.0f);
+				DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true, -1.0f, (uint8)'\000', 100.0f);
 			}
 		}
 
 		FVector startingLocation = FVector(midX, midY, ZPos + 50.0f);
-		DrawDebugString(GetWorld(), startingLocation, GetName());
+		DrawDebugString(ReferenceActor->GetWorld(), startingLocation, GetName());
 		if (RoomSymbol != NULL && RoomSymbol->Symbol.Symbol != NULL)
 		{
-			DrawDebugString(GetWorld(), FVector(midX, midY, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
+			DrawDebugString(ReferenceActor->GetWorld(), FVector(midX, midY, ZPos + 100.0f), RoomSymbol->GetSymbolDescription());
 		}
 	}
 }

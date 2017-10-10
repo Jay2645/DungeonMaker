@@ -175,7 +175,7 @@ void ADungeon::BeginPlay()
 			}
 		}
 	}*/
-	RootLeaf->DrawDebugLeaf();
+	//RootLeaf->DrawDebugLeaf(this);
 }
 
 bool ADungeon::PairNodesToLeaves(UDungeonMissionNode* Node, 

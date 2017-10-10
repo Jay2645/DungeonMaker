@@ -35,7 +35,7 @@ public:
 };
 
 UCLASS()
-class DUNGEONMAKER_API UBSPLeaf : public USceneComponent
+class DUNGEONMAKER_API UBSPLeaf : public UObject
 {
 	GENERATED_BODY()
 
@@ -108,7 +108,7 @@ public:
 	UFUNCTION()
 		FString ToString() const;
 	UFUNCTION()
-		void DrawDebugLeaf(float ZPos = 0.0f, bool bDebugLeaf = false) const;
+		void DrawDebugLeaf(AActor* ReferenceActor, float ZPos = 0.0f, bool bDebugLeaf = false) const;
 	UFUNCTION()
 		void AddMissionLeaf(UBSPLeaf* Neighbor);
 	UFUNCTION()
