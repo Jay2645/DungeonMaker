@@ -32,6 +32,9 @@ public:
 	TSet<UBSPLeaf*> MissionLeaves;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TSet<UBSPLeaf*> UnresolvedHooks;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
 public:	

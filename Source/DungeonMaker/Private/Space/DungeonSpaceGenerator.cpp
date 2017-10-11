@@ -76,18 +76,6 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	TSet<UDungeonMissionNode*> processedNodes;
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
-	
-	// Processed leaves may contain some rejected leaves; empty it and reuse it to find all our mission leaves
-	processedLeaves.Empty();
-	processedLeaves.Add(StartLeaf);
-	while (processedLeaves.Num() > 0)
-	{
-		UBSPLeaf* current = processedLeaves.Array()[0];
-		MissionLeaves.Add(current);
-		processedLeaves.Remove(current);
-		// Add all neighbors we have not yet processed to the array
-		processedLeaves.Append(current->MissionNeighbors.Difference(MissionLeaves));
-	}
 
 	for (UBSPLeaf* leaf : MissionLeaves)
 	{
@@ -181,6 +169,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	
 	ProcessedLeaves.Add(leaf);
 	ProcessedNodes.Add(Node);
+
 	// Let this leaf contain the room symbol
 	leaf->SetMissionNode(Node, DefaultRoomTile, Rng);
 	if (leafLink.FromLeaf != NULL)
@@ -242,6 +231,12 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 			return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 		}
 	}
+
+	if (Node->Symbol.Symbol->bChangedAtRuntime)
+	{
+		UnresolvedHooks.Add(leaf);
+	}
+	MissionLeaves.Add(leaf);
 
 	return true;
 }

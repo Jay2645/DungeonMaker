@@ -370,8 +370,8 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 		float halfX = LeafSize.XSize() / 2.0f;
 		float halfY = LeafSize.YSize() / 2.0f;
 
-		float midX = (XPosition + halfX) * 100.0f;
-		float midY = (YPosition + halfY) * 100.0f;
+		float midX = (XPosition + halfX) * 500.0f;
+		float midY = (YPosition + halfY) * 500.0f;
 		FColor randomColor = FColor::MakeRandomColor();
 		if (bDebugLeaf || RoomOffset.IsZero())
 		{
@@ -379,15 +379,15 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 			{
 				for (int y = YPosition; y < YPosition + LeafSize.YSize(); y++)
 				{
-					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
-					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					FVector startingLocation(x * 500.0f, y * 500.0f, ZPos);
+					FVector endingLocation(x * 500.0f, (y + 1) * 500.0f, ZPos);
 
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector((x + 1) * 100.0f, y * 100.0f, ZPos);
+					endingLocation = FVector((x + 1) * 500.0f, y * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					startingLocation = FVector((x + 1) * 100.0f, (y + 1) * 100.0f, ZPos);
+					startingLocation = FVector((x + 1) * 500.0f, (y + 1) * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector(x * 100.0f, (y + 1) * 100.0f, ZPos);
+					endingLocation = FVector(x * 500.0f, (y + 1) * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 				}
 			}
@@ -400,20 +400,20 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 				{
 					int32 xOffset = x + XPosition;
 					int32 yOffset = y + YPosition;
-					FVector startingLocation(xOffset * 100.0f, yOffset * 100.0f, ZPos);
-					FVector endingLocation(xOffset * 100.0f, (yOffset + 1) * 100.0f, ZPos);
+					FVector startingLocation(xOffset * 500.0f, yOffset * 500.0f, ZPos);
+					FVector endingLocation(xOffset * 500.0f, (yOffset + 1) * 500.0f, ZPos);
 
 					// Draw a square
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector((xOffset + 1) * 100.0f, yOffset * 100.0f, ZPos);
+					endingLocation = FVector((xOffset + 1) * 500.0f, yOffset * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					startingLocation = FVector((xOffset + 1) * 100.0f, (yOffset + 1) * 100.0f, ZPos);
+					startingLocation = FVector((xOffset + 1) * 500.0f, (yOffset + 1) * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector(xOffset * 100.0f, (yOffset + 1) * 100.0f, ZPos);
+					endingLocation = FVector(xOffset * 500.0f, (yOffset + 1) * 500.0f, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 
 					// Label the center with the type of tile this is
-					FVector midpoint((xOffset + 0.5f) * 100.0f, (yOffset + 0.5f) * 100.0f, ZPos + 100.0f);
+					FVector midpoint((xOffset + 0.5f) * 500.0f, (yOffset + 0.5f) * 500.0f, ZPos + 100.0f);
 					const UDungeonTile* tile = Room[y][x];
 					if (tile != NULL)
 					{
@@ -433,8 +433,8 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 				float neighborHalfX = neighbor->LeafSize.XSize() / 2.0f;
 				float neighborHalfY = neighbor->LeafSize.YSize() / 2.0f;
 
-				float neighborMidX = (neighbor->XPosition + neighborHalfX) * 100.0f;
-				float neighborMidY = (neighbor->YPosition + neighborHalfY) * 100.0f;
+				float neighborMidX = (neighbor->XPosition + neighborHalfX) * 500.0f;
+				float neighborMidY = (neighbor->YPosition + neighborHalfY) * 500.0f;
 				FVector endingLocation = FVector(neighborMidX, neighborMidY, ZPos);
 				DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true, -1.0f, (uint8)'\000', 100.0f);
 			}
