@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Engine/StaticMesh.h"
 #include "DungeonTile.generated.h"
 
 class UDungeonMissionSymbol;
@@ -19,6 +20,8 @@ class DUNGEONMAKER_API UDungeonTile : public UDataAsset
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName TileID;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UStaticMesh* TileMesh;
 };
 
 
@@ -40,6 +43,14 @@ struct DUNGEONMAKER_API FDungeonRow
 		{
 			DungeonTiles[i] = NULL;
 		}
+	}
+
+	TSet<const UDungeonTile*> FindAllTiles()
+	{
+		TSet<const UDungeonTile*> tiles;
+		tiles.Append(DungeonTiles);
+		tiles.Remove(NULL);
+		return tiles;
 	}
 
 	void Set(int Index, const UDungeonTile* Tile)
@@ -103,6 +114,16 @@ struct DUNGEONMAKER_API FDungeonRoom
 	FDungeonRow& operator[] (int Index)
 	{
 		return DungeonRows[Index];
+	}
+
+	TSet<const UDungeonTile*> FindAllTiles()
+	{
+		TSet<const UDungeonTile*> tiles;
+		for (int i = 0; i < DungeonRows.Num(); i++)
+		{
+			tiles.Append(DungeonRows[i].FindAllTiles());
+		}
+		return tiles;
 	}
 
 	void Set(int X, int Y, const UDungeonTile* Tile)

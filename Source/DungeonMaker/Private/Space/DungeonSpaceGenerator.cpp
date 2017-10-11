@@ -76,6 +76,33 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	TSet<UDungeonMissionNode*> processedNodes;
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
+	
+	// Processed leaves may contain some rejected leaves; empty it and reuse it to find all our mission leaves
+	processedLeaves.Empty();
+	processedLeaves.Add(StartLeaf);
+	while (processedLeaves.Num() > 0)
+	{
+		UBSPLeaf* current = processedLeaves.Array()[0];
+		MissionLeaves.Add(current);
+		processedLeaves.Remove(current);
+		// Add all neighbors we have not yet processed to the array
+		processedLeaves.Append(current->MissionNeighbors.Difference(MissionLeaves));
+	}
+
+	for (UBSPLeaf* leaf : MissionLeaves)
+	{
+		TSet<const UDungeonTile*> roomTiles = leaf->Room.FindAllTiles();
+		for (const UDungeonTile* tile : roomTiles)
+		{
+			if (ComponentLookup.Contains(tile))
+			{
+				continue;
+			}
+			// Otherwise, create a new InstancedStaticMeshComponent
+			UInstancedStaticMeshComponent* tileMesh = NewObject<UInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
+			ComponentLookup.Add(tile, tileMesh);
+		}
+	}
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace(AActor* ReferenceActor) const

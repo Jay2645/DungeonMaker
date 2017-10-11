@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "BSPLeaf.h"
 #include "DungeonSpaceGenerator.generated.h"
 
@@ -26,6 +27,12 @@ public:
 	// The maximum size of any room in this dungeon, in meters.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxRoomSize = 24;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TSet<UBSPLeaf*> MissionLeaves;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TMap<const UDungeonTile*, UInstancedStaticMeshComponent*> ComponentLookup;
 
 public:	
 	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);
