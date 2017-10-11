@@ -509,6 +509,27 @@ bool UBSPLeaf::HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted)
 	}
 }
 
+
+void UBSPLeaf::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup)
+{
+	for (int x = 0; x < Room.XSize(); x++)
+	{
+		for (int y = 0; y < Room.YSize(); y++)
+		{
+			const UDungeonTile* tile = Room[y][x];
+			if (tile->TileMesh == NULL)
+			{
+				continue;
+			}
+			FVector startingLocation((x + XPosition) * 500.0f, (y + YPosition) * 500.0f, 0.0f);
+			FTransform tileTfm;
+			tileTfm.SetLocation(startingLocation);
+			UHierarchicalInstancedStaticMeshComponent* meshComponent = ComponentLookup[tile];
+			meshComponent->AddInstance(tileTfm);
+		}
+	}
+}
+
 bool UBSPLeaf::AreChildrenAllowed() const
 {
 	if (RoomSymbol == NULL)

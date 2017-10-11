@@ -94,14 +94,22 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		TSet<const UDungeonTile*> roomTiles = leaf->Room.FindAllTiles();
 		for (const UDungeonTile* tile : roomTiles)
 		{
-			if (ComponentLookup.Contains(tile))
+			if (ComponentLookup.Contains(tile) || tile->TileMesh == NULL)
 			{
 				continue;
 			}
 			// Otherwise, create a new InstancedStaticMeshComponent
-			UInstancedStaticMeshComponent* tileMesh = NewObject<UInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
+			UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
+			tileMesh->RegisterComponent();
+			tileMesh->SetStaticMesh(tile->TileMesh);
+			tileMesh->SetCastShadow(false);
 			ComponentLookup.Add(tile, tileMesh);
 		}
+	}
+
+	for (UBSPLeaf* leaf : MissionLeaves)
+	{
+		leaf->PlaceRoomTiles(ComponentLookup);
 	}
 }
 

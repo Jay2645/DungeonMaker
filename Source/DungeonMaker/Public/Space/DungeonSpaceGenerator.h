@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "BSPLeaf.h"
 #include "DungeonSpaceGenerator.generated.h"
 
@@ -32,7 +32,7 @@ public:
 	TSet<UBSPLeaf*> MissionLeaves;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	TMap<const UDungeonTile*, UInstancedStaticMeshComponent*> ComponentLookup;
+	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
 public:	
 	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);

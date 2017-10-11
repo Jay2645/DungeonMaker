@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "DungeonMissionNode.h"
 #include "DungeonTile.h"
 #include "BSPLeaf.generated.h"
@@ -118,6 +119,9 @@ public:
 	bool AreChildrenAllowed() const;
 	UFUNCTION()
 	bool HasConnectionTo(UBSPLeaf* Root);
+
+	//UFUNCTION()
+	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup);
 protected:
 	bool HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted);
 	UFUNCTION()
