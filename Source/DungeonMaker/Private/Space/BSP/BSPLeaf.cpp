@@ -122,11 +122,27 @@ void UBSPLeaf::CreateRoom(const UDungeonTile* DefaultRoomTile, FRandomStream &Rn
 	Room = FDungeonRoom(xDimension, yDimension);
 	Room.Symbol = (UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol;
 
+	// Initialize the room with the default tiles
 	for (int x = 0; x < Room.XSize(); x++)
 	{
 		for (int y = 0; y < Room.YSize(); y++)
 		{
 			Room.Set(x, y, DefaultRoomTile);
+		}
+	}
+	// Replace them based on our replacement rules
+	TArray<FRoomReplacements> replacementPhases = Room.Symbol->RoomReplacementPhases;
+	for (int i = 0; i < replacementPhases.Num(); i++)
+	{
+		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
+		while (replacementPatterns.Num() > 0)
+		{
+			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
+			if (!replacementPatterns[rngIndex]->FindAndReplace(Room))
+			{
+				// Couldn't find a replacement in this room
+				replacementPatterns.RemoveAt(rngIndex);
+			}
 		}
 	}
 
@@ -359,9 +375,9 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 		FColor randomColor = FColor::MakeRandomColor();
 		if (bDebugLeaf || RoomOffset.IsZero())
 		{
-			for (int x = XPosition; x < XPosition + LeafSize.XSize() - 1; x++)
+			for (int x = XPosition; x < XPosition + LeafSize.XSize(); x++)
 			{
-				for (int y = YPosition; y < YPosition + LeafSize.YSize() - 1; y++)
+				for (int y = YPosition; y < YPosition + LeafSize.YSize(); y++)
 				{
 					FVector startingLocation(x * 100.0f, y * 100.0f, ZPos);
 					FVector endingLocation(x * 100.0f, (y + 1) * 100.0f, ZPos);
@@ -378,9 +394,9 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 		}
 		else
 		{
-			for (int x = 0; x < 0 + Room.XSize() - 1; x++)
+			for (int x = 0; x < 0 + Room.XSize(); x++)
 			{
-				for (int y = 0; y < 0 + Room.YSize() - 1; y++)
+				for (int y = 0; y < 0 + Room.YSize(); y++)
 				{
 					int32 xOffset = x + XPosition;
 					int32 yOffset = y + YPosition;
