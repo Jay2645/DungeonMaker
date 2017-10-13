@@ -85,14 +85,14 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		leaf->UpdateRoomWithNeighbors();
 	}
 
-	TSet<UDungeonRoom*> newHallways;
-	for (UDungeonRoom* room : MissionRooms)
+	TSet<ADungeonRoom*> newHallways;
+	for (ADungeonRoom* room : MissionRooms)
 	{
 		newHallways.Append(room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol));
 	}
 	MissionRooms.Append(newHallways);
 
-	for (UDungeonRoom* room : MissionRooms)
+	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->DoTileReplacement(DungeonSpace, Rng);
 
@@ -112,7 +112,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		}
 	}
 
-	for (UDungeonRoom* room : MissionRooms)
+	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->PlaceRoomTiles(ComponentLookup);
 	}
@@ -120,7 +120,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 
 void UDungeonSpaceGenerator::DrawDebugSpace() const
 {
-	for (UDungeonRoom* room : MissionRooms)
+	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->DrawDebugRoom();
 	}
@@ -255,7 +255,8 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	roomName.Append(" (");
 	roomName.AppendInt(leaf->RoomSymbol->Symbol.SymbolID);
 	roomName.AppendChar(')');
-	UDungeonRoom* room = NewObject<UDungeonRoom>(GetOwner(), FName(*roomName));
+	ADungeonRoom* room = (ADungeonRoom*)GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+	room->Rename(*roomName);
 	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultRoomTile, 
 		leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 

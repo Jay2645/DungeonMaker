@@ -108,13 +108,13 @@ void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* Def
 }
 
 
-void UBSPLeaf::SetRoom(UDungeonRoom* NewRoom)
+void UBSPLeaf::SetRoom(ADungeonRoom* NewRoom)
 {
 	Room = NewRoom;
 }
 
 
-UDungeonRoom* UBSPLeaf::GetRoom(FRandomStream& Rng)
+ADungeonRoom* UBSPLeaf::GetRoom(FRandomStream& Rng)
 {
 	if (Room != NULL)
 	{
@@ -122,8 +122,8 @@ UDungeonRoom* UBSPLeaf::GetRoom(FRandomStream& Rng)
 	}
 	else
 	{
-		UDungeonRoom* leftRoom = NULL;
-		UDungeonRoom* rightRoom = NULL;
+		ADungeonRoom* leftRoom = NULL;
+		ADungeonRoom* rightRoom = NULL;
 		if (LeftChild != NULL)
 		{
 			leftRoom = LeftChild->GetRoom(Rng);

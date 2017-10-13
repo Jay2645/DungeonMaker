@@ -8,7 +8,7 @@
 #include "RoomReplacementPattern.generated.h"
 
 class URoomReplacementPattern;
-class UDungeonRoom;
+class ADungeonRoom;
 
 USTRUCT(BlueprintType)
 struct FRoomReplacements

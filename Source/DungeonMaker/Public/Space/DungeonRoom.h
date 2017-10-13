@@ -6,31 +6,38 @@
 #include "Components/SceneComponent.h"
 #include "DungeonTile.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "../Mission/DungeonMissionSymbol.h"
 #include "DungeonRoom.generated.h"
 
 class UBSPLeaf;
 
 UCLASS(Blueprintable)
-class DUNGEONMAKER_API UDungeonRoom : public USceneComponent
+class DUNGEONMAKER_API ADungeonRoom : public AActor
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UDungeonRoom();
+	ADungeonRoom();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FDungeonRoomMetadata RoomTiles;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	const UDungeonMissionSymbol* Symbol;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TSet<UDungeonRoom*> MissionNeighbors;
+	USceneComponent* DummyRoot;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TSet<ADungeonRoom*> MissionNeighbors;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UBoxComponent* RoomTrigger;
 
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
@@ -48,7 +55,7 @@ public:
 	void DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
 	
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	TSet<UDungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
+	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup);
@@ -79,7 +86,7 @@ public:
 	bool IsChangedAtRuntime() const;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	static TSet<UDungeonRoom*> ConnectRooms(UDungeonRoom* A, UDungeonRoom* B, FRandomStream& Rng, 
+	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng, 
 		const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile);
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 };

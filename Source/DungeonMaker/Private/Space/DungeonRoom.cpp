@@ -6,27 +6,51 @@
 
 
 // Sets default values for this component's properties
-UDungeonRoom::UDungeonRoom()
+ADungeonRoom::ADungeonRoom()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
 
 	RoomTiles = FDungeonRoomMetadata();
 	Symbol = NULL;
+	DummyRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	SetRootComponent(DummyRoot);
+	RoomTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("Room Trigger"));
+	RoomTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	RoomTrigger->AttachToComponent(DummyRoot, FAttachmentTransformRules::KeepWorldTransform);
+	RoomTrigger->bGenerateOverlapEvents = true;
+	RoomTrigger->SetVisibility(true);
+	RoomTrigger->SetHiddenInGame(false);
 }
 
 
 // Called when the game starts
-void UDungeonRoom::BeginPlay()
+void ADungeonRoom::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
-
+	if (!RoomTrigger->OnComponentBeginOverlap.IsAlreadyBound(this, &ADungeonRoom::OnBeginTriggerOverlap))
+	{
+		RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
+	}
 }
 
-void UDungeonRoom::InitializeRoomFromPoints(
+
+void ADungeonRoom::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (RoomTrigger->OnComponentBeginOverlap.IsAlreadyBound(this, &ADungeonRoom::OnBeginTriggerOverlap))
+	{
+		RoomTrigger->OnComponentBeginOverlap.RemoveDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	UE_LOG(LogDungeonGen, Log, TEXT("%s"), *OtherActor->GetName());
+}
+
+void ADungeonRoom::InitializeRoomFromPoints(
 	const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol,
 	FIntVector StartLocation, FIntVector EndLocation, int32 Width)
 {
@@ -47,7 +71,7 @@ void UDungeonRoom::InitializeRoomFromPoints(
 	}
 }
 
-void UDungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
+void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	int32 MaxXSize, int32 MaxYSize,
 	int32 XPosition, int32 YPosition, int32 ZPosition,
 	const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
@@ -78,11 +102,24 @@ void UDungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	//int32 xOffset = Rng.RandRange(XPosition, MaxXSize - xDimension);
 	//int32 yOffset = Rng.RandRange(YPosition, MaxYSize - yDimension);
 
-	//SetWorldLocation(FVector(xOffset * UDungeonTile::TILE_SIZE, yOffset * UDungeonTile::TILE_SIZE, ZPosition * UDungeonTile::TILE_SIZE));
-	SetWorldLocation(FVector(XPosition * UDungeonTile::TILE_SIZE, YPosition * UDungeonTile::TILE_SIZE, ZPosition * UDungeonTile::TILE_SIZE));
+	int32 xOffset = XPosition;
+	int32 yOffset = YPosition;
+
+	FVector worldPosition = FVector(
+		xOffset * UDungeonTile::TILE_SIZE, 
+		yOffset * UDungeonTile::TILE_SIZE, 
+		ZPosition * UDungeonTile::TILE_SIZE);
+
+	FVector halfExtents = FVector(
+		(xDimension * 250.0f),
+		(yDimension * 250.0f),
+		500.0f);
+	SetActorLocation(worldPosition);
+	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, 500.0f, 500.0f));
+	RoomTrigger->InitBoxExtent(halfExtents);
 }
 
-void UDungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
+void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
 {
 	// Replace them based on our replacement rules
 	TArray<FRoomReplacements> replacementPhases = Symbol->RoomReplacementPhases;
@@ -100,7 +137,7 @@ void UDungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 		}
 	}
 
-	FVector position = GetComponentLocation();
+	FVector position = GetActorLocation();
 	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
 	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
 
@@ -112,7 +149,7 @@ void UDungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 			FIntVector currentLocation = FIntVector(x + xPosition, y + yPosition, 0);
 			if (DungeonFloor.TileIsWall(currentLocation))
 			{
-				UDungeonRoom* otherRoom = DungeonFloor.GetRoom(currentLocation);
+				ADungeonRoom* otherRoom = DungeonFloor.GetRoom(currentLocation);
 				if (otherRoom != NULL)
 				{
 					otherRoom->SetTileGridCoordinates(currentLocation, tile);
@@ -127,18 +164,18 @@ void UDungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 	}
 }
 
-TSet<UDungeonRoom*> UDungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol)
+TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol)
 {
-	TSet<UDungeonRoom*> newHallways;
-	TSet<UDungeonRoom*> allNeighbors = MissionNeighbors;
-	for (UDungeonRoom* neighbor : allNeighbors)
+	TSet<ADungeonRoom*> newHallways;
+	TSet<ADungeonRoom*> allNeighbors = MissionNeighbors;
+	for (ADungeonRoom* neighbor : allNeighbors)
 	{
 		newHallways.Append(ConnectRooms(this, neighbor, Rng, HallwaySymbol, DefaultTile));
 	}
 	return newHallways;
 }
 
-void UDungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup)
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup)
 {
 	for (int x = 0; x < XSize(); x++)
 	{
@@ -149,7 +186,7 @@ void UDungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 			{
 				continue;
 			}
-			FTransform tileTfm = GetComponentTransform();
+			FTransform tileTfm = GetActorTransform();
 			FVector offset = FVector(x * UDungeonTile::TILE_SIZE, y * UDungeonTile::TILE_SIZE, 0.0f);
 			tileTfm.AddToTranslation(offset);
 			UHierarchicalInstancedStaticMeshComponent* meshComponent = ComponentLookup[tile];
@@ -160,44 +197,44 @@ void UDungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 
 
 
-TSet<const UDungeonTile*> UDungeonRoom::FindAllTiles()
+TSet<const UDungeonTile*> ADungeonRoom::FindAllTiles()
 {
 	return RoomTiles.FindAllTiles();
 }
 
-void UDungeonRoom::Set(int32 X, int32 Y, const UDungeonTile* Tile)
+void ADungeonRoom::Set(int32 X, int32 Y, const UDungeonTile* Tile)
 {
 	RoomTiles.Set(X, Y, Tile);
 }
 
-const UDungeonTile* UDungeonRoom::GetTile(int32 X, int32 Y) const
+const UDungeonTile* ADungeonRoom::GetTile(int32 X, int32 Y) const
 {
 	return RoomTiles.DungeonRows[Y].DungeonTiles[X];
 }
 
-int32 UDungeonRoom::XSize() const
+int32 ADungeonRoom::XSize() const
 {
 	return RoomTiles.XSize();
 }
 
-int32 UDungeonRoom::YSize() const
+int32 ADungeonRoom::YSize() const
 {
 	return RoomTiles.YSize();
 }
 
 
-int32 UDungeonRoom::ZSize() const
+int32 ADungeonRoom::ZSize() const
 {
 	// TODO: Support multiple levels
 	return 1;
 }
 
-FString UDungeonRoom::ToString() const
+FString ADungeonRoom::ToString() const
 {
 	return RoomTiles.ToString();
 }
 
-void UDungeonRoom::DrawDebugRoom()
+void ADungeonRoom::DrawDebugRoom()
 {
 	if (XSize() == 0 || YSize() == 0)
 	{
@@ -207,7 +244,7 @@ void UDungeonRoom::DrawDebugRoom()
 	float halfX = XSize() / 2.0f;
 	float halfY = YSize() / 2.0f;
 
-	FVector position = GetComponentLocation();
+	FVector position = GetActorLocation();
 	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
 	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
 	int32 zPosition = FMath::RoundToInt(position.Z / UDungeonTile::TILE_SIZE);
@@ -246,7 +283,7 @@ void UDungeonRoom::DrawDebugRoom()
 
 	// Draw lines connecting to our neighbors
 	FVector startingLocation = FVector(midX, midY, zPosition);
-	for (UDungeonRoom* neighbor : MissionNeighbors)
+	for (ADungeonRoom* neighbor : MissionNeighbors)
 	{
 		if (neighbor->Symbol == NULL)
 		{
@@ -256,7 +293,7 @@ void UDungeonRoom::DrawDebugRoom()
 		float neighborHalfY = neighbor->YSize() / 2.0f;
 
 
-		FVector neighborPosition = neighbor->GetComponentLocation();
+		FVector neighborPosition = neighbor->GetActorLocation();
 		int32 neighborXPosition = FMath::RoundToInt(neighborPosition.X / UDungeonTile::TILE_SIZE);
 		int32 neighborYPosition = FMath::RoundToInt(neighborPosition.Y / UDungeonTile::TILE_SIZE);
 		int32 neighborZPosition = FMath::RoundToInt(neighborPosition.Z / UDungeonTile::TILE_SIZE);
@@ -273,7 +310,7 @@ void UDungeonRoom::DrawDebugRoom()
 	}
 }
 
-bool UDungeonRoom::IsChangedAtRuntime() const
+bool ADungeonRoom::IsChangedAtRuntime() const
 {
 	if (Symbol == NULL)
 	{
@@ -282,16 +319,16 @@ bool UDungeonRoom::IsChangedAtRuntime() const
 	return Symbol->bChangedAtRuntime;
 }
 
-TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B, FRandomStream& Rng,
+TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng,
 	const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile)
 {
 	const int32 HALLWAY_WIDTH = 3;
 	const int32 HALLWAY_EDGE_OFFSET = 2;
 
-	TSet<UDungeonRoom*> hallways;
+	TSet<ADungeonRoom*> hallways;
 	// Convert room's world-space coordinates to grid coordinates
-	FVector aComponentLocation = A->GetComponentLocation();
-	FVector bComponentLocation = B->GetComponentLocation();
+	FVector aComponentLocation = A->GetActorLocation();
+	FVector bComponentLocation = B->GetActorLocation();
 	FIntVector aLocation = FIntVector(FMath::RoundToInt(aComponentLocation.X / UDungeonTile::TILE_SIZE),
 		FMath::RoundToInt(aComponentLocation.Y / UDungeonTile::TILE_SIZE),
 		FMath::RoundToInt(aComponentLocation.Z / UDungeonTile::TILE_SIZE));
@@ -317,7 +354,7 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 		bLocation = bottom;
 
 		// Reverse the pointers as well
-		UDungeonRoom* bottomRoom = A;
+		ADungeonRoom* bottomRoom = A;
 		A = B;
 		B = bottomRoom;
 	}
@@ -346,7 +383,7 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 			aLocation = bLocation;
 			bLocation = tempVector;
 
-			UDungeonRoom* tempRoom = A;
+			ADungeonRoom* tempRoom = A;
 			A = B;
 			B = tempRoom;
 		}
@@ -485,7 +522,9 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 		//          |  A   |___________________________|    B    |
 		//          |______|                           |_________|
 
-		UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
+		//ADungeonRoom* hallway = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayName));
+		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+		hallway->Rename(*hallwayName);
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
 			hallwayStart, hallwayEnd, HALLWAY_WIDTH);
 		//hallway->InitializeRoom(
@@ -603,7 +642,10 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 			FIntVector hallwayIntersection = FIntVector(randomLocation, pointB, bLocation.Z);
 
 			// Create hallway A
-			UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayAName));
+			//ADungeonRoom* hallwayA = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayAName));
+			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			hallwayA->Rename(*hallwayAName);
+
 			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
 			hallways.Add(hallwayA);
 
@@ -640,7 +682,8 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 				bHallwayStart = FIntVector(bLocation.X, pointB, bLocation.Z);
 			}
 
-			UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(B->GetOwner(), FName(*hallwayBName));
+			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			hallwayB->Rename(*hallwayBName);
 			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, bHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
 			hallways.Add(hallwayB);
 
@@ -688,7 +731,8 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 			//             |    B    |
 			//             |_________|
 
-			UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
+			ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			hallway->Rename(*hallwayName);
 			//hallway->InitializeRoom(
 			//	DefaultTile, hallwayEnd.X - hallwayStart.X, HALLWAY_WIDTH,
 			//	hallwayStart.X, hallwayStart.Y, hallwayStart.Z,
@@ -737,7 +781,8 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 			FIntVector intersection = FIntVector(randomLocation, pointA, aLocation.Z);
 
 			// Create hallway A
-			UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(B->GetOwner(), FName(*hallwayBName));
+			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			hallwayB->Rename(*hallwayBName);
 			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, intersection, bHallwayStart, HALLWAY_WIDTH);
 			hallways.Add(hallwayB);
 
@@ -770,7 +815,10 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 
 				aHallwayStart = FIntVector(aLocation.X + A->XSize(), pointA, bLocation.Z);
 			}
-			UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayAName));
+			
+			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			hallwayA->Rename(*hallwayAName);
+			
 			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, intersection, HALLWAY_WIDTH);
 			hallways.Add(hallwayA);
 
@@ -1019,10 +1067,10 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 	return hallways;
 }
 
-void UDungeonRoom::SetTileGridCoordinates(FIntVector CurrentLocation, const UDungeonTile* Tile)
+void ADungeonRoom::SetTileGridCoordinates(FIntVector CurrentLocation, const UDungeonTile* Tile)
 {
 
-	FVector position = GetComponentLocation();
+	FVector position = GetActorLocation();
 	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
 	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
 	Set(CurrentLocation.X - xPosition, CurrentLocation.Y - yPosition, Tile);

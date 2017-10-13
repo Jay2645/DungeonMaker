@@ -78,7 +78,7 @@ public:
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UDungeonRoom* Room;
+	ADungeonRoom* Room;
 
 public:
 	UFUNCTION()
@@ -92,9 +92,9 @@ public:
 	void SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng);
 
 	UFUNCTION()
-	void SetRoom(UDungeonRoom* NewRoom);
+	void SetRoom(ADungeonRoom* NewRoom);
 	UFUNCTION()
-	UDungeonRoom* GetRoom(FRandomStream& Rng);
+	ADungeonRoom* GetRoom(FRandomStream& Rng);
 
 	UFUNCTION()
 	bool HasChildren() const;

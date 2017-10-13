@@ -8,7 +8,7 @@
 #include "DungeonTile.generated.h"
 
 class UDungeonMissionSymbol;
-class UDungeonRoom;
+class ADungeonRoom;
 
 UENUM(BlueprintType)
 enum class ETileType : uint8
@@ -195,7 +195,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	const UDungeonTile* Tile;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UDungeonRoom* Room;
+	ADungeonRoom* Room;
 };
 
 USTRUCT(BlueprintType)
@@ -206,9 +206,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FIntVector, FDungeonFloorTile> TileLocations;
 
-	void PlaceNewTile(FIntVector CurrentLocation, UDungeonRoom* Room, const UDungeonTile* Tile);
+	void PlaceNewTile(FIntVector CurrentLocation, ADungeonRoom* Room, const UDungeonTile* Tile);
 
 	bool TileIsWall(FIntVector Location) const;
 	const UDungeonTile* GetTileAt(FIntVector CurrentLocation);
-	UDungeonRoom* GetRoom(FIntVector CurrentLocation);
+	ADungeonRoom* GetRoom(FIntVector CurrentLocation);
 };

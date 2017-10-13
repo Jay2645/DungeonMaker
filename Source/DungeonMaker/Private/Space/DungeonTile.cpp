@@ -5,7 +5,7 @@
 
 const float UDungeonTile::TILE_SIZE = 500.0f;
 
-void FDungeonFloor::PlaceNewTile(FIntVector CurrentLocation, UDungeonRoom* Room, const UDungeonTile* Tile)
+void FDungeonFloor::PlaceNewTile(FIntVector CurrentLocation, ADungeonRoom* Room, const UDungeonTile* Tile)
 {
 	FDungeonFloorTile newTile;
 	newTile.Room = Room;
@@ -31,7 +31,7 @@ const UDungeonTile* FDungeonFloor::GetTileAt(FIntVector CurrentLocation)
 	return TileLocations[CurrentLocation].Tile;
 }
 
-UDungeonRoom* FDungeonFloor::GetRoom(FIntVector CurrentLocation)
+ADungeonRoom* FDungeonFloor::GetRoom(FIntVector CurrentLocation)
 {
 	if (TileLocations.Contains(CurrentLocation))
 	{
