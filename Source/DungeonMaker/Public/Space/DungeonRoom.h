@@ -31,6 +31,8 @@ public:
 	TSet<ADungeonRoom*> MissionNeighbors;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UBoxComponent* RoomTrigger;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FRoomReplacements> RoomReplacementPhases;
 
 
 protected:
@@ -38,6 +40,13 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
+	void OnPlayerEnterRoom();
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
+	void OnPlayerLeaveRoom();
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
+	void OnPlayerEnterNeighborRoom();
 
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.

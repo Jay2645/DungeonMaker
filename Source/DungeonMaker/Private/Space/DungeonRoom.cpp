@@ -19,8 +19,6 @@ ADungeonRoom::ADungeonRoom()
 	RoomTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	RoomTrigger->AttachToComponent(DummyRoot, FAttachmentTransformRules::KeepWorldTransform);
 	RoomTrigger->bGenerateOverlapEvents = true;
-	RoomTrigger->SetVisibility(true);
-	RoomTrigger->SetHiddenInGame(false);
 }
 
 
@@ -110,19 +108,16 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 		yOffset * UDungeonTile::TILE_SIZE, 
 		ZPosition * UDungeonTile::TILE_SIZE);
 
-	FVector halfExtents = FVector(
-		(xDimension * 250.0f),
-		(yDimension * 250.0f),
-		500.0f);
+	FVector halfExtents = FVector((xDimension * 250.0f), (yDimension * 250.0f), 500.0f);
 	SetActorLocation(worldPosition);
 	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, 500.0f, 500.0f));
-	RoomTrigger->InitBoxExtent(halfExtents);
+	RoomTrigger->SetBoxExtent(halfExtents);
 }
 
 void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
 {
 	// Replace them based on our replacement rules
-	TArray<FRoomReplacements> replacementPhases = Symbol->RoomReplacementPhases;
+	TArray<FRoomReplacements> replacementPhases = RoomReplacementPhases;
 	for (int i = 0; i < replacementPhases.Num(); i++)
 	{
 		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
@@ -523,7 +518,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		//          |______|                           |_________|
 
 		//ADungeonRoom* hallway = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayName));
-		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 		hallway->Rename(*hallwayName);
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
 			hallwayStart, hallwayEnd, HALLWAY_WIDTH);
@@ -643,7 +638,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 
 			// Create hallway A
 			//ADungeonRoom* hallwayA = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayAName));
-			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallwayA->Rename(*hallwayAName);
 
 			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
@@ -682,7 +677,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 				bHallwayStart = FIntVector(bLocation.X, pointB, bLocation.Z);
 			}
 
-			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallwayB->Rename(*hallwayBName);
 			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, bHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
 			hallways.Add(hallwayB);
@@ -731,7 +726,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			//             |    B    |
 			//             |_________|
 
-			ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallway->Rename(*hallwayName);
 			//hallway->InitializeRoom(
 			//	DefaultTile, hallwayEnd.X - hallwayStart.X, HALLWAY_WIDTH,
@@ -781,7 +776,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			FIntVector intersection = FIntVector(randomLocation, pointA, aLocation.Z);
 
 			// Create hallway A
-			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallwayB->Rename(*hallwayBName);
 			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, intersection, bHallwayStart, HALLWAY_WIDTH);
 			hallways.Add(hallwayB);
@@ -816,7 +811,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 				aHallwayStart = FIntVector(aLocation.X + A->XSize(), pointA, bLocation.Z);
 			}
 			
-			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(ADungeonRoom::StaticClass());
+			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallwayA->Rename(*hallwayAName);
 			
 			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, intersection, HALLWAY_WIDTH);

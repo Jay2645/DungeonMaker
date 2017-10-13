@@ -7,6 +7,8 @@
 #include "RoomReplacementPattern.h"
 #include "DungeonMissionSymbol.generated.h"
 
+class ADungeonRoom;
+
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FMissionSpaceData
 {
@@ -36,12 +38,15 @@ public:
 	// Only used if this is a terminal symbol.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FMissionSpaceData MinimumRoomSize;
-	// This is a set of replacement patterns that governs how the
-	// room gets decorated.
+	// This is the type of room associated with this symbol.
 	// Only used if this is a terminal symbol.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TArray<FRoomReplacements> RoomReplacementPhases;
+	TArray<TSubclassOf<ADungeonRoom>> RoomTypes;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	bool bAllowedToHaveChildren = true;
+	bool bAllowedToHaveChildren;
+
+	UDungeonMissionSymbol();
+
+	TSubclassOf<ADungeonRoom> GetRoomType(FRandomStream& Rng) const;
 };
