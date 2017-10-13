@@ -1,18 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "RoomReplacementPattern.h"
+#include "DungeonRoom.h"
 
 URoomReplacementPattern::URoomReplacementPattern()
 {
 	SelectionChance = 1.0f;
 }
 
-bool URoomReplacementPattern::FindAndReplace(FDungeonRoom& ReplaceRoom)
+bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 {
+	checkf(Input.IsNotNull(), TEXT("You didn't specify any input for replacement data!"));
+
 	int replacementXSize = Input.XSize();
 	int replacementYSize = Input.YSize();
 
-	FDungeonRoom roomReplacement = FDungeonRoom(replacementXSize, replacementYSize);
+	FDungeonRoomMetadata roomReplacement = FDungeonRoomMetadata(replacementXSize, replacementYSize);
 
 	int xOffset = -replacementXSize;
 	int yOffset = -replacementYSize;
@@ -71,7 +74,7 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoom& ReplaceRoom)
 	return false;
 }
 
-bool URoomReplacementPattern::MatchesReplacement(FDungeonRoom& InputToCheck)
+bool URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)
 {
 	if (InputToCheck.XSize() != Input.XSize() || InputToCheck.YSize() != Input.YSize())
 	{

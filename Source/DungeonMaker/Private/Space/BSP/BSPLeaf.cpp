@@ -16,9 +16,7 @@ UBSPLeaf::UBSPLeaf()
 	XPosition = 0;
 	YPosition = 0;
 
-	LeafSize = FDungeonFloor(MIN_LEAF_SIZE, MIN_LEAF_SIZE);
-	Room = FDungeonRoom();
-	RoomOffset = FIntVector();
+	LeafSize = FDungeonRoomMetadata(MIN_LEAF_SIZE, MIN_LEAF_SIZE);
 	LeafNeighbors = TSet<UBSPLeaf*>();
 	MissionNeighbors = TSet<UBSPLeaf*>();
 }
@@ -27,8 +25,7 @@ void  UBSPLeaf::InitializeLeaf(int32 X, int32 Y, int32 Width, int32 Height, UBSP
 {
 	XPosition = X;
 	YPosition = Y;
-	LeafSize = FDungeonFloor(Width, Height);
-	Room = FDungeonRoom(Width, Height);
+	LeafSize = FDungeonRoomMetadata(Width, Height);
 	Parent = ParentLeaf;
 }
 
@@ -108,50 +105,54 @@ void UBSPLeaf::DetermineNeighbors()
 void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng)
 {
 	RoomSymbol = Node;
-	if (Node != NULL)
-	{
-		CreateRoom(DefaultRoomTile, Rng);
-	}
 }
 
-void UBSPLeaf::CreateRoom(const UDungeonTile* DefaultRoomTile, FRandomStream &Rng)
+
+void UBSPLeaf::SetRoom(UDungeonRoom* NewRoom)
 {
-	FMissionSpaceData minimumRoomSize = ((UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol)->MinimumRoomSize;
-	int32 xDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.XSize());
-	int32 yDimension = Rng.RandRange(minimumRoomSize.WallSize, LeafSize.YSize());
-	Room = FDungeonRoom(xDimension, yDimension);
-	Room.Symbol = (UDungeonMissionSymbol*)RoomSymbol->Symbol.Symbol;
+	Room = NewRoom;
+}
 
-	// Initialize the room with the default tiles
-	for (int x = 0; x < Room.XSize(); x++)
+
+UDungeonRoom* UBSPLeaf::GetRoom(FRandomStream& Rng)
+{
+	if (Room != NULL)
 	{
-		for (int y = 0; y < Room.YSize(); y++)
+		return Room;
+	}
+	else
+	{
+		UDungeonRoom* leftRoom = NULL;
+		UDungeonRoom* rightRoom = NULL;
+		if (LeftChild != NULL)
 		{
-			Room.Set(x, y, DefaultRoomTile);
+			leftRoom = LeftChild->GetRoom(Rng);
+		}
+		if (RightChild != NULL)
+		{
+			rightRoom = RightChild->GetRoom(Rng);
+		}
+		if (leftRoom == NULL && rightRoom == NULL)
+		{
+			return NULL;
+		}
+		else if (leftRoom == NULL)
+		{
+			return rightRoom;
+		}
+		else if (rightRoom == NULL)
+		{
+			return leftRoom;
+		}
+		else if (Rng.GetFraction() > 0.5f)
+		{
+			return rightRoom;
+		}
+		else
+		{
+			return leftRoom;
 		}
 	}
-	// Replace them based on our replacement rules
-	TArray<FRoomReplacements> replacementPhases = Room.Symbol->RoomReplacementPhases;
-	for (int i = 0; i < replacementPhases.Num(); i++)
-	{
-		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
-		while (replacementPatterns.Num() > 0)
-		{
-			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
-			if (!replacementPatterns[rngIndex]->FindAndReplace(Room))
-			{
-				// Couldn't find a replacement in this room
-				replacementPatterns.RemoveAt(rngIndex);
-			}
-		}
-	}
-
-	// X Offset can be anywhere from our current X position to the start of the room
-	// That way we have enough space to place the room
-	int32 xOffset = Rng.RandRange(XPosition, LeafSize.XSize() - xDimension);
-	int32 yOffset = Rng.RandRange(YPosition, LeafSize.YSize() - yDimension);
-
-	RoomOffset = FIntVector(xOffset, yOffset, 0);
 }
 
 bool UBSPLeaf::HasChildren() const
@@ -159,6 +160,17 @@ bool UBSPLeaf::HasChildren() const
 	return LeftChild != NULL && RightChild != NULL;
 }
 
+void UBSPLeaf::UpdateRoomWithNeighbors()
+{
+	if (Room == NULL)
+	{
+		return;
+	}
+	for (UBSPLeaf* neighbor : MissionNeighbors)
+	{
+		Room->MissionNeighbors.Add(neighbor->Room);
+	}
+}
 
 bool UBSPLeaf::SideIsLargerThan(int32 Size)
 {
@@ -370,79 +382,48 @@ void UBSPLeaf::DrawDebugLeaf(AActor* ReferenceActor, float ZPos, bool bDebugLeaf
 		float halfX = LeafSize.XSize() / 2.0f;
 		float halfY = LeafSize.YSize() / 2.0f;
 
-		float midX = (XPosition + halfX) * 500.0f;
-		float midY = (YPosition + halfY) * 500.0f;
+		float midX = (XPosition + halfX) * UDungeonTile::TILE_SIZE;
+		float midY = (YPosition + halfY) * UDungeonTile::TILE_SIZE;
 		FColor randomColor = FColor::MakeRandomColor();
-		if (bDebugLeaf || RoomOffset.IsZero())
+		if (bDebugLeaf || Room == NULL)
 		{
 			for (int x = XPosition; x < XPosition + LeafSize.XSize(); x++)
 			{
 				for (int y = YPosition; y < YPosition + LeafSize.YSize(); y++)
 				{
-					FVector startingLocation(x * 500.0f, y * 500.0f, ZPos);
-					FVector endingLocation(x * 500.0f, (y + 1) * 500.0f, ZPos);
+					FVector startingLocation(x * UDungeonTile::TILE_SIZE, y * UDungeonTile::TILE_SIZE, ZPos);
+					FVector endingLocation(x * UDungeonTile::TILE_SIZE, (y + 1) * UDungeonTile::TILE_SIZE, ZPos);
 
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector((x + 1) * 500.0f, y * 500.0f, ZPos);
+					endingLocation = FVector((x + 1) * UDungeonTile::TILE_SIZE, y * UDungeonTile::TILE_SIZE, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					startingLocation = FVector((x + 1) * 500.0f, (y + 1) * 500.0f, ZPos);
+					startingLocation = FVector((x + 1) * UDungeonTile::TILE_SIZE, (y + 1) * UDungeonTile::TILE_SIZE, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector(x * 500.0f, (y + 1) * 500.0f, ZPos);
+					endingLocation = FVector(x * UDungeonTile::TILE_SIZE, (y + 1) * UDungeonTile::TILE_SIZE, ZPos);
 					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
 				}
 			}
 		}
 		else
 		{
-			for (int x = 0; x < 0 + Room.XSize(); x++)
-			{
-				for (int y = 0; y < 0 + Room.YSize(); y++)
-				{
-					int32 xOffset = x + XPosition;
-					int32 yOffset = y + YPosition;
-					FVector startingLocation(xOffset * 500.0f, yOffset * 500.0f, ZPos);
-					FVector endingLocation(xOffset * 500.0f, (yOffset + 1) * 500.0f, ZPos);
+			Room->DrawDebugRoom();
 
-					// Draw a square
-					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector((xOffset + 1) * 500.0f, yOffset * 500.0f, ZPos);
-					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					startingLocation = FVector((xOffset + 1) * 500.0f, (yOffset + 1) * 500.0f, ZPos);
-					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-					endingLocation = FVector(xOffset * 500.0f, (yOffset + 1) * 500.0f, ZPos);
-					DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true);
-
-					// Label the center with the type of tile this is
-					FVector midpoint((xOffset + 0.5f) * 500.0f, (yOffset + 0.5f) * 500.0f, ZPos + 100.0f);
-					const UDungeonTile* tile = Room[y][x];
-					if (tile != NULL)
-					{
-						DrawDebugString(ReferenceActor->GetWorld(), midpoint, tile->TileID.ToString());
-					}
-				}
-			}
-			
-			// Draw lines connecting to our neighbors
-			FVector startingLocation = FVector(midX, midY, ZPos);
+			/*FVector startingLocation = FVector(midX, midY, ZPos);
 			for (UBSPLeaf* neighbor : MissionNeighbors)
 			{
 				if (neighbor->RoomSymbol == NULL || neighbor->RoomSymbol->Symbol.Symbol == NULL)
 				{
 					continue;
 				}
+
 				float neighborHalfX = neighbor->LeafSize.XSize() / 2.0f;
 				float neighborHalfY = neighbor->LeafSize.YSize() / 2.0f;
 
-				float neighborMidX = (neighbor->XPosition + neighborHalfX) * 500.0f;
-				float neighborMidY = (neighbor->YPosition + neighborHalfY) * 500.0f;
+				float neighborMidX = (neighbor->XPosition + neighborHalfX) * UDungeonTile::TILE_SIZE;
+				float neighborMidY = (neighbor->YPosition + neighborHalfY) * UDungeonTile::TILE_SIZE;
 				FVector endingLocation = FVector(neighborMidX, neighborMidY, ZPos);
 				DrawDebugLine(ReferenceActor->GetWorld(), startingLocation, endingLocation, randomColor, true, -1.0f, (uint8)'\000', 100.0f);
-			}
-		}
-
-		if (RoomSymbol != NULL && RoomSymbol->Symbol.Symbol != NULL)
-		{
-			DrawDebugString(ReferenceActor->GetWorld(), FVector(midX, midY, ZPos + 200.0f), RoomSymbol->GetSymbolDescription());
+			}*/
 		}
 	}
 }
@@ -506,27 +487,6 @@ bool UBSPLeaf::HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted)
 			}
 		}
 		return false;
-	}
-}
-
-
-void UBSPLeaf::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup)
-{
-	for (int x = 0; x < Room.XSize(); x++)
-	{
-		for (int y = 0; y < Room.YSize(); y++)
-		{
-			const UDungeonTile* tile = Room[y][x];
-			if (tile->TileMesh == NULL)
-			{
-				continue;
-			}
-			FVector startingLocation((x + XPosition) * 500.0f, (y + YPosition) * 500.0f, 0.0f);
-			FTransform tileTfm;
-			tileTfm.SetLocation(startingLocation);
-			UHierarchicalInstancedStaticMeshComponent* meshComponent = ComponentLookup[tile];
-			meshComponent->AddInstance(tileTfm);
-		}
 	}
 }
 

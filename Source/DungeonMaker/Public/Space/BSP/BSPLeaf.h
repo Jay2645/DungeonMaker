@@ -8,6 +8,7 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "DungeonMissionNode.h"
 #include "DungeonTile.h"
+#include "DungeonRoom.h"
 #include "BSPLeaf.generated.h"
 
 class UBSPLeaf;
@@ -54,12 +55,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 YPosition;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FDungeonFloor LeafSize;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FDungeonRoom Room;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FIntVector RoomOffset;
+	FDungeonRoomMetadata LeafSize;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UDungeonMissionNode* RoomSymbol;
@@ -81,49 +77,53 @@ public:
 
 protected:
 	const uint8 MIN_LEAF_SIZE = 10;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UDungeonRoom* Room;
 
 public:
 	UFUNCTION()
 	void InitializeLeaf(int32 X, int32 Y, int32 Width, int32 Height, UBSPLeaf* ParentLeaf);
 
 	UFUNCTION()
-		bool Split(FRandomStream& Rng);
+	bool Split(FRandomStream& Rng);
 	UFUNCTION()
-		void DetermineNeighbors();
+	void DetermineNeighbors();
 	UFUNCTION()
-		void SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng);
+	void SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng);
 
 	UFUNCTION()
-		bool HasChildren() const;
+	void SetRoom(UDungeonRoom* NewRoom);
 	UFUNCTION()
-		bool SideIsLargerThan(int32 Size);
+	UDungeonRoom* GetRoom(FRandomStream& Rng);
+
 	UFUNCTION()
-		bool ContainsPosition(int32 XPos, int32 YPos) const;
+	bool HasChildren() const;
 	UFUNCTION()
-		void SetTile(int32 XPos, int32 YPos, const UDungeonTile* TileToSet);
+	void UpdateRoomWithNeighbors();
 	UFUNCTION()
-		UBSPLeaf* GetLeaf(int32 XPos, int32 YPos);
+	bool SideIsLargerThan(int32 Size);
+	UFUNCTION()
+	bool ContainsPosition(int32 XPos, int32 YPos) const;
+	UFUNCTION()
+	void SetTile(int32 XPos, int32 YPos, const UDungeonTile* TileToSet);
+	UFUNCTION()
+	UBSPLeaf* GetLeaf(int32 XPos, int32 YPos);
 	//UFUNCTION()
-		const UDungeonTile* GetTile(int32 XPos, int32 YPos);
+	const UDungeonTile* GetTile(int32 XPos, int32 YPos);
 	UFUNCTION()
-		int32 GetLeafCount() const;
+	int32 GetLeafCount() const;
 	UFUNCTION()
-		int32 GetChildLeafCount() const;
+	int32 GetChildLeafCount() const;
 	UFUNCTION()
-		FString ToString() const;
+	FString ToString() const;
 	UFUNCTION()
-		void DrawDebugLeaf(AActor* ReferenceActor, float ZPos = 0.0f, bool bDebugLeaf = false);
+	void DrawDebugLeaf(AActor* ReferenceActor, float ZPos = 0.0f, bool bDebugLeaf = false);
 	UFUNCTION()
-		void AddMissionLeaf(UBSPLeaf* Neighbor);
+	void AddMissionLeaf(UBSPLeaf* Neighbor);
 	UFUNCTION()
 	bool AreChildrenAllowed() const;
 	UFUNCTION()
 	bool HasConnectionTo(UBSPLeaf* Root);
-
-	//UFUNCTION()
-	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup);
 protected:
 	bool HasConnectionTo(UBSPLeaf* Root, TSet<UBSPLeaf*>& Attempted);
-	UFUNCTION()
-	void CreateRoom(const UDungeonTile* DefaultRoomTile, FRandomStream &Rng);
 };

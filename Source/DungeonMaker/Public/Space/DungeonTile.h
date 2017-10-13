@@ -9,6 +9,8 @@
 
 class UDungeonMissionSymbol;
 
+
+
 /**
 *
 */
@@ -22,6 +24,8 @@ public:
 	FName TileID;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UStaticMesh* TileMesh;
+
+	static const float TILE_SIZE;
 };
 
 
@@ -87,23 +91,20 @@ struct DUNGEONMAKER_API FDungeonRow
 };
 
 USTRUCT(BlueprintType)
-struct DUNGEONMAKER_API FDungeonRoom
+struct DUNGEONMAKER_API FDungeonRoomMetadata
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FDungeonRow> DungeonRows;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	const UDungeonMissionSymbol* Symbol;
 
-	FDungeonRoom()
+	FDungeonRoomMetadata()
 	{
 		DungeonRows = TArray<FDungeonRow>();
-		Symbol = NULL;
 	}
-	FDungeonRoom(int SizeX, int SizeY)
+
+	FDungeonRoomMetadata(int SizeX, int SizeY)
 	{
-		Symbol = NULL;
 		DungeonRows.SetNum(SizeY);
 		for (int i = 0; i < SizeY; i++)
 		{
@@ -158,8 +159,24 @@ struct DUNGEONMAKER_API FDungeonRoom
 		}
 		return output;
 	}
-
-	static FDungeonRoom* GenerateDungeonRoom(const UDungeonMissionSymbol* Symbol, const UDungeonTile* DefaultRoomTile);
+	bool IsNotNull()
+	{
+		if (YSize() == 0 || XSize() == 0)
+		{
+			return false;
+		}
+		for (int x = 0; x < XSize(); x++)
+		{
+			for (int y = 0; y < YSize(); y++)
+			{
+				if (DungeonRows[y][x] != NULL)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -174,7 +191,7 @@ struct DUNGEONMAKER_API FDungeonFloor
 	{
 		DungeonRows = TArray<FDungeonRow>();
 	}
-	FDungeonFloor(int SizeX, int SizeY)
+	/*FDungeonFloor(int SizeX, int SizeY)
 	{
 		DungeonRows.SetNum(SizeY);
 		for (int i = 0; i < SizeY; i++)
@@ -219,5 +236,5 @@ struct DUNGEONMAKER_API FDungeonFloor
 			output += "\n";
 		}
 		return output;
-	}
+	}*/
 };

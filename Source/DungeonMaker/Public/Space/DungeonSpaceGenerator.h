@@ -23,6 +23,8 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultRoomTile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	const UDungeonMissionSymbol* HallwaySymbol;
 
 	// The maximum size of any room in this dungeon, in meters.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -32,14 +34,17 @@ public:
 	TSet<UBSPLeaf*> MissionLeaves;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	TSet<UBSPLeaf*> UnresolvedHooks;
+	TSet<UDungeonRoom*> MissionRooms;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TSet<UDungeonRoom*> UnresolvedHooks;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
 public:	
 	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);
-	void DrawDebugSpace(AActor* ReferenceActor) const;
+	void DrawDebugSpace() const;
 
 protected:
 	bool PairNodesToLeaves(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves, bool bIsTightCoupling = false);

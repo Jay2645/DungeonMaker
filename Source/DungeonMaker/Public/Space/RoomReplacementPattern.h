@@ -8,6 +8,7 @@
 #include "RoomReplacementPattern.generated.h"
 
 class URoomReplacementPattern;
+class UDungeonRoom;
 
 USTRUCT(BlueprintType)
 struct FRoomReplacements
@@ -31,15 +32,15 @@ class DUNGEONMAKER_API URoomReplacementPattern : public UDataAsset
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FDungeonRoom Input;
+	FDungeonRoomMetadata Input;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FDungeonRoom Output;
+		FDungeonRoomMetadata Output;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SelectionChance;
 
 	URoomReplacementPattern();
 	UFUNCTION(BlueprintCallable)
-	bool FindAndReplace(FDungeonRoom& ReplaceRoom);
+	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom);
 protected:
-	bool MatchesReplacement(FDungeonRoom& InputToCheck);
+	bool MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
 };

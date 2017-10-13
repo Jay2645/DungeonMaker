@@ -77,9 +77,26 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
 
+	UE_LOG(LogDungeonGen, Warning, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
+
+	// Once we're done making leaves, do some post-processing
 	for (UBSPLeaf* leaf : MissionLeaves)
 	{
-		TSet<const UDungeonTile*> roomTiles = leaf->Room.FindAllTiles();
+		leaf->UpdateRoomWithNeighbors();
+	}
+
+	TSet<UDungeonRoom*> newHallways;
+	for (UDungeonRoom* room : MissionRooms)
+	{
+		newHallways.Append(room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol));
+	}
+	MissionRooms.Append(newHallways);
+
+	for (UDungeonRoom* room : MissionRooms)
+	{
+		room->DoTileReplacement(Rng);
+
+		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
 		for (const UDungeonTile* tile : roomTiles)
 		{
 			if (ComponentLookup.Contains(tile) || tile->TileMesh == NULL)
@@ -95,19 +112,18 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		}
 	}
 
-	for (UBSPLeaf* leaf : MissionLeaves)
+	for (UDungeonRoom* room : MissionRooms)
 	{
-		leaf->PlaceRoomTiles(ComponentLookup);
+		//room->PlaceRoomTiles(ComponentLookup);
 	}
 }
 
-void UDungeonSpaceGenerator::DrawDebugSpace(AActor* ReferenceActor) const
+void UDungeonSpaceGenerator::DrawDebugSpace() const
 {
-	if (RootLeaf == NULL)
+	for (UDungeonRoom* room : MissionRooms)
 	{
-		return;
+		room->DrawDebugRoom();
 	}
-	RootLeaf->DrawDebugLeaf(ReferenceActor);
 }
 
 bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
@@ -232,10 +248,27 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		}
 	}
 
-	if (Node->Symbol.Symbol->bChangedAtRuntime)
+
+	// All done making the leaf!
+	// Now we make our room
+	FString roomName = leaf->RoomSymbol->GetSymbolDescription();
+	roomName.Append(" (");
+	roomName.AppendInt(leaf->RoomSymbol->Symbol.SymbolID);
+	roomName.AppendChar(')');
+	UDungeonRoom* room = NewObject<UDungeonRoom>(GetOwner(), FName(*roomName));
+	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
+	room->InitializeRoom(DefaultRoomTile, 
+		leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
+		leaf->XPosition, leaf->YPosition, 0, (UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
+
+	leaf->SetRoom(room);
+
+	if (room->IsChangedAtRuntime())
 	{
-		UnresolvedHooks.Add(leaf);
+		UnresolvedHooks.Add(room);
 	}
+	MissionRooms.Add(room);
+
 	MissionLeaves.Add(leaf);
 
 	return true;
@@ -243,7 +276,6 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 
 FBSPLink UDungeonSpaceGenerator::GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves)
 {
-
 	TSet<UDungeonMissionNode*> nodesToCheck;
 	for (FMissionNodeData& neighborNode : Node->NextNodes)
 	{
