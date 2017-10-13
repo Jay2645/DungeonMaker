@@ -94,7 +94,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 
 	for (UDungeonRoom* room : MissionRooms)
 	{
-		room->DoTileReplacement(Rng);
+		room->DoTileReplacement(DungeonSpace, Rng);
 
 		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
 		for (const UDungeonTile* tile : roomTiles)
@@ -114,7 +114,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 
 	for (UDungeonRoom* room : MissionRooms)
 	{
-		//room->PlaceRoomTiles(ComponentLookup);
+		room->PlaceRoomTiles(ComponentLookup);
 	}
 }
 

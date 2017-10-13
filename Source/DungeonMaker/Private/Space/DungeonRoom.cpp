@@ -33,14 +33,16 @@ void UDungeonRoom::InitializeRoomFromPoints(
 	FRandomStream rng;
 	if (StartLocation.X == EndLocation.X)
 	{
-		InitializeRoom(DefaultRoomTile, Width, EndLocation.Y - StartLocation.Y,
-			StartLocation.X, StartLocation.Y, StartLocation.Z,
+		// This is a super-hacky way to make sure that we don't put wall endcaps on the end of our hallways
+		// TODO: FIX THIS AT SOME POINT
+		InitializeRoom(DefaultRoomTile, Width, FMath::Abs(EndLocation.Y - StartLocation.Y) + (Width * 2),
+			StartLocation.X, StartLocation.Y - Width, StartLocation.Z,
 			RoomSymbol, rng, false);
 	}
 	else if (StartLocation.Y == EndLocation.Y)
 	{
-		InitializeRoom(DefaultRoomTile, EndLocation.X - StartLocation.X, Width,
-			StartLocation.X, StartLocation.Y, StartLocation.Z,
+		InitializeRoom(DefaultRoomTile, FMath::Abs(EndLocation.X - StartLocation.X) + (Width * 2), Width,
+			StartLocation.X - Width, StartLocation.Y, StartLocation.Z,
 			RoomSymbol, rng, false);
 	}
 }
@@ -80,7 +82,7 @@ void UDungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	SetWorldLocation(FVector(XPosition * UDungeonTile::TILE_SIZE, YPosition * UDungeonTile::TILE_SIZE, ZPosition * UDungeonTile::TILE_SIZE));
 }
 
-void UDungeonRoom::DoTileReplacement(FRandomStream &Rng)
+void UDungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
 {
 	// Replace them based on our replacement rules
 	TArray<FRoomReplacements> replacementPhases = Symbol->RoomReplacementPhases;
@@ -94,6 +96,32 @@ void UDungeonRoom::DoTileReplacement(FRandomStream &Rng)
 			{
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);
+			}
+		}
+	}
+
+	FVector position = GetComponentLocation();
+	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
+	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
+
+	for (int y = 0; y < YSize(); y++)
+	{
+		for (int x = 0; x < XSize(); x++)
+		{
+			const UDungeonTile* tile = GetTile(x, y);
+			FIntVector currentLocation = FIntVector(x + xPosition, y + yPosition, 0);
+			if (DungeonFloor.TileIsWall(currentLocation))
+			{
+				UDungeonRoom* otherRoom = DungeonFloor.GetRoom(currentLocation);
+				if (otherRoom != NULL)
+				{
+					otherRoom->SetTileGridCoordinates(currentLocation, tile);
+				}
+				DungeonFloor.PlaceNewTile(currentLocation, this, tile);
+			}
+			else
+			{
+				Set(x, y, DungeonFloor.GetTileAt(currentLocation));
 			}
 		}
 	}
@@ -989,4 +1017,13 @@ TSet<UDungeonRoom*> UDungeonRoom::ConnectRooms(UDungeonRoom* A, UDungeonRoom* B,
 	}*/
 
 	return hallways;
+}
+
+void UDungeonRoom::SetTileGridCoordinates(FIntVector CurrentLocation, const UDungeonTile* Tile)
+{
+
+	FVector position = GetComponentLocation();
+	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
+	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
+	Set(CurrentLocation.X - xPosition, CurrentLocation.Y - yPosition, Tile);
 }

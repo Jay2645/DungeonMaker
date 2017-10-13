@@ -45,7 +45,7 @@ public:
 		FIntVector StartLocation, FIntVector EndLocation, int32 Width);
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	void DoTileReplacement(FRandomStream &Rng);
+	void DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
 	
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	TSet<UDungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
@@ -81,4 +81,5 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	static TSet<UDungeonRoom*> ConnectRooms(UDungeonRoom* A, UDungeonRoom* B, FRandomStream& Rng, 
 		const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile);
+	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 };

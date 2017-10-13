@@ -25,5 +25,5 @@ void ADungeon::BeginPlay()
 	// x^2/1378 + (1319 x)/1378 + 26526/689
 	int32 x = Mission->DungeonSize * DungeonSizeMultiplier;
 	Space->CreateDungeonSpace(FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689)), Mission->Head, rng);
-	Space->DrawDebugSpace();
+	//Space->DrawDebugSpace();
 }

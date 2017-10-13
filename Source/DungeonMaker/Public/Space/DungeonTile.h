@@ -8,8 +8,14 @@
 #include "DungeonTile.generated.h"
 
 class UDungeonMissionSymbol;
+class UDungeonRoom;
 
-
+UENUM(BlueprintType)
+enum class ETileType : uint8
+{
+	Floor,
+	Wall
+};
 
 /**
 *
@@ -20,6 +26,8 @@ class DUNGEONMAKER_API UDungeonTile : public UDataAsset
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	ETileType TileType;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName TileID;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -180,61 +188,27 @@ struct DUNGEONMAKER_API FDungeonRoomMetadata
 };
 
 USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FDungeonFloorTile
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	const UDungeonTile* Tile;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UDungeonRoom* Room;
+};
+
+USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloor
 {
 	GENERATED_BODY()
-
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FDungeonRow> DungeonRows;
+	TMap<FIntVector, FDungeonFloorTile> TileLocations;
 
-	FDungeonFloor()
-	{
-		DungeonRows = TArray<FDungeonRow>();
-	}
-	/*FDungeonFloor(int SizeX, int SizeY)
-	{
-		DungeonRows.SetNum(SizeY);
-		for (int i = 0; i < SizeY; i++)
-		{
-			DungeonRows[i] = FDungeonRow(SizeX);
-		}
-	}
+	void PlaceNewTile(FIntVector CurrentLocation, UDungeonRoom* Room, const UDungeonTile* Tile);
 
-	FDungeonRow& operator[] (int Index)
-	{
-		return DungeonRows[Index];
-	}
-
-	void Set(int X, int Y, const UDungeonTile* Tile)
-	{
-		DungeonRows[Y].Set(X, Tile);
-	}
-
-	int XSize() const
-	{
-		if (DungeonRows.Num() == 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return DungeonRows[0].Num();
-		}
-	}
-
-	int YSize() const
-	{
-		return DungeonRows.Num();
-	}
-
-	FString ToString() const
-	{
-		FString output = "";
-		for (int i = 0; i < YSize(); i++)
-		{
-			output += DungeonRows[i].ToString();
-			output += "\n";
-		}
-		return output;
-	}*/
+	bool TileIsWall(FIntVector Location) const;
+	const UDungeonTile* GetTileAt(FIntVector CurrentLocation);
+	UDungeonRoom* GetRoom(FIntVector CurrentLocation);
 };

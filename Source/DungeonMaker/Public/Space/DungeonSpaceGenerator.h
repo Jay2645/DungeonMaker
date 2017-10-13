@@ -42,6 +42,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FDungeonFloor DungeonSpace;
+
 public:	
 	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);
 	void DrawDebugSpace() const;
