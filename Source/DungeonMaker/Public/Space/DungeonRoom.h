@@ -21,7 +21,7 @@ public:
 	// Sets default values for this component's properties
 	ADungeonRoom();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FDungeonRoomMetadata RoomTiles;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	const UDungeonMissionSymbol* Symbol;
@@ -34,12 +34,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomReplacements> RoomReplacementPhases;
 
-
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnPlayerEnterRoom();
@@ -47,6 +44,10 @@ protected:
 	void OnPlayerLeaveRoom();
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnPlayerEnterNeighborRoom();
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	void OnRoomTilesReplaced();
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	void OnRoomInitialized();
 
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
@@ -71,6 +72,9 @@ public:
 	// Returns the set of all DungeonTiles used by this room.
 	//UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	TSet<const UDungeonTile*> FindAllTiles();
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	TArray<FIntVector> GetTileLocations(const UDungeonTile* Tile);
 
 	// Change the tile at the given coordinates to a specified tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles")

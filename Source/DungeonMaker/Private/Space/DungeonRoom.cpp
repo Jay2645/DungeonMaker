@@ -3,6 +3,7 @@
 #include "DungeonRoom.h"
 #include <DrawDebugHelpers.h>
 #include "../../Public/Space/BSP/BSPLeaf.h"
+#include "GameFramework/Character.h"
 
 
 // Sets default values for this component's properties
@@ -17,35 +18,47 @@ ADungeonRoom::ADungeonRoom()
 	SetRootComponent(DummyRoot);
 	RoomTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("Room Trigger"));
 	RoomTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	FCollisionResponseContainer collisonChannels;
+	collisonChannels.SetAllChannels(ECR_Ignore);
+	collisonChannels.SetResponse(ECollisionChannel::ECC_Pawn, ECR_Overlap);
+	RoomTrigger->SetCollisionResponseToChannels(collisonChannels);
 	RoomTrigger->AttachToComponent(DummyRoot, FAttachmentTransformRules::KeepWorldTransform);
 	RoomTrigger->bGenerateOverlapEvents = true;
+	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
 }
 
 
-// Called when the game starts
-void ADungeonRoom::BeginPlay()
+TArray<FIntVector> ADungeonRoom::GetTileLocations(const UDungeonTile* Tile)
 {
-	Super::BeginPlay();
-
-	if (!RoomTrigger->OnComponentBeginOverlap.IsAlreadyBound(this, &ADungeonRoom::OnBeginTriggerOverlap))
+	TArray<FIntVector> locations;
+	for (int x = 0; x < RoomTiles.XSize(); x++)
 	{
-		RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
+		for (int y = 0; y < RoomTiles.YSize(); y++)
+		{
+			if (RoomTiles[y][x] == Tile)
+			{
+				locations.Add(FIntVector(x, y, 0));
+			}
+		}
 	}
+	return locations;
 }
 
-
-void ADungeonRoom::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (RoomTrigger->OnComponentBeginOverlap.IsAlreadyBound(this, &ADungeonRoom::OnBeginTriggerOverlap))
+	if (OtherActor->IsA(ACharacter::StaticClass()))
 	{
-		RoomTrigger->OnComponentBeginOverlap.RemoveDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
+		ACharacter* otherCharacter = (ACharacter*)OtherActor;
+		if (otherCharacter->GetController()->IsA(APlayerController::StaticClass()))
+		{
+			// This controller belongs to the player
+			OnPlayerEnterRoom();
+			for (ADungeonRoom* neighbor : MissionNeighbors)
+			{
+				neighbor->OnPlayerEnterNeighborRoom();
+			}
+		}
 	}
-	Super::EndPlay(EndPlayReason);
-}
-
-void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	UE_LOG(LogDungeonGen, Log, TEXT("%s"), *OtherActor->GetName());
 }
 
 void ADungeonRoom::InitializeRoomFromPoints(
@@ -112,6 +125,8 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	SetActorLocation(worldPosition);
 	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, 500.0f, 500.0f));
 	RoomTrigger->SetBoxExtent(halfExtents);
+
+	OnRoomInitialized();
 }
 
 void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
@@ -157,6 +172,8 @@ void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 			}
 		}
 	}
+
+	OnRoomTilesReplaced();
 }
 
 TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol)
