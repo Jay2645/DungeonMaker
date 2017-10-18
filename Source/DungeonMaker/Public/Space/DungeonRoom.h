@@ -12,6 +12,17 @@
 
 class UBSPLeaf;
 
+UENUM(BlueprintType, meta = (Bitflags))
+enum ETileDirection
+{
+	Center = 0,
+	North = 1,
+	South = 2,
+	East = 4,
+	West = 8
+};
+ENUM_CLASS_FLAGS(ETileDirection)
+
 UCLASS(Blueprintable)
 class DUNGEONMAKER_API ADungeonRoom : public AActor
 {
@@ -21,20 +32,41 @@ public:
 	// Sets default values for this component's properties
 	ADungeonRoom();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tiles")
 	FDungeonRoomMetadata RoomTiles;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Room")
 	const UDungeonMissionSymbol* Symbol;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Room")
 	USceneComponent* DummyRoot;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Room")
 	TSet<ADungeonRoom*> MissionNeighbors;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	UBoxComponent* RoomTrigger;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	TArray<FRoomReplacements> RoomReplacementPhases;
 
+	// Debug
+
+	// Should this room be generated "standalone"?
+	// This means that there's not ADungeon Actor telling it what to do.
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	bool bIsStandaloneRoomForDebug;
+	// If we're being generated standalone, what seed should we use for the RNG?
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	int32 DebugSeed;
+	// If we're being generated standalone, what tile should we use as our default tile?
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	const UDungeonTile* DebugDefaultTile;
+	// How large can our debug room be?
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	FIntVector DebugRoomMaxExtents;
+	// What symbol should we use for our hallways?
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	const UDungeonMissionSymbol* DebugHallwaySymbol;
+
 protected:
+	virtual void BeginPlay() override;
+
 	UFUNCTION()
 	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
@@ -97,6 +129,10 @@ public:
 	void DrawDebugRoom();
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	bool IsChangedAtRuntime() const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	ETileDirection GetTileDirection(FIntVector Location) const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	FIntVector GetRoomTileSpacePosition() const;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng, 

@@ -107,7 +107,6 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 			UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
 			tileMesh->RegisterComponent();
 			tileMesh->SetStaticMesh(tile->TileMesh);
-			tileMesh->SetCastShadow(false);
 			ComponentLookup.Add(tile, tileMesh);
 		}
 	}
