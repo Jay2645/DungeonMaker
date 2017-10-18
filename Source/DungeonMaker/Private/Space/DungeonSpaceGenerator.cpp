@@ -9,6 +9,7 @@ UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
+	MaxGeneratedRooms = -1;
 }
 
 void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng)
@@ -115,6 +116,11 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	{
 		room->PlaceRoomTiles(ComponentLookup);
 	}
+
+	for (ADungeonRoom* room : MissionRooms)
+	{
+		room->OnRoomGenerationComplete();
+	}
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace() const
@@ -154,6 +160,11 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	{
 		UE_LOG(LogDungeonGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
+	}
+	if (MaxGeneratedRooms >= 0 && MaxGeneratedRooms <= MissionRooms.Num())
+	{
+		// Generated max number of rooms
+		return true;
 	}
 	const int32 DUNGEON_ROOM_EDGE_BORDER = 1;
 
@@ -214,14 +225,17 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		if (neighborNode.bTightlyCoupledToParent)
 		{
 			// If we're tightly coupled to our parent, ensure we get added to a neighboring leaf
-			bool bSuccesfullyPairedChild = PairNodesToLeaves(neighborNode.Node, neighboringLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, true);
-			if (!bSuccesfullyPairedChild)
+			if (MaxGeneratedRooms < 0 || MaxGeneratedRooms > MissionRooms.Num() + 1)
 			{
-				// Failed to find a child leaf; back out
-				ProcessedNodes.Remove(Node);
-				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
-				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+				bool bSuccesfullyPairedChild = PairNodesToLeaves(neighborNode.Node, neighboringLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, true);
+				if (!bSuccesfullyPairedChild)
+				{
+					// Failed to find a child leaf; back out
+					ProcessedNodes.Remove(Node);
+					// Restart -- next time, we'll select a different leaf
+					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
+					return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+				}
 			}
 		}
 		else
@@ -238,14 +252,17 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	// Now we process all non-tightly coupled nodes
 	for (int i = 0; i < nextToProcess.Num(); i++)
 	{
-		bool bSuccesfullyPairedChild = PairNodesToLeaves(nextToProcess[i], AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
-		if (!bSuccesfullyPairedChild)
+		if (MaxGeneratedRooms < 0 || MaxGeneratedRooms > MissionRooms.Num() + 1)
 		{
-			// Failed to find a child leaf; back out
-			ProcessedNodes.Remove(Node);
-			// Restart -- next time, we'll select a different leaf
-			UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-			return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+			bool bSuccesfullyPairedChild = PairNodesToLeaves(nextToProcess[i], AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
+			if (!bSuccesfullyPairedChild)
+			{
+				// Failed to find a child leaf; back out
+				ProcessedNodes.Remove(Node);
+				// Restart -- next time, we'll select a different leaf
+				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+			}
 		}
 	}
 

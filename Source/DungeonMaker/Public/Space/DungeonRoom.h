@@ -12,16 +12,19 @@
 
 class UBSPLeaf;
 
-UENUM(BlueprintType, meta = (Bitflags))
-enum ETileDirection
+UENUM(BlueprintType)
+enum class ETileDirection : uint8
 {
-	Center = 0,
-	North = 1,
-	South = 2,
-	East = 4,
-	West = 8
+	Center,
+	North,
+	South,
+	East,
+	West,
+	Northeast,
+	Northwest,
+	Southeast,
+	Southwest
 };
-ENUM_CLASS_FLAGS(ETileDirection)
 
 UCLASS(Blueprintable)
 class DUNGEONMAKER_API ADungeonRoom : public AActor
@@ -133,6 +136,8 @@ public:
 	ETileDirection GetTileDirection(FIntVector Location) const;
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	FIntVector GetRoomTileSpacePosition() const;
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
+	void OnRoomGenerationComplete();
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng, 

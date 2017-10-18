@@ -26,6 +26,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonMissionSymbol* HallwaySymbol;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxGeneratedRooms;
+
 	// The maximum size of any room in this dungeon, in meters.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxRoomSize = 24;

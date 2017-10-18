@@ -64,7 +64,7 @@ void ADungeonRoom::BeginPlay()
 
 	// Initialize this room
 	InitializeRoom(DebugDefaultTile, DebugRoomMaxExtents.X, DebugRoomMaxExtents.Y,
-		xPosition, yPosition, zPosition, Symbol, rng);
+		xPosition, yPosition, zPosition, Symbol, rng, false);
 	// Create hallways
 	TSet<ADungeonRoom*> newRooms;// = MakeHallways(rng, DebugDefaultTile, DebugHallwaySymbol);
 	FDungeonFloor newFloor;
@@ -99,6 +99,11 @@ void ADungeonRoom::BeginPlay()
 	for (ADungeonRoom* room : newRooms)
 	{
 		room->PlaceRoomTiles(componentLookup);
+	}
+
+	for (ADungeonRoom* room : newRooms)
+	{
+		room->OnRoomGenerationComplete();
 	}
 }
 
@@ -149,6 +154,8 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
 	bool bUseRandomDimensions)
 {
+	DebugDefaultTile = DefaultRoomTile;
+	DebugSeed = Rng.GetInitialSeed();
 	Symbol = RoomSymbol;
 
 	FMissionSpaceData minimumRoomSize = Symbol->MinimumRoomSize;
@@ -168,6 +175,7 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 			Set(x, y, DefaultRoomTile);
 		}
 	}
+	DebugRoomMaxExtents = FIntVector(xDimension, yDimension, 1);
 
 	// X Offset can be anywhere from our current X position to the start of the room
 	// That way we have enough space to place the room
@@ -396,32 +404,57 @@ bool ADungeonRoom::IsChangedAtRuntime() const
 ETileDirection ADungeonRoom::GetTileDirection(FIntVector Location) const
 {
 	FIntVector tileSpacePosition = GetRoomTileSpacePosition();
-	// TODO: Use a bitmask instead of having weird edge cases involving tiles on the corner
+
 	// Top-left is northwest corner
 	// Bottom-right is southeast corner
-	if (Location.X == tileSpacePosition.X)
+	bool bIsOnLeft = Location.X == tileSpacePosition.X;
+	bool bIsOnRight = Location.X == tileSpacePosition.X + XSize() - 1;
+	bool bIsOnTop = Location.Y == tileSpacePosition.Y;
+	bool bIsOnBottom = Location.Y == tileSpacePosition.Y + YSize() - 1;
+	
+	if (bIsOnLeft && bIsOnTop)
 	{
-		// Left corner
-		return ETileDirection::West;
+		// Top-Left corner
+		return ETileDirection::Northwest;
 	}
-	else if (Location.Y == tileSpacePosition.Y)
+	else if (bIsOnRight && bIsOnTop)
 	{
-		// Top corner
+		// Top-right corner
+		return ETileDirection::Northeast;
+	}
+	else if (bIsOnLeft && bIsOnBottom)
+	{
+		// Bottom-left corner
+		return ETileDirection::Southwest;
+	}
+	else if (bIsOnRight && bIsOnBottom)
+	{
+		// Bottom-right corner
+		return ETileDirection::Southeast;
+	}
+	else if (bIsOnTop)
+	{
+		// Top edge
 		return ETileDirection::North;
 	}
-	else if (Location.X == tileSpacePosition.X + XSize() - 1)
+	else if (bIsOnBottom)
 	{
-		// Right corner
-		return ETileDirection::East;
-	}
-	else if (Location.Y == tileSpacePosition.Y + YSize() - 1)
-	{
-		// Bottom corner
+		// Bottom edge
 		return ETileDirection::South;
+	}
+	else if (bIsOnLeft)
+	{
+		// Left edge
+		return ETileDirection::West;
+	}
+	else if (bIsOnRight)
+	{
+		// Right edge
+		return ETileDirection::East;
 	}
 	else
 	{
-		// Not on a corner
+		// Not on edge at all
 		return ETileDirection::Center;
 	}
 }
