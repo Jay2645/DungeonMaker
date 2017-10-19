@@ -103,7 +103,7 @@ public:
 	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup);
+	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup);
 	// Returns the set of all DungeonTiles used by this room.
 	//UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	TSet<const UDungeonTile*> FindAllTiles();

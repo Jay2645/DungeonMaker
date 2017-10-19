@@ -203,12 +203,19 @@ struct DUNGEONMAKER_API FDungeonFloor
 {
 	GENERATED_BODY()
 public:
+	FDungeonFloor();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FIntVector, FDungeonFloorTile> TileLocations;
 
 	void PlaceNewTile(FIntVector CurrentLocation, ADungeonRoom* Room, const UDungeonTile* Tile);
+	void UpdateTile(FIntVector CurrentLocation, const UDungeonTile* NewTile);
 
 	bool TileIsWall(FIntVector Location) const;
 	const UDungeonTile* GetTileAt(FIntVector CurrentLocation);
 	ADungeonRoom* GetRoom(FIntVector CurrentLocation);
+	int32 YSize() const;
+	int32 XSize() const;
+private:
+	FIntVector MaxExtents;
 };

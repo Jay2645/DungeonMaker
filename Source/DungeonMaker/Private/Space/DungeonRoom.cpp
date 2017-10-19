@@ -136,14 +136,14 @@ void ADungeonRoom::InitializeRoomFromPoints(
 	{
 		// This is a super-hacky way to make sure that we don't put wall endcaps on the end of our hallways
 		// TODO: FIX THIS AT SOME POINT
-		InitializeRoom(DefaultRoomTile, Width, FMath::Abs(EndLocation.Y - StartLocation.Y) + (Width * 2),
-			StartLocation.X, StartLocation.Y - Width, StartLocation.Z,
+		InitializeRoom(DefaultRoomTile, Width, FMath::Abs(EndLocation.Y - StartLocation.Y),
+			StartLocation.X, StartLocation.Y, StartLocation.Z,
 			RoomSymbol, rng, false);
 	}
 	else if (StartLocation.Y == EndLocation.Y)
 	{
-		InitializeRoom(DefaultRoomTile, FMath::Abs(EndLocation.X - StartLocation.X) + (Width * 2), Width,
-			StartLocation.X - Width, StartLocation.Y, StartLocation.Z,
+		InitializeRoom(DefaultRoomTile, FMath::Abs(EndLocation.X - StartLocation.X), Width,
+			StartLocation.X, StartLocation.Y, StartLocation.Z,
 			RoomSymbol, rng, false);
 	}
 }
@@ -155,7 +155,7 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	bool bUseRandomDimensions)
 {
 	DebugDefaultTile = DefaultRoomTile;
-	DebugSeed = Rng.GetInitialSeed();
+	DebugSeed = Rng.GetCurrentSeed();
 	Symbol = RoomSymbol;
 
 	FMissionSpaceData minimumRoomSize = Symbol->MinimumRoomSize;
@@ -256,7 +256,7 @@ TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeo
 	return newHallways;
 }
 
-void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup)
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup)
 {
 	for (int x = 0; x < XSize(); x++)
 	{
@@ -266,6 +266,13 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 			if (tile->TileMesh == NULL)
 			{
 				continue;
+			}
+			if (!ComponentLookup.Contains(tile))
+			{
+				UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, tile->TileID);
+				tileMesh->RegisterComponent();
+				tileMesh->SetStaticMesh(tile->TileMesh);
+				ComponentLookup.Add(tile, tileMesh);
 			}
 			FTransform tileTfm = GetActorTransform();
 			FVector offset = FVector(x * UDungeonTile::TILE_SIZE, y * UDungeonTile::TILE_SIZE, 0.0f);

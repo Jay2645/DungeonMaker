@@ -74,6 +74,79 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 	return false;
 }
 
+bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
+{
+	checkf(Input.IsNotNull(), TEXT("You didn't specify any input for replacement data!"));
+
+	int replacementXSize = Input.XSize();
+	int replacementYSize = Input.YSize();
+
+	FDungeonRoomMetadata roomReplacement = FDungeonRoomMetadata(replacementXSize, replacementYSize);
+
+	int xOffset = -replacementXSize;
+	int yOffset = -replacementYSize;
+
+	int width = ReplaceFloor.XSize();
+	int height = ReplaceFloor.YSize();
+
+	UE_LOG(LogDungeonGen, Log, TEXT("Replacing floor of size %d x %d."), width, height);
+
+	while (yOffset < height + replacementYSize)
+	{
+		while (xOffset < width + replacementXSize)
+		{
+			for (int localXOffset = 0; localXOffset < replacementXSize; localXOffset++)
+			{
+				int x = xOffset + localXOffset;
+				for (int localYOffset = 0; localYOffset < replacementYSize; localYOffset++)
+				{
+					int y = yOffset + localYOffset;
+					const UDungeonTile* tile;
+					if (x < 0 || x >= width || y < 0 || y >= height)
+					{
+						tile = NULL;
+					}
+					else
+					{
+						FIntVector location = FIntVector(x, y, 0);
+						tile = ReplaceFloor.GetTileAt(location);
+					}
+					roomReplacement.Set(localXOffset, localYOffset, tile);
+				}
+			}
+			if (roomReplacement.IsNotNull())
+			{
+				if (MatchesReplacement(roomReplacement))
+				{
+					for (int localXOffset = 0; localXOffset < replacementXSize; localXOffset++)
+					{
+						int x = xOffset + localXOffset;
+						for (int localYOffset = 0; localYOffset < replacementYSize; localYOffset++)
+						{
+							int y = yOffset + localYOffset;
+							if (x < 0 || x >= width || y < 0 || y >= height)
+							{
+								// Pass
+							}
+							else
+							{
+								FIntVector location = FIntVector(x, y, 0);
+								ReplaceFloor.UpdateTile(location, Output[localYOffset][localXOffset]);
+							}
+						}
+					}
+					return true;
+				}
+			}
+			xOffset++;
+		}
+		yOffset++;
+		xOffset = -replacementXSize;
+	}
+
+	return false;
+}
+
 bool URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)
 {
 	if (InputToCheck.XSize() != Input.XSize() || InputToCheck.YSize() != Input.YSize())

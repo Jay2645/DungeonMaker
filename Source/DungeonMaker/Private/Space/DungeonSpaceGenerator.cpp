@@ -112,14 +112,19 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		}
 	}
 
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		room->PlaceRoomTiles(ComponentLookup);
-	}
+	DoPostGenerationTileReplacement(DungeonSpace, Rng);
 
-	for (ADungeonRoom* room : MissionRooms)
+	if (bDebugDungeon)
 	{
-		room->OnRoomGenerationComplete();
+		DrawDebugSpace();
+	}
+	else
+	{
+		for (ADungeonRoom* room : MissionRooms)
+		{
+			room->PlaceRoomTiles(ComponentLookup);
+			room->OnRoomGenerationComplete();
+		}
 	}
 }
 
@@ -128,6 +133,28 @@ void UDungeonSpaceGenerator::DrawDebugSpace() const
 	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->DrawDebugRoom();
+	}
+}
+
+void UDungeonSpaceGenerator::DoPostGenerationTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
+{
+	// Replace them based on our replacement rules
+	TArray<FRoomReplacements> replacementPhases = PostGenerationRoomReplacementPhases;
+	for (int i = 0; i < replacementPhases.Num(); i++)
+	{
+		int32 maxAttempts = 1000;
+		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
+		while (replacementPatterns.Num() > 0)
+		{
+			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
+			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(DungeonFloor))
+			{
+				// Couldn't find a replacement in this room
+				replacementPatterns.RemoveAt(rngIndex);
+			}
+			maxAttempts--;
+			checkf(maxAttempts >= 0, TEXT("Max replace attempts exceeded! Replacement Patterns remaining: %d"), replacementPatterns.Num());
+		}
 	}
 }
 

@@ -41,6 +41,8 @@ public:
 	URoomReplacementPattern();
 	UFUNCTION(BlueprintCallable)
 	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom);
+	UFUNCTION(BlueprintCallable)
+	bool FindAndReplaceFloor(FDungeonFloor& ReplaceFloor);
 protected:
 	bool MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
 };
