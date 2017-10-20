@@ -45,6 +45,14 @@ public:
 	TSet<ADungeonRoom*> MissionNeighbors;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	UBoxComponent* RoomTrigger;
+	// What is the smallest this room could possibly be?
+	// Only used if this is a terminal symbol.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	FMissionSpaceData MinimumRoomSize;
+	// What is the largest this room could possibly be?
+	// Only used if this is a terminal symbol.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	FMissionSpaceData MaximumRoomSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	TArray<FRoomReplacements> RoomReplacementPhases;
 
@@ -91,7 +99,7 @@ public:
 			int32 MaxXSize, int32 MaxYSize,
 			int32 XPosition, int32 YPosition, int32 ZPosition,
 			const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
-			bool bUseRandomDimensions = true);
+			bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
 	
 	void InitializeRoomFromPoints(const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol, 
 		FIntVector StartLocation, FIntVector EndLocation, int32 Width);

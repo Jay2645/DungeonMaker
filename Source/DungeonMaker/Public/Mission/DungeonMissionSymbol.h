@@ -34,10 +34,6 @@ class DUNGEONMAKER_API UDungeonMissionSymbol : public UGraphNode
 {
 	GENERATED_BODY()
 public:
-	// What is the smallest this room could possibly be?
-	// Only used if this is a terminal symbol.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FMissionSpaceData MinimumRoomSize;
 	// This is the type of room associated with this symbol.
 	// Only used if this is a terminal symbol.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)

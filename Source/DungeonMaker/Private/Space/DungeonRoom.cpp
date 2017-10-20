@@ -27,6 +27,11 @@ ADungeonRoom::ADungeonRoom()
 	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
 
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);
+
+	MinimumRoomSize.WallSize = 4;
+	MinimumRoomSize.CeilingHeight = 1;
+	MaximumRoomSize.WallSize = 16;
+	MaximumRoomSize.CeilingHeight = 1;
 }
 
 
@@ -134,17 +139,15 @@ void ADungeonRoom::InitializeRoomFromPoints(
 	FRandomStream rng;
 	if (StartLocation.X == EndLocation.X)
 	{
-		// This is a super-hacky way to make sure that we don't put wall endcaps on the end of our hallways
-		// TODO: FIX THIS AT SOME POINT
 		InitializeRoom(DefaultRoomTile, Width, FMath::Abs(EndLocation.Y - StartLocation.Y),
 			StartLocation.X, StartLocation.Y, StartLocation.Z,
-			RoomSymbol, rng, false);
+			RoomSymbol, rng, false, true);
 	}
 	else if (StartLocation.Y == EndLocation.Y)
 	{
 		InitializeRoom(DefaultRoomTile, FMath::Abs(EndLocation.X - StartLocation.X), Width,
 			StartLocation.X, StartLocation.Y, StartLocation.Z,
-			RoomSymbol, rng, false);
+			RoomSymbol, rng, false, true);
 	}
 }
 
@@ -152,45 +155,73 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	int32 MaxXSize, int32 MaxYSize,
 	int32 XPosition, int32 YPosition, int32 ZPosition,
 	const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
-	bool bUseRandomDimensions)
+	bool bUseRandomDimensions, bool bIsDeterminedFromPoints)
 {
+	const int ROOM_BORDER_SIZE = 1;
+	MaxXSize = FMath::Abs(MaxXSize);
+	MaxYSize = FMath::Abs(MaxYSize);
+
 	DebugDefaultTile = DefaultRoomTile;
 	DebugSeed = Rng.GetCurrentSeed();
 	Symbol = RoomSymbol;
+	int32 xSize;
+	int32 ySize;
+	if (bIsDeterminedFromPoints)
+	{
+		xSize = MaxXSize;
+		ySize = MaxYSize;
+	}
+	else
+	{
+		check(MaxXSize > ROOM_BORDER_SIZE * 2);
+		check(MaxYSize > ROOM_BORDER_SIZE * 2);
 
-	FMissionSpaceData minimumRoomSize = Symbol->MinimumRoomSize;
-	int32 xDimension = FMath::Abs(MaxXSize);
-	int32 yDimension = FMath::Abs(MaxYSize);
+		xSize = FMath::Min(MaxXSize - (ROOM_BORDER_SIZE * 2), MaximumRoomSize.WallSize);
+		ySize = FMath::Min(MaxYSize - (ROOM_BORDER_SIZE * 2), MaximumRoomSize.WallSize);
+	}
+
+	int32 xOffset;
+	int32 yOffset;
 	if (bUseRandomDimensions)
 	{
-		xDimension = Rng.RandRange(minimumRoomSize.WallSize, xDimension);
-		yDimension = Rng.RandRange(minimumRoomSize.WallSize, yDimension);
+		xSize = Rng.RandRange(MinimumRoomSize.WallSize, xSize);
+		ySize = Rng.RandRange(MinimumRoomSize.WallSize, ySize);
+		// X Offset can be anywhere from our current X position to the start of the room
+		// That way we have enough space to place the room
+		xOffset = Rng.RandRange(XPosition + ROOM_BORDER_SIZE, MaxXSize - xSize - ROOM_BORDER_SIZE);
+		yOffset = Rng.RandRange(YPosition + ROOM_BORDER_SIZE, MaxYSize - ySize - ROOM_BORDER_SIZE);
 	}
-	// Initialize the room with the default tiles
-	RoomTiles = FDungeonRoomMetadata(xDimension, yDimension);
-	for (int y = 0; y < yDimension; y++)
+	else
 	{
-		for (int x = 0; x < xDimension; x++)
+		xOffset = XPosition;
+		yOffset = YPosition;
+	}
+
+	if (XPosition == 0 && YPosition == 0)
+	{
+		// First room; place the room under the spawn point
+		xOffset = 0;
+		yOffset = 0;
+	}
+
+
+	// Initialize the room with the default tiles
+	RoomTiles = FDungeonRoomMetadata(xSize, ySize);
+	for (int y = 0; y < ySize; y++)
+	{
+		for (int x = 0; x < xSize; x++)
 		{
 			Set(x, y, DefaultRoomTile);
 		}
 	}
-	DebugRoomMaxExtents = FIntVector(xDimension, yDimension, 1);
-
-	// X Offset can be anywhere from our current X position to the start of the room
-	// That way we have enough space to place the room
-	//int32 xOffset = Rng.RandRange(XPosition, MaxXSize - xDimension);
-	//int32 yOffset = Rng.RandRange(YPosition, MaxYSize - yDimension);
-
-	int32 xOffset = XPosition;
-	int32 yOffset = YPosition;
+	DebugRoomMaxExtents = FIntVector(xSize, ySize, 1);
 
 	FVector worldPosition = FVector(
 		xOffset * UDungeonTile::TILE_SIZE, 
 		yOffset * UDungeonTile::TILE_SIZE, 
 		ZPosition * UDungeonTile::TILE_SIZE);
 
-	FVector halfExtents = FVector((xDimension * 250.0f), (yDimension * 250.0f), 500.0f);
+	FVector halfExtents = FVector((xSize * 250.0f), (ySize * 250.0f), 500.0f);
 	SetActorLocation(worldPosition);
 	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, 500.0f, 500.0f));
 	RoomTrigger->SetBoxExtent(halfExtents);
@@ -481,7 +512,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 	const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile)
 {
 	const int32 HALLWAY_WIDTH = 3;
-	const int32 HALLWAY_EDGE_OFFSET = 2;
+	const int32 HALLWAY_EDGE_OFFSET = 0;
 
 	TSet<ADungeonRoom*> hallways;
 	// Convert room's world-space coordinates to grid coordinates
@@ -591,7 +622,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		int32 endRange = FMath::Min(bLocation.X + B->XSize(), aLocation.X + A->XSize());
 		if (endRange - bLocation.X - (HALLWAY_EDGE_OFFSET * 2) >= HALLWAY_WIDTH)
 		{
-			randomLocation = Rng.RandRange(bLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1);
+			randomLocation = Rng.RandRange(bLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
 		}
 	}
 	else if (aLocation.X > bLocation.X && aLocation.X < bLocation.X + B->XSize())
@@ -600,12 +631,37 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		int32 endRange = FMath::Min(bLocation.X + B->XSize(), aLocation.X + A->XSize());
 		if (endRange - bLocation.X - (HALLWAY_EDGE_OFFSET * 2) >= HALLWAY_WIDTH)
 		{
-			randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1);
+			randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
 		}
 	}
 	if(randomLocation == -1)
 	{
-		randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1);
+		// Select it to be either completely in A OR completely in B, but not touching both
+		/*if (bLocation.X > aLocation.X)
+		{
+			// A is to the left of B
+			if (Rng.GetFraction() > 0.5f)
+			{
+				// Use A for our point
+			}
+			else
+			{
+				// Use B for our point
+			}
+		}
+		else
+		{
+			// A is to the right of B
+			if (Rng.GetFraction() > 0.5f)
+			{
+				// Use A for our point
+			}
+			else
+			{
+				// Use B for our point
+			}
+		}*/
+		randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
 	}
 	// Edge cases:
 	// Point not in either room
@@ -794,7 +850,6 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			FIntVector hallwayIntersection = FIntVector(randomLocation, pointB, bLocation.Z);
 
 			// Create hallway A
-			//ADungeonRoom* hallwayA = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayAName));
 			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 			hallwayA->Rename(*hallwayAName);
 
@@ -816,7 +871,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 				//                 |    B    |______________|<-intersection
 				//                 |_________|^ Point B
 				hallwayBName += " Edge Case";
-				bHallwayStart = FIntVector(bLocation.X + B->XSize(), pointB, bLocation.Z);
+				bHallwayStart = FIntVector(bLocation.X + B->XSize() - HALLWAY_WIDTH, pointB, bLocation.Z);
 			}
 			else
 			{
@@ -991,230 +1046,6 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			}
 		}
 	}
-
-	// Randomly generate the spawn position for each hallway, in grid coordinates
-	// Each hallway will have:
-	// * X -> A location somewhere on the width of the hallway, padded by HALLWAY_EDGE_OFFSET
-	// * Y -> A location somewhere on the height of the hallway, padded by HALLWAY_EDGE_OFFSET
-	/*FIntVector aHallwayLocation = FIntVector(
-		Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, aLocation.X + A->XSize() - HALLWAY_EDGE_OFFSET - 1),
-		Rng.RandRange(aLocation.Y + HALLWAY_EDGE_OFFSET, aLocation.Y + A->YSize() - HALLWAY_EDGE_OFFSET - 1),
-		Rng.RandRange(aLocation.Z + HALLWAY_EDGE_OFFSET, aLocation.Z + A->ZSize() - HALLWAY_EDGE_OFFSET - 1));
-	FIntVector bHallwayLocation = FIntVector(
-		Rng.RandRange(bLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1),
-		Rng.RandRange(bLocation.Y + HALLWAY_EDGE_OFFSET, bLocation.Y + B->YSize() - HALLWAY_EDGE_OFFSET - 1),
-		Rng.RandRange(bLocation.Z + HALLWAY_EDGE_OFFSET, bLocation.Z + B->ZSize() - HALLWAY_EDGE_OFFSET - 1));
-
-
-	float width = bHallwayLocation.X - aHallwayLocation.X;
-	float height = bHallwayLocation.Y - aHallwayLocation.Y;
-
-	FString hallwayName = A->GetName() + " - " + B->GetName();
-	if (width < 0)
-	{
-		if (height < 0)
-		{
-			FString hallway1Name = hallwayName;
-			FString hallway2Name = hallwayName;
-
-			hallway1Name.AppendInt(1);
-			hallway2Name.AppendInt(2);
-			if (Rng.GetFraction() < 0.5f)
-			{
-
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, bHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), aHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-		}
-		else if(height > 0)
-		{
-			FString hallway1Name = hallwayName;
-			FString hallway2Name = hallwayName;
-
-			hallway1Name.AppendInt(1);
-			hallway2Name.AppendInt(2);
-			if (Rng.GetFraction() < 0.5f)
-			{
-
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, bHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), bHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-		}
-		else // height == 0
-		{
-			UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
-			hallway->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-			hallways.Add(hallway);
-
-			A->MissionNeighbors.Remove(B);
-			A->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(B);
-		}
-	}
-	else if (width > 0)
-	{
-		if (height < 0)
-		{
-			FString hallway1Name = hallwayName;
-			FString hallway2Name = hallwayName;
-
-			hallway1Name.AppendInt(1);
-			hallway2Name.AppendInt(2);
-			if (Rng.GetFraction() < 0.5f)
-			{
-
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, aHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), aHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-		}
-		else if (height > 0)
-		{
-			FString hallway1Name = hallwayName;
-			FString hallway2Name = hallwayName;
-
-			hallway1Name.AppendInt(1);
-			hallway2Name.AppendInt(2);
-			if (Rng.GetFraction() < 0.5f)
-			{
-
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), bHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				UDungeonRoom* hallwayA = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway1Name));
-				hallwayA->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, aHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-				UDungeonRoom* hallwayB = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallway2Name));
-				hallwayB->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-
-				hallways.Add(hallwayA);
-				hallways.Add(hallwayB);
-
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-		}
-		else // height == 0
-		{
-			UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
-			hallway->InitializeRoom(DefaultTile, FMath::Abs(width), HALLWAY_WIDTH, aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-			hallways.Add(hallway);
-
-			A->MissionNeighbors.Remove(B);
-			A->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(B);
-		}
-	}
-	else // width == 0
-	{
-		if (height < 0)
-		{
-			UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
-			hallway->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), bHallwayLocation.X, bHallwayLocation.Y, 0, HallwaySymbol, Rng);
-			hallways.Add(hallway);
-
-			A->MissionNeighbors.Remove(B);
-			A->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(B);
-		}
-		else if (height > 0)
-		{
-			UDungeonRoom* hallway = NewObject<UDungeonRoom>(A->GetOwner(), FName(*hallwayName));
-			hallway->InitializeRoom(DefaultTile, HALLWAY_WIDTH, FMath::Abs(height), aHallwayLocation.X, aHallwayLocation.Y, 0, HallwaySymbol, Rng);
-			hallways.Add(hallway);
-
-			A->MissionNeighbors.Remove(B);
-			A->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(B);
-		}
-	}*/
 
 	return hallways;
 }

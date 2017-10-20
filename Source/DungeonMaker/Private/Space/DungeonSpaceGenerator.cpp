@@ -142,7 +142,6 @@ void UDungeonSpaceGenerator::DoPostGenerationTileReplacement(FDungeonFloor& Dung
 	TArray<FRoomReplacements> replacementPhases = PostGenerationRoomReplacementPhases;
 	for (int i = 0; i < replacementPhases.Num(); i++)
 	{
-		int32 maxAttempts = 1000;
 		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
 		while (replacementPatterns.Num() > 0)
 		{
@@ -152,8 +151,6 @@ void UDungeonSpaceGenerator::DoPostGenerationTileReplacement(FDungeonFloor& Dung
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);
 			}
-			maxAttempts--;
-			checkf(maxAttempts >= 0, TEXT("Max replace attempts exceeded! Replacement Patterns remaining: %d"), replacementPatterns.Num());
 		}
 	}
 }
@@ -193,7 +190,6 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		// Generated max number of rooms
 		return true;
 	}
-	const int32 DUNGEON_ROOM_EDGE_BORDER = 1;
 
 	UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableLeaves.Num(), Node->NextNodes.Num());
 	// Find an open leaf to add this to
@@ -304,8 +300,8 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	room->Rename(*roomName);
 	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultRoomTile, 
-		leaf->LeafSize.XSize() + DUNGEON_ROOM_EDGE_BORDER, leaf->LeafSize.YSize() + DUNGEON_ROOM_EDGE_BORDER, 
-		leaf->XPosition - DUNGEON_ROOM_EDGE_BORDER, leaf->YPosition - DUNGEON_ROOM_EDGE_BORDER, 0,
+		leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
+		leaf->XPosition, leaf->YPosition, 0,
 		(UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
 
 	leaf->SetRoom(room);

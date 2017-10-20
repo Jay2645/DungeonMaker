@@ -113,6 +113,8 @@ struct DUNGEONMAKER_API FDungeonRoomMetadata
 
 	FDungeonRoomMetadata(int SizeX, int SizeY)
 	{
+		check(SizeX >= 0);
+		check(SizeY >= 0);
 		DungeonRows.SetNum(SizeY);
 		for (int i = 0; i < SizeY; i++)
 		{
