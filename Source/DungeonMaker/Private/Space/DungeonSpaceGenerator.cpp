@@ -95,6 +95,13 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 
 	for (ADungeonRoom* room : MissionRooms)
 	{
+		room->UpdateDungeonFloor(DungeonSpace);
+	}
+
+	DoFloorWideTileReplacement(DungeonSpace, PreGenerationRoomReplacementPhases, Rng);
+
+	for (ADungeonRoom* room : MissionRooms)
+	{
 		room->DoTileReplacement(DungeonSpace, Rng);
 
 		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
@@ -112,7 +119,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		}
 	}
 
-	DoPostGenerationTileReplacement(DungeonSpace, Rng);
+	DoFloorWideTileReplacement(DungeonSpace, PostGenerationRoomReplacementPhases, Rng);
 
 	if (bDebugDungeon)
 	{
@@ -136,13 +143,12 @@ void UDungeonSpaceGenerator::DrawDebugSpace() const
 	}
 }
 
-void UDungeonSpaceGenerator::DoPostGenerationTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng)
+void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng)
 {
 	// Replace them based on our replacement rules
-	TArray<FRoomReplacements> replacementPhases = PostGenerationRoomReplacementPhases;
-	for (int i = 0; i < replacementPhases.Num(); i++)
+	for (int i = 0; i < ReplacementPhases.Num(); i++)
 	{
-		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
+		TArray<URoomReplacementPattern*> replacementPatterns = ReplacementPhases[i].ReplacementPatterns;
 		while (replacementPatterns.Num() > 0)
 		{
 			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);

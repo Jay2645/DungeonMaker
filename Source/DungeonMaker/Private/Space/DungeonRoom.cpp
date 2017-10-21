@@ -22,7 +22,7 @@ ADungeonRoom::ADungeonRoom()
 	collisonChannels.SetAllChannels(ECR_Ignore);
 	collisonChannels.SetResponse(ECollisionChannel::ECC_Pawn, ECR_Overlap);
 	RoomTrigger->SetCollisionResponseToChannels(collisonChannels);
-	RoomTrigger->AttachToComponent(DummyRoot, FAttachmentTransformRules::KeepWorldTransform);
+	RoomTrigger->SetupAttachment(DummyRoot);
 	RoomTrigger->bGenerateOverlapEvents = true;
 	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
 
@@ -233,20 +233,43 @@ void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 {
 	// Replace them based on our replacement rules
 	TArray<FRoomReplacements> replacementPhases = RoomReplacementPhases;
+	TMap<int32, uint8> replacementCounts;
 	for (int i = 0; i < replacementPhases.Num(); i++)
 	{
 		TArray<URoomReplacementPattern*> replacementPatterns = replacementPhases[i].ReplacementPatterns;
 		while (replacementPatterns.Num() > 0)
 		{
 			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
+			if (!replacementCounts.Contains(rngIndex))
+			{
+				replacementCounts.Add(rngIndex, (uint8)0);
+			}
+
 			if (!replacementPatterns[rngIndex]->FindAndReplace(RoomTiles))
 			{
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);
 			}
+			else
+			{
+				uint8 maxReplacements = replacementPatterns[rngIndex]->MaxReplacementCount;
+				replacementCounts[rngIndex]++;
+				if (maxReplacements > 0 && replacementCounts[rngIndex] >= maxReplacements)
+				{
+					// If we've exceeded our max replacement count, remove us from consideration
+					replacementPatterns.RemoveAt(rngIndex);
+				}
+			}
 		}
 	}
 
+	UpdateDungeonFloor(DungeonFloor);
+
+	OnRoomTilesReplaced();
+}
+
+void ADungeonRoom::UpdateDungeonFloor(FDungeonFloor& DungeonFloor)
+{
 	FIntVector position = GetRoomTileSpacePosition();
 	int32 xPosition = position.X;
 	int32 yPosition = position.Y;
@@ -272,8 +295,6 @@ void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 			}
 		}
 	}
-
-	OnRoomTilesReplaced();
 }
 
 TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol)

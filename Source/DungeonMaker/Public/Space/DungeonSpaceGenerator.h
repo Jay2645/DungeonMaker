@@ -32,6 +32,8 @@ public:
 	bool bDebugDungeon;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FRoomReplacements> PreGenerationRoomReplacementPhases;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;
 
 	// The maximum size of any room in this dungeon, in meters.
@@ -60,5 +62,5 @@ public:
 protected:
 	bool PairNodesToLeaves(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves, bool bIsTightCoupling = false);
 	FBSPLink GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
-	void DoPostGenerationTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
+	void DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng);
 };

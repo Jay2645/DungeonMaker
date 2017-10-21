@@ -45,7 +45,8 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 					roomReplacement.Set(localXOffset, localYOffset, tile);
 				}
 			}
-			if (MatchesReplacement(roomReplacement))
+			uint8 replacementOutput = MatchesReplacement(roomReplacement);
+			if (replacementOutput != 0)
 			{
 				for (int localXOffset = 0; localXOffset < replacementXSize; localXOffset++)
 				{
@@ -59,7 +60,33 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 						}
 						else
 						{
-							ReplaceRoom.Set(x, y, Output[localYOffset][localXOffset]);
+							int32 outputOffsetX;
+							int32 outputOffsetY;
+							if (replacementOutput == 1)
+							{
+								outputOffsetX = localXOffset;
+								outputOffsetY = localYOffset;
+							}
+							else if (replacementOutput == 2)
+							{
+								outputOffsetX = localXOffset;
+								outputOffsetY = replacementYSize - localYOffset - 1;
+							}
+							else if (replacementOutput == 3)
+							{
+								outputOffsetX = replacementXSize - localXOffset - 1;
+								outputOffsetY = localYOffset;
+							}
+							else if (replacementOutput == 4)
+							{
+								outputOffsetX = replacementXSize - localXOffset - 1;
+								outputOffsetY = replacementYSize - localYOffset - 1;
+							}
+							else
+							{
+								checkNoEntry();
+							}
+							ReplaceRoom.Set(x, y, Output[outputOffsetY][outputOffsetX]);
 						}
 					}
 				}
@@ -89,8 +116,6 @@ bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
 	int width = ReplaceFloor.XSize();
 	int height = ReplaceFloor.YSize();
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Replacing floor of size %d x %d."), width, height);
-
 	while (yOffset < height + replacementYSize)
 	{
 		while (xOffset < width + replacementXSize)
@@ -116,7 +141,8 @@ bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
 			}
 			if (roomReplacement.IsNotNull())
 			{
-				if (MatchesReplacement(roomReplacement))
+				uint8 replacementOutput = MatchesReplacement(roomReplacement);
+				if (replacementOutput != 0)
 				{
 					for (int localXOffset = 0; localXOffset < replacementXSize; localXOffset++)
 					{
@@ -131,7 +157,33 @@ bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
 							else
 							{
 								FIntVector location = FIntVector(x, y, 0);
-								ReplaceFloor.UpdateTile(location, Output[localYOffset][localXOffset]);
+								int32 outputOffsetX;
+								int32 outputOffsetY;
+								if (replacementOutput == 1)
+								{
+									outputOffsetX = localXOffset;
+									outputOffsetY = localYOffset;
+								}
+								else if (replacementOutput == 2)
+								{
+									outputOffsetX = localXOffset;
+									outputOffsetY = replacementYSize - localYOffset - 1;
+								}
+								else if (replacementOutput == 3)
+								{
+									outputOffsetX = replacementXSize - localXOffset - 1;
+									outputOffsetY = localYOffset;
+								}
+								else if (replacementOutput == 4)
+								{
+									outputOffsetX = replacementXSize - localXOffset - 1;
+									outputOffsetY = replacementYSize - localYOffset - 1;
+								}
+								else
+								{
+									checkNoEntry();
+								}
+								ReplaceFloor.UpdateTile(location, Output[outputOffsetY][outputOffsetX]);
 							}
 						}
 					}
@@ -147,12 +199,14 @@ bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
 	return false;
 }
 
-bool URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)
+uint8 URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)
 {
 	if (InputToCheck.XSize() != Input.XSize() || InputToCheck.YSize() != Input.YSize())
 	{
-		return false;
+		return 0;
 	}
+	// First attempt -- "normal"
+	bool bCurrentStatus = true;
 	for (int x = 0; x < InputToCheck.XSize(); x++)
 	{
 		for (int y = 0; y < InputToCheck.YSize(); y++)
@@ -160,9 +214,103 @@ bool URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCh
 			const UDungeonTile* inputTile = Input[y][x];
 			if (InputToCheck[y][x] != inputTile)
 			{
-				return false;
+				bCurrentStatus = false;
+				break;
+			}
+		}
+		if (!bCurrentStatus)
+		{
+			break;
+		}
+	}
+	if (bCurrentStatus)
+	{
+		// Matched this attempt!
+		return 1;
+	}
+	
+	if (InputToCheck.YSize() > 1)
+	{
+		// Second attempt -- reversed Y
+		bCurrentStatus = true;
+		for (int x = 0; x < InputToCheck.XSize(); x++)
+		{
+			for (int y = 0; y < InputToCheck.YSize(); y++)
+			{
+				const UDungeonTile* inputTile = Input[InputToCheck.YSize() - y - 1][x];
+				if (InputToCheck[y][x] != inputTile)
+				{
+					bCurrentStatus = false;
+					break;
+				}
+			}
+			if (!bCurrentStatus)
+			{
+				break;
+			}
+		}
+		if (bCurrentStatus)
+		{
+			// Matched this attempt!
+			return 2;
+		}
+	}
+
+	if (InputToCheck.XSize() > 1)
+	{
+		// Third attempt -- reversed X
+		bCurrentStatus = true;
+		for (int x = 0; x < InputToCheck.XSize(); x++)
+		{
+			for (int y = 0; y < InputToCheck.YSize(); y++)
+			{
+				const UDungeonTile* inputTile = Input[y][InputToCheck.XSize() - x - 1];
+				if (InputToCheck[y][x] != inputTile)
+				{
+					bCurrentStatus = false;
+					break;
+				}
+			}
+			if (!bCurrentStatus)
+			{
+				break;
+			}
+		}
+		if (bCurrentStatus)
+		{
+			// Matched this attempt!
+			return 3;
+		}
+	}
+
+	if (InputToCheck.XSize() > 1 && InputToCheck.YSize() > 1)
+	{
+		// Last attempt -- reversed XY
+		bCurrentStatus = true;
+		for (int x = 0; x < InputToCheck.XSize(); x++)
+		{
+			for (int y = 0; y < InputToCheck.YSize(); y++)
+			{
+				const UDungeonTile* inputTile = Input[InputToCheck.YSize() - y - 1][InputToCheck.XSize() - x - 1];
+				if (InputToCheck[y][x] != inputTile)
+				{
+					bCurrentStatus = false;
+					break;
+				}
+			}
+			if (!bCurrentStatus)
+			{
+				break;
 			}
 		}
 	}
-	return true;
+
+	if (bCurrentStatus)
+	{
+		return 4;
+	}
+	else
+	{
+		return 0;
+	}
 }

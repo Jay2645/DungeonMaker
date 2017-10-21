@@ -139,6 +139,10 @@ struct DUNGEONMAKER_API FDungeonRoomMetadata
 
 	void Set(int X, int Y, const UDungeonTile* Tile)
 	{
+		if (Tile != NULL)
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("Changing tile at %d, %d to %s."), X, Y, *Tile->TileID.ToString());
+		}
 		DungeonRows[Y].Set(X, Tile);
 	}
 

@@ -39,12 +39,41 @@ void FDungeonFloor::UpdateTile(FIntVector CurrentLocation, const UDungeonTile* N
 {
 	if (!TileLocations.Contains(CurrentLocation))
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("Floor did not contain %d, %d, %d, but it tried to update it!"), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z);
-		return;
+		if (NewTile == NULL)
+		{
+			return;
+		}
+		ADungeonRoom* room = NULL;
+		for (int x = -1; x <= 1; x++)
+		{
+			for (int y = -1; y <= 1; y++)
+			{
+				FIntVector location = CurrentLocation;
+				location.X += x;
+				location.Y += y;
+				if (TileLocations.Contains(location))
+				{
+					room = TileLocations[location].Room;
+					break;
+				}
+			}
+		}
+		if (room == NULL)
+		{
+			UE_LOG(LogDungeonGen, Warning, TEXT("Floor did not contain %d, %d, %d, but it tried to update it!"), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z);
+			return;
+		}
+		FDungeonFloorTile dungeonFloor;
+		dungeonFloor.Room = room;
+		dungeonFloor.Tile = NewTile;
+		TileLocations.Add(CurrentLocation, dungeonFloor);
 	}
-	UE_LOG(LogDungeonGen, Log, TEXT("Changing tile at %d, %d, %d from %s to %s."), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z, *TileLocations[CurrentLocation].Tile->TileID.ToString(), *NewTile->TileID.ToString());
-	TileLocations[CurrentLocation].Tile = NewTile;
-	TileLocations[CurrentLocation].Room->SetTileGridCoordinates(CurrentLocation, NewTile);
+	else
+	{
+		//UE_LOG(LogDungeonGen, Log, TEXT("Changing tile at %d, %d, %d from %s to %s."), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z, *TileLocations[CurrentLocation].Tile->TileID.ToString(), *NewTile->TileID.ToString());
+		TileLocations[CurrentLocation].Tile = NewTile;
+		TileLocations[CurrentLocation].Room->SetTileGridCoordinates(CurrentLocation, NewTile);
+	}
 }
 
 bool FDungeonFloor::TileIsWall(FIntVector Location) const

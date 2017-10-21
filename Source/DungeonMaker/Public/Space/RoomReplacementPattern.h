@@ -34,7 +34,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FDungeonRoomMetadata Input;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		FDungeonRoomMetadata Output;
+	FDungeonRoomMetadata Output;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
+	uint8 MaxReplacementCount;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SelectionChance;
 
@@ -44,5 +46,5 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool FindAndReplaceFloor(FDungeonFloor& ReplaceFloor);
 protected:
-	bool MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
+	uint8 MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
 };

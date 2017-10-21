@@ -106,7 +106,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
-	
+
+	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
+	void UpdateDungeonFloor(FDungeonFloor& DungeonFloor);
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
 	// Places this room's tile meshes in the game world.
