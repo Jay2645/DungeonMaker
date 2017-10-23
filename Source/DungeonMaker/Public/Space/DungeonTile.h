@@ -191,6 +191,8 @@ struct DUNGEONMAKER_API FDungeonRoomMetadata
 		}
 		return false;
 	}
+
+	FColor DrawRoom(AActor* ContextObject, FIntVector Position);
 };
 
 USTRUCT(BlueprintType)
@@ -222,6 +224,8 @@ public:
 	ADungeonRoom* GetRoom(FIntVector CurrentLocation);
 	int32 YSize() const;
 	int32 XSize() const;
+	FDungeonRoomMetadata ToRoom();
+	void DrawDungeonFloor(AActor* Context, int32 ZOffset);
 private:
 	FIntVector MaxExtents;
 };

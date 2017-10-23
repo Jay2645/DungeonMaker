@@ -26,6 +26,63 @@ enum class ETileDirection : uint8
 	Southwest
 };
 
+USTRUCT(BlueprintType)
+struct FGroundScatter
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSubclassOf<AActor> ScatterObject;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FTransform ObjectOffset;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSet<ETileDirection> AllowedDirections;
+
+
+	// Should we keep track of how many objects we place at all, or should we place as many as we want?
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bUseRandomCount;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bUseRandomLocation;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
+	uint8 MinCount;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
+	uint8 MaxCount;
+	// Skip every n tiles when placing this.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
+	uint8 SkipTiles;
+	FGroundScatter()
+	{
+		ScatterObject = NULL;
+		AllowedDirections.Add(ETileDirection::Center);
+		bUseRandomCount = false;
+		bUseRandomLocation = true;
+		MinCount = 0;
+		MaxCount = 255;
+		SkipTiles = 0;
+	}
+
+	bool operator==(const FGroundScatter& Other) const
+	{
+		return ScatterObject == Other.ScatterObject && MinCount == Other.MinCount &&
+			MaxCount == Other.MaxCount;
+	}
+
+	friend uint32 GetTypeHash(const FGroundScatter& Other)
+	{
+		return GetTypeHash(Other.ScatterObject);
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FGroundScatterSet
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGroundScatter> GroundScatter;
+};
+
 UCLASS(Blueprintable)
 class DUNGEONMAKER_API ADungeonRoom : public AActor
 {
@@ -55,6 +112,9 @@ public:
 	FMissionSpaceData MaximumRoomSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	TArray<FRoomReplacements> RoomReplacementPhases;
+	// A list of actors that get scattered throughout the room
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Props")
+	TMap<const UDungeonTile*, FGroundScatterSet> GroundScatter;
 
 	// Debug
 
@@ -62,6 +122,8 @@ public:
 	// This means that there's not ADungeon Actor telling it what to do.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
 	bool bIsStandaloneRoomForDebug;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	bool bDrawDebugTiles;
 	// If we're being generated standalone, what seed should we use for the RNG?
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
 	int32 DebugSeed;
@@ -113,7 +175,13 @@ public:
 	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup);
+	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, FRandomStream& Rng);
+	// Gets the transform for a tile from that tile's position in local space ((0,0,0) to Room Bounds).
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	FTransform GetTileTransform(const FIntVector& LocalLocation) const;
+	// Gets the transform for a tile from that tile's position in world space.
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	FTransform GetTileTransformFromTileSpace(const FIntVector& WorldLocation) const;
 	// Returns the set of all DungeonTiles used by this room.
 	//UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	TSet<const UDungeonTile*> FindAllTiles();

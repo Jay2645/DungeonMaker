@@ -101,9 +101,19 @@ void ADungeonRoom::BeginPlay()
 	}
 
 	// Done with pre-processing the tiles; time to place the actual meshes!
-	for (ADungeonRoom* room : newRooms)
+	if (!bDrawDebugTiles)
 	{
-		room->PlaceRoomTiles(componentLookup);
+		for (ADungeonRoom* room : newRooms)
+		{
+			room->PlaceRoomTiles(componentLookup, rng);
+		}
+	}
+	else
+	{
+		for (ADungeonRoom* room : newRooms)
+		{
+			room->DrawDebugRoom();
+		}
 	}
 
 	for (ADungeonRoom* room : newRooms)
@@ -271,15 +281,13 @@ void ADungeonRoom::DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream 
 void ADungeonRoom::UpdateDungeonFloor(FDungeonFloor& DungeonFloor)
 {
 	FIntVector position = GetRoomTileSpacePosition();
-	int32 xPosition = position.X;
-	int32 yPosition = position.Y;
 
 	for (int y = 0; y < YSize(); y++)
 	{
 		for (int x = 0; x < XSize(); x++)
 		{
 			const UDungeonTile* tile = GetTile(x, y);
-			FIntVector currentLocation = FIntVector(x + xPosition, y + yPosition, 0);
+			FIntVector currentLocation = FIntVector(x + position.X, y + position.Y, 0);
 			if (DungeonFloor.TileIsWall(currentLocation))
 			{
 				ADungeonRoom* otherRoom = DungeonFloor.GetRoom(currentLocation);
@@ -308,13 +316,22 @@ TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeo
 	return newHallways;
 }
 
-void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup)
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, FRandomStream& Rng)
 {
+	TMap<const UDungeonTile*, TArray<FIntVector>> tileLocations;
 	for (int x = 0; x < XSize(); x++)
 	{
 		for (int y = 0; y < YSize(); y++)
 		{
+			// Cache this tile location
+			FIntVector location = FIntVector(x, y, 0);
 			const UDungeonTile* tile = GetTile(x, y);
+			if (!tileLocations.Contains(tile))
+			{
+				tileLocations.Add(tile, TArray<FIntVector>());
+			}
+			tileLocations[tile].Add(location);
+
 			if (tile->TileMesh == NULL)
 			{
 				continue;
@@ -333,9 +350,143 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 			meshComponent->AddInstance(tileTfm);
 		}
 	}
+
+	UE_LOG(LogDungeonGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), tileLocations.Num());
+	for (auto& kvp : tileLocations)
+	{
+		const UDungeonTile* tile = kvp.Key;
+		if (!GroundScatter.Contains(tile))
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("%s had no ground scatter defined for %s."), *GetName(), *tile->TileID.ToString());
+			continue;
+		}
+		FGroundScatterSet scatterSet = GroundScatter[tile];
+
+		for (FGroundScatter scatter : scatterSet.GroundScatter)
+		{
+			if (scatter.ScatterObject == NULL)
+			{
+				UE_LOG(LogDungeonGen, Warning, TEXT("Null scatter object in room %s!"), *GetName());
+				continue;
+			}
+			UE_LOG(LogDungeonGen, Log, TEXT("Placing scatter object %s in room %s."), *scatter.ScatterObject->GetName(), *GetName());
+			TArray<FIntVector> locations;
+			locations.Append(kvp.Value);
+			
+			uint8 targetScatterCount = (uint8)Rng.RandRange(scatter.MinCount, scatter.MaxCount);
+			uint8 currentScatterCount = scatter.SkipTiles;
+			uint8 currentSkipCount = 0;
+			
+			while ((!scatter.bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
+			{
+				FIntVector location;
+				if (scatter.bUseRandomLocation)
+				{
+					int32 locationIndex = Rng.RandRange(0, locations.Num() - 1);
+					location = locations[locationIndex];
+					locations.RemoveAt(locationIndex);
+				}
+				else
+				{
+					location = locations[0];
+					locations.RemoveAt(0);
+				}
+				location += GetRoomTileSpacePosition();
+
+				UE_LOG(LogDungeonGen, Log, TEXT("Checking location %d, %d, %d"), location.X, location.Y, location.Z);
+
+				ETileDirection direction = GetTileDirection(location);
+				UE_LOG(LogDungeonGen, Log, TEXT("Direction: %d"), (uint8)direction);
+
+				if (!scatter.AllowedDirections.Contains(direction))
+				{
+					// Direction not allowed
+					UE_LOG(LogDungeonGen, Log, TEXT("Direction not allowed!"));
+					continue;
+				}
+
+				if (currentSkipCount < scatter.SkipTiles)
+				{
+					// We need to skip this tile
+					UE_LOG(LogDungeonGen, Log, TEXT("Skipping tile!"));
+					currentSkipCount++;
+					continue;
+				}
+				else
+				{
+					// Reset skip count
+					currentSkipCount = 0;
+				}
+
+				FTransform tileTransform = GetTileTransformFromTileSpace(location);
+				FTransform scatterTransform = scatter.ObjectOffset;
+				tileTransform.SetToRelativeTransform(scatterTransform);
+
+				// Spawn the ground scatter object
+				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(scatter.ScatterObject, tileTransform);
+				UE_LOG(LogDungeonGen, Log, TEXT("Placed %s!"), *scatterActor->GetName());
+				currentScatterCount++;
+			}
+		}
+	}
+}
+
+FTransform ADungeonRoom::GetTileTransform(const FIntVector& LocalLocation) const
+{
+	FIntVector worldLocation = GetRoomTileSpacePosition() + LocalLocation;
+	return GetTileTransformFromTileSpace(worldLocation);
 }
 
 
+FTransform ADungeonRoom::GetTileTransformFromTileSpace(const FIntVector& WorldLocation) const
+{
+	FVector location = FVector(WorldLocation.X * 500.0f, WorldLocation.Y * 500.0f, WorldLocation.Z * 500.0f);
+	FRotator rotation = GetActorRotation();
+	FVector scale = GetActorScale();
+
+	ETileDirection direction = GetTileDirection(WorldLocation);
+	switch (direction)
+	{
+	case ETileDirection::Center:
+		location.X -= 250.0f;
+		location.Y -= 250.0f;
+		break;
+	case ETileDirection::North:
+		// Pass
+		break;
+	case ETileDirection::South:
+		location.Y -= 500.0f;
+		rotation.Yaw += 180.0f;
+		break;
+	case ETileDirection::East:
+		rotation.Yaw += 90.0f;
+		break;
+	case ETileDirection::West:
+		location.X += 500.0f;
+		rotation.Yaw += 270.0f;
+		break;
+	case ETileDirection::Northeast:
+		rotation.Yaw += 45.0f;
+		break;
+	case ETileDirection::Northwest:
+		location.X += 500.0f;
+		rotation.Yaw += 315.0f;
+		break;
+	case ETileDirection::Southeast:
+		location.Y -= 500.0f;
+		rotation.Yaw += 135.0f;
+		break;
+	case ETileDirection::Southwest:
+		location.X += 500.0f;
+		location.Y -= 500.0f;
+		rotation.Yaw += 225.0f;
+		break;
+	default:
+		checkNoEntry();
+		break;
+	}
+	return FTransform(rotation, location, scale);
+}
 
 TSet<const UDungeonTile*> ADungeonRoom::FindAllTiles()
 {
@@ -344,6 +495,11 @@ TSet<const UDungeonTile*> ADungeonRoom::FindAllTiles()
 
 void ADungeonRoom::Set(int32 X, int32 Y, const UDungeonTile* Tile)
 {
+	if (RoomTiles[Y][X] == Tile)
+	{
+		// Already set
+		return;
+	}
 	RoomTiles.Set(X, Y, Tile);
 }
 
@@ -385,44 +541,17 @@ void ADungeonRoom::DrawDebugRoom()
 	float halfY = YSize() / 2.0f;
 
 	FIntVector position = GetRoomTileSpacePosition();
+
+	FColor randomColor = RoomTiles.DrawRoom(this, position);
+
+	// Draw lines connecting to our neighbors
 	int32 xPosition = position.X;
 	int32 yPosition = position.Y;
 	int32 zPosition = position.Z;
-
 	float midX = (xPosition + halfX) * UDungeonTile::TILE_SIZE;
 	float midY = (yPosition + halfY) * UDungeonTile::TILE_SIZE;
-	FColor randomColor = FColor::MakeRandomColor();
-
-	for (int x = 0; x < XSize(); x++)
-	{
-		for (int y = 0; y < YSize(); y++)
-		{
-			int32 xOffset = x + xPosition;
-			int32 yOffset = y + yPosition;
-			FVector startingLocation(xOffset * UDungeonTile::TILE_SIZE, yOffset * UDungeonTile::TILE_SIZE, zPosition * UDungeonTile::TILE_SIZE);
-			FVector endingLocation(xOffset * UDungeonTile::TILE_SIZE, (yOffset + 1) * UDungeonTile::TILE_SIZE, zPosition * UDungeonTile::TILE_SIZE);
-
-			// Draw a square
-			DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-			endingLocation = FVector((xOffset + 1) * UDungeonTile::TILE_SIZE, yOffset * UDungeonTile::TILE_SIZE, zPosition * UDungeonTile::TILE_SIZE);
-			DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-			startingLocation = FVector((xOffset + 1) * UDungeonTile::TILE_SIZE, (yOffset + 1) * UDungeonTile::TILE_SIZE, zPosition * UDungeonTile::TILE_SIZE);
-			DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-			endingLocation = FVector(xOffset * UDungeonTile::TILE_SIZE, (yOffset + 1) * UDungeonTile::TILE_SIZE, zPosition * UDungeonTile::TILE_SIZE);
-			DrawDebugLine(GetWorld(), startingLocation, endingLocation, randomColor, true);
-
-			// Label the center with the type of tile this is
-			FVector midpoint((xOffset + 0.5f) * UDungeonTile::TILE_SIZE, (yOffset + 0.5f) * UDungeonTile::TILE_SIZE, (zPosition * UDungeonTile::TILE_SIZE) + 100.0f);
-			const UDungeonTile* tile = GetTile(x, y);
-			if (tile != NULL)
-			{
-				DrawDebugString(GetWorld(), midpoint, tile->TileID.ToString());
-			}
-		}
-	}
-
-	// Draw lines connecting to our neighbors
 	FVector startingLocation = FVector(midX, midY, zPosition);
+
 	for (ADungeonRoom* neighbor : MissionNeighbors)
 	{
 		if (neighbor->Symbol == NULL)

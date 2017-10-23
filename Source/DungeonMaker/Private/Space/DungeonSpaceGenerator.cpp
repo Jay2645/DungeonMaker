@@ -129,18 +129,20 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	{
 		for (ADungeonRoom* room : MissionRooms)
 		{
-			room->PlaceRoomTiles(ComponentLookup);
+			room->PlaceRoomTiles(ComponentLookup, Rng);
 			room->OnRoomGenerationComplete();
 		}
 	}
 }
 
-void UDungeonSpaceGenerator::DrawDebugSpace() const
+void UDungeonSpaceGenerator::DrawDebugSpace()
 {
 	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->DrawDebugRoom();
 	}
+
+	DungeonSpace.DrawDungeonFloor(GetOwner(), 1);
 }
 
 void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng)

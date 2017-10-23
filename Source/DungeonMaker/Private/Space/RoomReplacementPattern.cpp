@@ -84,6 +84,8 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 							}
 							else
 							{
+								outputOffsetX = 0;
+								outputOffsetY = 0;
 								checkNoEntry();
 							}
 							ReplaceRoom.Set(x, y, Output[outputOffsetY][outputOffsetX]);
@@ -181,6 +183,8 @@ bool URoomReplacementPattern::FindAndReplaceFloor(FDungeonFloor& ReplaceFloor)
 								}
 								else
 								{
+									outputOffsetX = 0;
+									outputOffsetY = 0;
 									checkNoEntry();
 								}
 								ReplaceFloor.UpdateTile(location, Output[outputOffsetY][outputOffsetX]);
