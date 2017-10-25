@@ -26,13 +26,31 @@ enum class ETileDirection : uint8
 	Southwest
 };
 
+
+USTRUCT(BlueprintType)
+struct FScatterObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSubclassOf<AActor> ScatterObject;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float SelectionChance;
+
+	FScatterObject()
+	{
+		ScatterObject = NULL;
+		SelectionChance = 1.0f;
+	}
+};
+
 USTRUCT(BlueprintType)
 struct FGroundScatter
 {
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSubclassOf<AActor> ScatterObject;
+	TArray<FScatterObject> ScatterObjects;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FTransform ObjectOffset;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -53,24 +71,12 @@ public:
 	uint8 SkipTiles;
 	FGroundScatter()
 	{
-		ScatterObject = NULL;
 		AllowedDirections.Add(ETileDirection::Center);
 		bUseRandomCount = false;
 		bUseRandomLocation = true;
 		MinCount = 0;
 		MaxCount = 255;
 		SkipTiles = 0;
-	}
-
-	bool operator==(const FGroundScatter& Other) const
-	{
-		return ScatterObject == Other.ScatterObject && MinCount == Other.MinCount &&
-			MaxCount == Other.MaxCount;
-	}
-
-	friend uint32 GetTypeHash(const FGroundScatter& Other)
-	{
-		return GetTypeHash(Other.ScatterObject);
 	}
 };
 

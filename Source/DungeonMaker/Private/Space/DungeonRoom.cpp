@@ -364,12 +364,11 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 
 		for (FGroundScatter scatter : scatterSet.GroundScatter)
 		{
-			if (scatter.ScatterObject == NULL)
+			if (scatter.ScatterObjects.Num() == 0)
 			{
 				UE_LOG(LogDungeonGen, Warning, TEXT("Null scatter object in room %s!"), *GetName());
 				continue;
 			}
-			UE_LOG(LogDungeonGen, Log, TEXT("Placing scatter object %s in room %s."), *scatter.ScatterObject->GetName(), *GetName());
 			TArray<FIntVector> locations;
 			locations.Append(kvp.Value);
 			
@@ -393,10 +392,8 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 				}
 				location += GetRoomTileSpacePosition();
 
-				UE_LOG(LogDungeonGen, Log, TEXT("Checking location %d, %d, %d"), location.X, location.Y, location.Z);
-
+				
 				ETileDirection direction = GetTileDirection(location);
-				UE_LOG(LogDungeonGen, Log, TEXT("Direction: %d"), (uint8)direction);
 
 				if (!scatter.AllowedDirections.Contains(direction))
 				{
@@ -408,7 +405,6 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 				if (currentSkipCount < scatter.SkipTiles)
 				{
 					// We need to skip this tile
-					UE_LOG(LogDungeonGen, Log, TEXT("Skipping tile!"));
 					currentSkipCount++;
 					continue;
 				}
@@ -420,11 +416,27 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 
 				FTransform tileTransform = GetTileTransformFromTileSpace(location);
 				FTransform scatterTransform = scatter.ObjectOffset;
-				tileTransform.SetToRelativeTransform(scatterTransform);
+				FVector tilePosition = tileTransform.GetLocation();
+				FVector scatterPosition = scatterTransform.GetLocation();
+				FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
+				FVector objectPosition = tilePosition + scatterPosition;
+				FRotator objectRotation = FRotator(tileTransform.GetRotation());
+				objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
+				FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
 
 				// Spawn the ground scatter object
-				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(scatter.ScatterObject, tileTransform);
-				UE_LOG(LogDungeonGen, Log, TEXT("Placed %s!"), *scatterActor->GetName());
+				TSubclassOf<AActor> selectedActor = NULL;
+				do 
+				{
+					FScatterObject selectedObject = scatter.ScatterObjects[Rng.RandRange(0, scatter.ScatterObjects.Num() - 1)];
+					if (Rng.GetFraction() <= selectedObject.SelectionChance)
+					{
+						selectedActor = selectedObject.ScatterObject;
+					}
+				}
+				while (selectedActor == NULL);
+
+				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(selectedActor, objectTransform);
 				currentScatterCount++;
 			}
 		}
