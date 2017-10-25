@@ -10,7 +10,7 @@ public class DungeonMaker : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
-                "DungeonMaker/Public",
+				"DungeonMaker/Public",
 				// ... add public include paths required here ...
 			}
 			);
@@ -18,7 +18,7 @@ public class DungeonMaker : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-                "DungeonMaker/Private",
+				"DungeonMaker/Private",
 				// ... add other private include paths required here ...
 			}
 			);
@@ -39,8 +39,7 @@ public class DungeonMaker : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore",
-                "StateMachine",
+				"SlateCore"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
