@@ -108,7 +108,6 @@ void FDungeonFloor::UpdateTile(FIntVector CurrentLocation, const UDungeonTile* N
 	}
 	else
 	{
-		//UE_LOG(LogDungeonGen, Log, TEXT("Changing tile at %d, %d, %d from %s to %s."), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z, *TileLocations[CurrentLocation].Tile->TileID.ToString(), *NewTile->TileID.ToString());
 		TileLocations[CurrentLocation].Tile = NewTile;
 		TileLocations[CurrentLocation].Room->SetTileGridCoordinates(CurrentLocation, NewTile);
 	}

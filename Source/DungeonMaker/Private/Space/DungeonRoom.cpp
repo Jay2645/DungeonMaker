@@ -159,6 +159,10 @@ void ADungeonRoom::InitializeRoomFromPoints(
 			StartLocation.X, StartLocation.Y, StartLocation.Z,
 			RoomSymbol, rng, false, true);
 	}
+	else
+	{
+		checkNoEntry();
+	}
 }
 
 void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
@@ -305,13 +309,14 @@ void ADungeonRoom::UpdateDungeonFloor(FDungeonFloor& DungeonFloor)
 	}
 }
 
-TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol)
+TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, 
+	const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor)
 {
 	TSet<ADungeonRoom*> newHallways;
 	TSet<ADungeonRoom*> allNeighbors = MissionNeighbors;
 	for (ADungeonRoom* neighbor : allNeighbors)
 	{
-		newHallways.Append(ConnectRooms(this, neighbor, Rng, HallwaySymbol, DefaultTile));
+		newHallways.Append(ConnectRooms(this, neighbor, Rng, HallwaySymbol, DefaultTile, DungeonFloor));
 	}
 	return newHallways;
 }
@@ -671,17 +676,120 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 }
 
 TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng,
-	const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile)
+	const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile, FDungeonFloor& DungeonFloor)
 {
 	const int32 HALLWAY_WIDTH = 3;
-	const int32 HALLWAY_EDGE_OFFSET = 0;
+	const int32 HALLWAY_EDGE_OFFSET = 1;
+
+	FString hallwayName = A->GetName() + " - " + B->GetName();
 
 	TSet<ADungeonRoom*> hallways;
 	// Convert room's world-space coordinates to grid coordinates
-	FIntVector aLocation = A->GetRoomTileSpacePosition();
-	FIntVector bLocation = B->GetRoomTileSpacePosition();
+	FIntVector aMinLocation = A->GetRoomTileSpacePosition();
+	FIntVector bMinLocation = B->GetRoomTileSpacePosition();
+	FIntVector aMaxLocation = aMinLocation + FIntVector(A->XSize(), A->YSize(), A->ZSize());
+	FIntVector bMaxLocation = bMinLocation + FIntVector(B->XSize(), B->YSize(), B->ZSize());
+	
+	FIntVector intersectionMinLocation = FIntVector(FMath::Max(aMinLocation.X, bMinLocation.X), FMath::Min(aMaxLocation.Y, bMaxLocation.Y), 0);
+	FIntVector intersectionMaxLocation = FIntVector(FMath::Min(aMaxLocation.X, bMaxLocation.X), FMath::Max(aMinLocation.Y, bMinLocation.Y), 0);
 
-	// Each location corresponds to the top-left of the room
+	FVector midpoint = FVector((intersectionMinLocation.X + intersectionMaxLocation.X) / 2.0f, (intersectionMinLocation.Y + intersectionMaxLocation.Y) / 2.0f, (intersectionMinLocation.Z + intersectionMaxLocation.Z) / 2.0f);
+
+	if (bMaxLocation.X >= aMinLocation.X && bMaxLocation.X <= aMaxLocation.X || aMaxLocation.X >= bMinLocation.X && aMaxLocation.X <= bMaxLocation.X)
+	{
+		// Create vertical hallway along midpoint
+		if (midpoint.X < aMinLocation.X + HALLWAY_EDGE_OFFSET || midpoint.X < bMinLocation.X + HALLWAY_EDGE_OFFSET)
+		{
+			midpoint.X += HALLWAY_EDGE_OFFSET;
+		}
+		else if (midpoint.X > aMaxLocation.X - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH || midpoint.X > bMaxLocation.X - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH)
+		{
+			midpoint.X -= HALLWAY_EDGE_OFFSET;
+		}
+
+		FIntVector hallwayStart = FIntVector(FMath::RoundToInt(midpoint.X), intersectionMinLocation.Y, intersectionMinLocation.Z);
+		FIntVector hallwayEnd = FIntVector(FMath::RoundToInt(midpoint.X), intersectionMaxLocation.Y, intersectionMaxLocation.Z);
+
+		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+		hallwayName += " X";
+		hallway->Rename(*hallwayName);
+		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+			hallwayStart, hallwayEnd, HALLWAY_WIDTH);
+		hallways.Add(hallway);
+	}
+	else if (bMaxLocation.Y >= aMinLocation.Y && bMaxLocation.Y <= aMaxLocation.Y || aMaxLocation.Y >= bMinLocation.Y && aMaxLocation.Y <= bMaxLocation.Y)
+	{
+		// Create horizontal hallway along midpoint
+		if (midpoint.Y < aMinLocation.Y + HALLWAY_EDGE_OFFSET || midpoint.Y < bMinLocation.Y + HALLWAY_EDGE_OFFSET)
+		{
+			midpoint.Y += HALLWAY_EDGE_OFFSET;
+		}
+		else if (midpoint.Y > aMaxLocation.Y - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH || midpoint.Y > bMaxLocation.Y - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH)
+		{
+			midpoint.Y -= HALLWAY_EDGE_OFFSET;
+		}
+		FIntVector hallwayStart = FIntVector(intersectionMinLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMinLocation.Z);
+		FIntVector hallwayEnd = FIntVector(intersectionMaxLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMaxLocation.Z);
+		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+		hallwayName += " Y";
+		hallway->Rename(*hallwayName);
+		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+			hallwayEnd, hallwayStart, HALLWAY_WIDTH);
+		hallways.Add(hallway);
+	}
+	else
+	{
+		// No overlap at all
+		// Generate L-shaped hallway
+		FIntVector aMidpoint = FIntVector(FMath::RoundToInt((aMinLocation.X + aMaxLocation.X) / 2.0f), FMath::RoundToInt((aMinLocation.Y + aMinLocation.Y) / 2.0f), FMath::RoundToInt((aMinLocation.Z + aMaxLocation.Z) / 2.0f));
+		FIntVector bMidpoint = FIntVector(FMath::RoundToInt((bMinLocation.X + bMaxLocation.X) / 2.0f), FMath::RoundToInt((bMinLocation.Y + bMinLocation.Y) / 2.0f), FMath::RoundToInt((bMinLocation.Z + bMaxLocation.Z) / 2.0f));
+
+		/*FIntVector intersection1 = FIntVector(FMath::RoundToInt(aMidpoint.X), FMath::RoundToInt(bMidpoint.Y), FMath::RoundToInt(midpoint.Z));
+		FIntVector hallwayAStartLocation1 = FIntVector(FMath::RoundToInt(aMidpoint.X), FMath::Min(aMaxLocation.Y, bMaxLocation.Y), FMath::Min(aMaxLocation.Z, bMaxLocation.Z));
+		FIntVector hallwayBStartLocation1 = FIntVector(FMath::Min(aMaxLocation.X, bMaxLocation.X), FMath::RoundToInt(bMidpoint.Y), FMath::Max(aMaxLocation.Z, bMaxLocation.Z));
+
+		FIntVector intersection2 = FIntVector(FMath::RoundToInt(bMidpoint.X), FMath::RoundToInt(aMidpoint.Y), FMath::RoundToInt(midpoint.Z));
+		FIntVector hallwayAStartLocation2 = FIntVector(FMath::RoundToInt(bMidpoint.X), FMath::Max(aMinLocation.Y, bMinLocation.Y), FMath::Min(aMaxLocation.Z, bMaxLocation.Z));
+		FIntVector hallwayBStartLocation2 = FIntVector(FMath::Min(aMaxLocation.X, bMaxLocation.X), FMath::RoundToInt(aMidpoint.Y), FMath::Max(aMaxLocation.Z, bMaxLocation.Z));
+
+
+		// TODO: Make this work
+		//bool bCanPlaceIntersectionA = DungeonFloor.HallwayIsClear(hallwayAStartLocation1, intersection1) && DungeonFloor.HallwayIsClear(hallwayBStartLocation1, intersection1);
+		//bool bCanPlaceIntersectionB = DungeonFloor.HallwayIsClear(, intersection2);*/
+		FIntVector intersection = FIntVector(aMidpoint.X, bMidpoint.Y, midpoint.Z);
+		FIntVector hallway1Start;
+		FIntVector hallway2Start;
+		if (aMinLocation.Y > bMaxLocation.Y)
+		{
+			// A is on top of B
+			hallway1Start = FIntVector(aMidpoint.X, aMinLocation.Y, aMinLocation.Z);
+			hallway2Start = FIntVector(bMinLocation.X, bMidpoint.Y, bMinLocation.Z);
+		}
+		else
+		{
+			// B is on top of A
+			// We know there's no overlap
+			hallway1Start = FIntVector(aMidpoint.X, aMaxLocation.Y, aMaxLocation.Z);
+			hallway2Start = FIntVector(bMaxLocation.X, bMidpoint.Y, bMinLocation.Z);
+		}
+
+		ADungeonRoom* hallway1 = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+		ADungeonRoom* hallway2 = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+		
+		FString hallway1Name = hallwayName + " 1";
+		FString hallway2Name = hallwayName + " 2";
+		hallway1->Rename(*hallway1Name);
+		hallway2->Rename(*hallway2Name);
+
+		hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+			hallway1Start, intersection, HALLWAY_WIDTH);
+		hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+			hallway2Start, intersection, HALLWAY_WIDTH);
+
+		hallways.Add(hallway1);
+		hallways.Add(hallway2);
+	}
+	/*// Each location corresponds to the top-left of the room
 	// a|bLocation ______
 	//            |  A|B |
 	//            |______|
@@ -823,7 +931,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 				// Use B for our point
 			}
 		}*/
-		randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
+		/*randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
 	}
 	// Edge cases:
 	// Point not in either room
@@ -1207,7 +1315,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 				hallwayA->MissionNeighbors.Add(A);
 			}
 		}
-	}
+	}*/
 
 	return hallways;
 }

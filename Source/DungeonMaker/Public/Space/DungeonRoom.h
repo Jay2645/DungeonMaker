@@ -178,7 +178,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void UpdateDungeonFloor(FDungeonFloor& DungeonFloor);
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile, const UDungeonMissionSymbol* HallwaySymbol);
+	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile,
+		const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, FRandomStream& Rng);
@@ -224,7 +225,8 @@ public:
 	void OnRoomGenerationComplete();
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng, 
-		const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile);
+	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
+		FRandomStream& Rng, const UDungeonMissionSymbol* HallwaySymbol, 
+		const UDungeonTile* DefaultTile, FDungeonFloor& DungeonFloor);
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 };

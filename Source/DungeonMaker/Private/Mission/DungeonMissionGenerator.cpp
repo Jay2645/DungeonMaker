@@ -52,7 +52,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogDungeonGen, Warning, TEXT("Completed dungeon:"));
+	UE_LOG(LogDungeonGen, Log, TEXT("Completed dungeon:"));
 	PrintDebugDungeon();
 #endif
 }
@@ -441,7 +441,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogDungeonGen, Warning, TEXT("Dungeon after replacement:"));
+	UE_LOG(LogDungeonGen, Log, TEXT("Dungeon after replacement:"));
 	PrintDebugDungeon();
 #endif
 }

@@ -78,7 +78,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
 
-	UE_LOG(LogDungeonGen, Warning, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
+	UE_LOG(LogDungeonGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
 
 	// Once we're done making leaves, do some post-processing
 	for (UBSPLeaf* leaf : MissionLeaves)
@@ -89,7 +89,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	TSet<ADungeonRoom*> newHallways;
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		newHallways.Append(room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol));
+		newHallways.Append(room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace));
 	}
 	MissionRooms.Append(newHallways);
 
