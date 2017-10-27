@@ -129,7 +129,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	{
 		for (ADungeonRoom* room : MissionRooms)
 		{
-			room->PlaceRoomTiles(ComponentLookup, Rng);
+			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace);
 			room->OnRoomGenerationComplete();
 		}
 	}

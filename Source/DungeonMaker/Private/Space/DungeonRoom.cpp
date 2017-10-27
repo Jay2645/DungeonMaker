@@ -105,7 +105,7 @@ void ADungeonRoom::BeginPlay()
 	{
 		for (ADungeonRoom* room : newRooms)
 		{
-			room->PlaceRoomTiles(componentLookup, rng);
+			room->PlaceRoomTiles(componentLookup, rng, newFloor);
 		}
 	}
 	else
@@ -321,7 +321,8 @@ TSet<ADungeonRoom*> ADungeonRoom::MakeHallways(FRandomStream& Rng, const UDungeo
 	return newHallways;
 }
 
-void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, FRandomStream& Rng)
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup,
+	FRandomStream& Rng, FDungeonFloor& DungeonFloor)
 {
 	TMap<const UDungeonTile*, TArray<FIntVector>> tileLocations;
 	for (int x = 0; x < XSize(); x++)
@@ -356,8 +357,13 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 		}
 	}
 
-	UE_LOG(LogDungeonGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), tileLocations.Num());
-	for (auto& kvp : tileLocations)
+	DetermineGroundScatter(tileLocations, Rng, DungeonFloor);
+}
+
+void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, FRandomStream& Rng, FDungeonFloor& DungeonFloor)
+{
+	UE_LOG(LogDungeonGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), TileLocations.Num());
+	for (auto& kvp : TileLocations)
 	{
 		const UDungeonTile* tile = kvp.Key;
 		if (!GroundScatter.Contains(tile))
@@ -376,11 +382,11 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 			}
 			TArray<FIntVector> locations;
 			locations.Append(kvp.Value);
-			
+
 			uint8 targetScatterCount = (uint8)Rng.RandRange(scatter.MinCount, scatter.MaxCount);
 			uint8 currentScatterCount = scatter.SkipTiles;
 			uint8 currentSkipCount = 0;
-			
+
 			while ((!scatter.bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
 			{
 				FIntVector location;
@@ -395,18 +401,92 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 					location = locations[0];
 					locations.RemoveAt(0);
 				}
+				FIntVector maxOffset = location + scatter.EdgeOffset;
+				FIntVector minOffset = location - scatter.EdgeOffset;
+				if (minOffset.X < 0 || minOffset.Y < 0)
+				{
+					// Too close to the edge of the room
+					continue;
+				}
+				if (maxOffset.X >= XSize() || maxOffset.Y >= YSize())
+				{
+					// Too close to the positive edge of the room
+					continue;
+				}
+
 				location += GetRoomTileSpacePosition();
 
-				
+
 				ETileDirection direction = GetTileDirection(location);
 
 				if (!scatter.AllowedDirections.Contains(direction))
 				{
 					// Direction not allowed
-					UE_LOG(LogDungeonGen, Log, TEXT("Direction not allowed!"));
 					continue;
 				}
 
+				if (direction != ETileDirection::Center)
+				{
+					if (!scatter.bPlaceAdjacentToNextRooms)
+					{
+						bool bIsAdjacent = false;
+						for (int x = -1; x <= 1; x++)
+						{
+							for (int y = -1; y <= 1; y++)
+							{
+								ADungeonRoom* next = DungeonFloor.GetRoom(location + FIntVector(x, y, location.Z));
+								if (next == NULL || next == this)
+								{
+									continue;
+								}
+								if (!MissionNeighbors.Contains(next))
+								{
+									bIsAdjacent = true;
+									break;
+								}
+							}
+							if (bIsAdjacent)
+							{
+								break;
+							}
+						}
+						if (bIsAdjacent)
+						{
+							continue;
+						}
+					}
+
+					if (!scatter.bPlaceAdjacentToPriorRooms)
+					{
+						bool bIsAdjacent = false;
+						for (int x = -1; x <= 1; x++)
+						{
+							for (int y = -1; y <= 1; y++)
+							{
+								ADungeonRoom* next = DungeonFloor.GetRoom(location + FIntVector(x, y, location.Z));
+								if (next == NULL || next == this)
+								{
+									continue;
+								}
+								if (MissionNeighbors.Contains(next))
+								{
+									bIsAdjacent = true;
+									break;
+								}
+							}
+							if (bIsAdjacent)
+							{
+								break;
+							}
+						}
+						if (bIsAdjacent)
+						{
+							continue;
+						}
+					}
+				}
+
+				// Last check -- should we skip this tile?
 				if (currentSkipCount < scatter.SkipTiles)
 				{
 					// We need to skip this tile
@@ -427,19 +507,24 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 				FVector objectPosition = tilePosition + scatterPosition;
 				FRotator objectRotation = FRotator(tileTransform.GetRotation());
 				objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
+				if (scatter.bUseRandomLocation)
+				{
+					int32 randomRotation = Rng.RandRange(0, 3);
+					float rotationAmount = randomRotation * 90.0f;
+					objectRotation.Add(0.0f, rotationAmount, 0.0f);
+				}
 				FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
 
 				// Spawn the ground scatter object
 				TSubclassOf<AActor> selectedActor = NULL;
-				do 
+				do
 				{
 					FScatterObject selectedObject = scatter.ScatterObjects[Rng.RandRange(0, scatter.ScatterObjects.Num() - 1)];
 					if (Rng.GetFraction() <= selectedObject.SelectionChance)
 					{
 						selectedActor = selectedObject.ScatterObject;
 					}
-				}
-				while (selectedActor == NULL);
+				} while (selectedActor == NULL);
 
 				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(selectedActor, objectTransform);
 				currentScatterCount++;
@@ -716,6 +801,19 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
 			hallwayStart, hallwayEnd, HALLWAY_WIDTH);
 		hallways.Add(hallway);
+
+		if (A->MissionNeighbors.Contains(B))
+		{
+			A->MissionNeighbors.Remove(B);
+			A->MissionNeighbors.Add(hallway);
+			hallway->MissionNeighbors.Add(B);
+		}
+		else
+		{
+			B->MissionNeighbors.Remove(A);
+			B->MissionNeighbors.Add(hallway);
+			hallway->MissionNeighbors.Add(A);
+		}
 	}
 	else if (bMaxLocation.Y >= aMinLocation.Y && bMaxLocation.Y <= aMaxLocation.Y || aMaxLocation.Y >= bMinLocation.Y && aMaxLocation.Y <= bMaxLocation.Y)
 	{
@@ -736,6 +834,20 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
 			hallwayEnd, hallwayStart, HALLWAY_WIDTH);
 		hallways.Add(hallway);
+
+		// Update the mission neighbors
+		if (A->MissionNeighbors.Contains(B))
+		{
+			A->MissionNeighbors.Remove(B);
+			A->MissionNeighbors.Add(hallway);
+			hallway->MissionNeighbors.Add(B);
+		}
+		else
+		{
+			B->MissionNeighbors.Remove(A);
+			B->MissionNeighbors.Add(hallway);
+			hallway->MissionNeighbors.Add(A);
+		}
 	}
 	else
 	{
@@ -788,6 +900,22 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 
 		hallways.Add(hallway1);
 		hallways.Add(hallway2);
+
+
+		if (A->MissionNeighbors.Contains(B))
+		{
+			A->MissionNeighbors.Remove(B);
+			A->MissionNeighbors.Add(hallway1);
+			hallway1->MissionNeighbors.Add(hallway2);
+			hallway2->MissionNeighbors.Add(B);
+		}
+		else
+		{
+			B->MissionNeighbors.Remove(A);
+			B->MissionNeighbors.Add(hallway2);
+			hallway2->MissionNeighbors.Add(hallway1);
+			hallway1->MissionNeighbors.Add(A);
+		}
 	}
 	/*// Each location corresponds to the top-left of the room
 	// a|bLocation ______

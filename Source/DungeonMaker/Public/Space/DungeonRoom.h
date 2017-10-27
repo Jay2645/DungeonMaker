@@ -49,34 +49,58 @@ struct FGroundScatter
 {
 	GENERATED_BODY()
 public:
+	// A list of all objects we should scatter on this tile.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FScatterObject> ScatterObjects;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FTransform ObjectOffset;
+	// Which edges of the room this ground scatter is valid at.
+	// Center means anywhere which is not an edge.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSet<ETileDirection> AllowedDirections;
+	// How far away this should be from the edge of any room.
+	// Bear in mind that this doesn't make sense with any allowed directions other than Center.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FIntVector EdgeOffset;
 
+	// Whether we should be able to place this adjacent to next rooms.
+	// Next rooms are determined by our current mission.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bPlaceAdjacentToNextRooms;
+	// Whether we should be able to place this adjacent to previous rooms.
+	// Next rooms are determined by our current mission.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bPlaceAdjacentToPriorRooms;
 
 	// Should we keep track of how many objects we place at all, or should we place as many as we want?
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bUseRandomCount;
+	// Should we place this object randomly in the room?
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bUseRandomLocation;
+	// What's the minimum count of objects we should place?
+	// Only used if we're using a random count.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
 	uint8 MinCount;
+	// What's the maximum count of objects we should place?
+	// Only used if we're using a random count.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
 	uint8 MaxCount;
 	// Skip every n tiles when placing this.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
 	uint8 SkipTiles;
+	
 	FGroundScatter()
 	{
 		AllowedDirections.Add(ETileDirection::Center);
 		bUseRandomCount = false;
 		bUseRandomLocation = true;
+		bPlaceAdjacentToNextRooms = true;
+		bPlaceAdjacentToPriorRooms = true;
 		MinCount = 0;
 		MaxCount = 255;
 		SkipTiles = 0;
+		EdgeOffset = FIntVector(0, 0, 0);
 	}
 };
 
@@ -182,7 +206,10 @@ public:
 		const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, FRandomStream& Rng);
+	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
+		FRandomStream& Rng, FDungeonFloor& DungeonFloor);
+	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, 
+		FRandomStream& Rng, FDungeonFloor& DungeonFloor);
 	// Gets the transform for a tile from that tile's position in local space ((0,0,0) to Room Bounds).
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	FTransform GetTileTransform(const FIntVector& LocalLocation) const;
