@@ -151,12 +151,12 @@ ADungeonRoom* FDungeonFloor::GetRoom(FIntVector CurrentLocation)
 
 int32 FDungeonFloor::YSize() const
 {
-	return MaxExtents.Y;
+	return MaxExtents.Y + 1;
 }
 
 int32 FDungeonFloor::XSize() const
 {
-	return MaxExtents.X;
+	return MaxExtents.X + 1;
 }
 
 
