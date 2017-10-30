@@ -142,27 +142,91 @@ void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponen
 	}
 }
 
-void ADungeonRoom::InitializeRoomFromPoints(
-	const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol,
-	FIntVector StartLocation, FIntVector EndLocation, int32 Width)
+bool ADungeonRoom::PathIsClear(FIntVector StartLocation, FIntVector EndLocation, int32 SweepWidth, FDungeonFloor& DungeonFloor)
 {
-	FRandomStream rng;
+	int32 xSize;
+	int32 ySize;
 	if (StartLocation.X == EndLocation.X)
 	{
-		InitializeRoom(DefaultRoomTile, Width, FMath::Abs(EndLocation.Y - StartLocation.Y),
-			StartLocation.X, StartLocation.Y, StartLocation.Z,
-			RoomSymbol, rng, false, true);
+		xSize = FMath::Abs(EndLocation.Y - StartLocation.Y);
+		ySize = SweepWidth;
 	}
 	else if (StartLocation.Y == EndLocation.Y)
 	{
-		InitializeRoom(DefaultRoomTile, FMath::Abs(EndLocation.X - StartLocation.X), Width,
-			StartLocation.X, StartLocation.Y, StartLocation.Z,
-			RoomSymbol, rng, false, true);
+		xSize = SweepWidth;
+		ySize = FMath::Abs(EndLocation.X - StartLocation.X);
+
 	}
 	else
 	{
 		checkNoEntry();
+		xSize = 0;
+		ySize = 0;
 	}
+
+	FDungeonRoomMetadata room = DungeonFloor.ToRoom();
+	UE_LOG(LogDungeonGen, Log, TEXT("Dungeon Size: %d x %d; layout: %s"), room.XSize(), room.YSize(), *room.ToString());
+
+	for (int y = StartLocation.Y; y < StartLocation.Y + ySize; y++)
+	{
+		for (int x = StartLocation.X; x < StartLocation.X + xSize; x++)
+		{
+			const UDungeonTile* tile = DungeonFloor.GetTileAt(FIntVector(x, y, 0));
+			if (tile != NULL)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+void ADungeonRoom::InitializeRoomFromPoints(
+	const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol,
+	FIntVector StartLocation, FIntVector EndLocation, int32 Width, bool bIsJoinedToHallway)
+{
+	FRandomStream rng;
+	int32 width;
+	int32 height;
+	FIntVector startingLocation = StartLocation;
+	if (StartLocation.X == EndLocation.X)
+	{
+		width = Width;
+		height = EndLocation.Y - StartLocation.Y;
+
+		if (height < 0)
+		{
+			startingLocation = EndLocation;
+		}
+
+		height = FMath::Abs(height);
+		if (bIsJoinedToHallway)
+		{
+			height += Width;
+		}
+	}
+	else if (StartLocation.Y == EndLocation.Y)
+	{
+		width = EndLocation.X - StartLocation.X;
+		height = Width;
+
+		if (width < 0)
+		{
+			startingLocation = EndLocation;
+		}
+
+		width = FMath::Abs(width);
+	}
+	else
+	{
+		checkNoEntry();
+		return;
+	}
+
+	InitializeRoom(DefaultRoomTile, width, height,
+		startingLocation.X, startingLocation.Y, 0,
+		RoomSymbol, rng, false, true);
+
 }
 
 void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
@@ -178,6 +242,7 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	DebugDefaultTile = DefaultRoomTile;
 	DebugSeed = Rng.GetCurrentSeed();
 	Symbol = RoomSymbol;
+
 	int32 xSize;
 	int32 ySize;
 	if (bIsDeterminedFromPoints)
@@ -636,7 +701,7 @@ void ADungeonRoom::DrawDebugRoom()
 {
 	if (XSize() == 0 || YSize() == 0)
 	{
-		UE_LOG(LogDungeonGen, Error, TEXT("%s had no room defined!"), *Symbol->Description.ToString());
+		UE_LOG(LogDungeonGen, Error, TEXT("%s had no room defined (both X and Y sizes were set to 0)!"), *Symbol->Description.ToString());
 	}
 
 	float halfX = XSize() / 2.0f;
@@ -760,6 +825,20 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 	return tileSpacePosition;
 }
 
+FIntVector ADungeonRoom::FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, const FIntVector& Destination)
+{
+	float distance1 = FVector::DistSquaredXY((FVector)Source1, (FVector)Destination);
+	float distance2 = FVector::DistSquaredXY((FVector)Source2, (FVector)Destination);
+	if (distance1 < distance2)
+	{
+		return Source1;
+	}
+	else
+	{
+		return Source2;
+	}
+}
+
 TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng,
 	const UDungeonMissionSymbol* HallwaySymbol, const UDungeonTile* DefaultTile, FDungeonFloor& DungeonFloor)
 {
@@ -780,20 +859,49 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 
 	FVector midpoint = FVector((intersectionMinLocation.X + intersectionMaxLocation.X) / 2.0f, (intersectionMinLocation.Y + intersectionMaxLocation.Y) / 2.0f, (intersectionMinLocation.Z + intersectionMaxLocation.Z) / 2.0f);
 
-	if (bMaxLocation.X >= aMinLocation.X && bMaxLocation.X <= aMaxLocation.X || aMaxLocation.X >= bMinLocation.X && aMaxLocation.X <= bMaxLocation.X)
-	{
-		// Create vertical hallway along midpoint
-		if (midpoint.X < aMinLocation.X + HALLWAY_EDGE_OFFSET || midpoint.X < bMinLocation.X + HALLWAY_EDGE_OFFSET)
-		{
-			midpoint.X += HALLWAY_EDGE_OFFSET;
-		}
-		else if (midpoint.X > aMaxLocation.X - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH || midpoint.X > bMaxLocation.X - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH)
-		{
-			midpoint.X -= HALLWAY_EDGE_OFFSET;
-		}
+	bool bOverlapX = bMaxLocation.X >= aMinLocation.X && bMaxLocation.X <= aMaxLocation.X ||
+		aMaxLocation.X >= bMinLocation.X && aMaxLocation.X <= bMaxLocation.X;
+	bool bOverlapY = bMaxLocation.Y >= aMinLocation.Y && bMaxLocation.Y <= aMaxLocation.Y ||
+		aMaxLocation.Y >= bMinLocation.Y && aMaxLocation.Y <= bMaxLocation.Y;
 
-		FIntVector hallwayStart = FIntVector(FMath::RoundToInt(midpoint.X), intersectionMinLocation.Y, intersectionMinLocation.Z);
-		FIntVector hallwayEnd = FIntVector(FMath::RoundToInt(midpoint.X), intersectionMaxLocation.Y, intersectionMaxLocation.Z);
+	bool bMustBeLHallway = true;
+	if (bOverlapX)
+	{
+		// We overlap on the X axis
+		// Check to see if the overlap amount is at least our minimum hallway width
+		// Otherwise, we wind up in a situation where the hallway doesn't fit properly
+		int32 xDiff = FMath::Abs(intersectionMaxLocation.X - intersectionMinLocation.X);
+		bMustBeLHallway = xDiff < HALLWAY_WIDTH;
+	}
+	if (bOverlapY)
+	{
+		// The same, but for the Y axis
+		int32 yDiff = FMath::Abs(intersectionMaxLocation.Y - intersectionMinLocation.Y);
+		bMustBeLHallway = yDiff < HALLWAY_WIDTH;
+	}
+
+#if !UE_BUILD_SHIPPING
+	UE_LOG(LogDungeonGen, Log, TEXT("Connecting %s (%d, %d, %d) - (%d, %d, %d) to %s (%d, %d, %d) - (%d, %d, %d)."),
+		*A->GetName(), aMinLocation.X, aMinLocation.Y, aMinLocation.Z, aMaxLocation.X, aMaxLocation.Y, aMaxLocation.Z,
+		*B->GetName(), bMinLocation.X, bMinLocation.Y, bMinLocation.Z, bMaxLocation.X, bMaxLocation.Y, bMaxLocation.Z);
+	UE_LOG(LogDungeonGen, Log, TEXT("Hallways intersect from (%d, %d, %d) (min) to (%d, %d, %d) (max). Midpoint is (%f, %f, %f)."),
+		intersectionMinLocation.X, intersectionMinLocation.Y, intersectionMinLocation.Z, intersectionMaxLocation.X, intersectionMaxLocation.Y, intersectionMaxLocation.Z,
+		midpoint.X, midpoint.Y, midpoint.Z);
+	if (bMustBeLHallway)
+	{
+		UE_LOG(LogDungeonGen, Log, TEXT("There's not enough space between our rooms to generate a normal hallway; it will have a corner."));
+	}
+#endif
+
+	// Check X overlap
+	if (!bMustBeLHallway && bOverlapX)
+	{
+		int32 midpointX = FMath::RoundToInt(midpoint.X);
+
+		// Create vertical hallway along midpoint
+
+		FIntVector hallwayStart = FIntVector(midpointX, intersectionMinLocation.Y, intersectionMinLocation.Z);
+		FIntVector hallwayEnd = FIntVector(midpointX, intersectionMaxLocation.Y, intersectionMaxLocation.Z);
 
 		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 		hallwayName += " X";
@@ -815,17 +923,9 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			hallway->MissionNeighbors.Add(A);
 		}
 	}
-	else if (bMaxLocation.Y >= aMinLocation.Y && bMaxLocation.Y <= aMaxLocation.Y || aMaxLocation.Y >= bMinLocation.Y && aMaxLocation.Y <= bMaxLocation.Y)
+	else if (!bMustBeLHallway && bOverlapY)
 	{
 		// Create horizontal hallway along midpoint
-		if (midpoint.Y < aMinLocation.Y + HALLWAY_EDGE_OFFSET || midpoint.Y < bMinLocation.Y + HALLWAY_EDGE_OFFSET)
-		{
-			midpoint.Y += HALLWAY_EDGE_OFFSET;
-		}
-		else if (midpoint.Y > aMaxLocation.Y - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH || midpoint.Y > bMaxLocation.Y - HALLWAY_EDGE_OFFSET - HALLWAY_WIDTH)
-		{
-			midpoint.Y -= HALLWAY_EDGE_OFFSET;
-		}
 		FIntVector hallwayStart = FIntVector(intersectionMinLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMinLocation.Z);
 		FIntVector hallwayEnd = FIntVector(intersectionMaxLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMaxLocation.Z);
 		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
@@ -851,52 +951,104 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 	}
 	else
 	{
-		// No overlap at all
-		// Generate L-shaped hallway
-		FIntVector aMidpoint = FIntVector(FMath::RoundToInt((aMinLocation.X + aMaxLocation.X) / 2.0f), FMath::RoundToInt((aMinLocation.Y + aMinLocation.Y) / 2.0f), FMath::RoundToInt((aMinLocation.Z + aMaxLocation.Z) / 2.0f));
-		FIntVector bMidpoint = FIntVector(FMath::RoundToInt((bMinLocation.X + bMaxLocation.X) / 2.0f), FMath::RoundToInt((bMinLocation.Y + bMinLocation.Y) / 2.0f), FMath::RoundToInt((bMinLocation.Z + bMaxLocation.Z) / 2.0f));
-
-		/*FIntVector intersection1 = FIntVector(FMath::RoundToInt(aMidpoint.X), FMath::RoundToInt(bMidpoint.Y), FMath::RoundToInt(midpoint.Z));
-		FIntVector hallwayAStartLocation1 = FIntVector(FMath::RoundToInt(aMidpoint.X), FMath::Min(aMaxLocation.Y, bMaxLocation.Y), FMath::Min(aMaxLocation.Z, bMaxLocation.Z));
-		FIntVector hallwayBStartLocation1 = FIntVector(FMath::Min(aMaxLocation.X, bMaxLocation.X), FMath::RoundToInt(bMidpoint.Y), FMath::Max(aMaxLocation.Z, bMaxLocation.Z));
-
-		FIntVector intersection2 = FIntVector(FMath::RoundToInt(bMidpoint.X), FMath::RoundToInt(aMidpoint.Y), FMath::RoundToInt(midpoint.Z));
-		FIntVector hallwayAStartLocation2 = FIntVector(FMath::RoundToInt(bMidpoint.X), FMath::Max(aMinLocation.Y, bMinLocation.Y), FMath::Min(aMaxLocation.Z, bMaxLocation.Z));
-		FIntVector hallwayBStartLocation2 = FIntVector(FMath::Min(aMaxLocation.X, bMaxLocation.X), FMath::RoundToInt(aMidpoint.Y), FMath::Max(aMaxLocation.Z, bMaxLocation.Z));
-
-
-		// TODO: Make this work
-		//bool bCanPlaceIntersectionA = DungeonFloor.HallwayIsClear(hallwayAStartLocation1, intersection1) && DungeonFloor.HallwayIsClear(hallwayBStartLocation1, intersection1);
-		//bool bCanPlaceIntersectionB = DungeonFloor.HallwayIsClear(, intersection2);*/
-		FIntVector intersection = FIntVector(aMidpoint.X, bMidpoint.Y, midpoint.Z);
-		FIntVector hallway1Start;
-		FIntVector hallway2Start;
-		if (aMinLocation.Y > bMaxLocation.Y)
-		{
-			// A is on top of B
-			hallway1Start = FIntVector(aMidpoint.X, aMinLocation.Y, aMinLocation.Z);
-			hallway2Start = FIntVector(bMinLocation.X, bMidpoint.Y, bMinLocation.Z);
-		}
-		else
-		{
-			// B is on top of A
-			// We know there's no overlap
-			hallway1Start = FIntVector(aMidpoint.X, aMaxLocation.Y, aMaxLocation.Z);
-			hallway2Start = FIntVector(bMaxLocation.X, bMidpoint.Y, bMinLocation.Z);
-		}
-
+		// No overlap at all, or not enough to count
 		ADungeonRoom* hallway1 = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 		ADungeonRoom* hallway2 = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-		
+
 		FString hallway1Name = hallwayName + " 1";
 		FString hallway2Name = hallwayName + " 2";
 		hallway1->Rename(*hallway1Name);
 		hallway2->Rename(*hallway2Name);
 
-		hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
-			hallway1Start, intersection, HALLWAY_WIDTH);
-		hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
-			hallway2Start, intersection, HALLWAY_WIDTH);
+		// Generate L-shaped hallway
+		FIntVector aMidpoint = FIntVector(FMath::RoundToInt((aMinLocation.X + aMaxLocation.X) / 2.0f), FMath::RoundToInt((aMinLocation.Y + aMaxLocation.Y) / 2.0f), FMath::RoundToInt((aMinLocation.Z + aMaxLocation.Z) / 2.0f));
+		FIntVector bMidpoint = FIntVector(FMath::RoundToInt((bMinLocation.X + bMaxLocation.X) / 2.0f), FMath::RoundToInt((bMinLocation.Y + bMaxLocation.Y) / 2.0f), FMath::RoundToInt((bMinLocation.Z + bMaxLocation.Z) / 2.0f));
+		
+		UE_LOG(LogDungeonGen, Log, TEXT("First midpoint: (%d, %d, %d); second midpoint: (%d, %d, %d)."),
+			aMidpoint.X, aMidpoint.Y, aMidpoint.Z, bMidpoint.X, bMidpoint.Y, bMidpoint.Z);
+
+		// Intersection 1: Uses the X midpoint of A and the Y midpoint of B
+		FIntVector intersection1 = FIntVector(aMidpoint.X, bMidpoint.Y, midpoint.Z);
+		// Move to the closest edge
+		// For A this will be on the Y axis
+		// For B this will be on the X axis
+		FIntVector hallwayAStart1 = FindClosestVertex(FIntVector(aMidpoint.X, aMinLocation.Y, 0), 
+			FIntVector(aMidpoint.X, aMaxLocation.Y, 0), 
+			intersection1);
+		FIntVector hallwayBStart1 = FindClosestVertex(FIntVector(bMinLocation.X, bMidpoint.Y, 0),
+			FIntVector(bMaxLocation.X, bMidpoint.Y, 0),
+			intersection1);
+		UE_LOG(LogDungeonGen, Log, TEXT("Intersection 1: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
+			hallwayAStart1.X, hallwayAStart1.Y, hallwayAStart1.Z,
+			intersection1.X, intersection1.Y, intersection1.Z, 
+			hallwayBStart1.X, hallwayBStart1.Y, hallwayBStart1.Z);
+
+
+		// Intersection 2: Uses the X midpoint of B and the Y midpoint of A
+		FIntVector intersection2 = FIntVector(bMidpoint.X, aMidpoint.Y, midpoint.Z);
+		// Move to the closest edge
+		// For A this will be on the X axis
+		// For B this will be on the Y axis
+		FIntVector hallwayAStart2 = FindClosestVertex(FIntVector(aMinLocation.X, aMidpoint.Y, 0),
+			FIntVector(aMaxLocation.X, aMidpoint.Y, 0),
+			intersection2);
+		FIntVector hallwayBStart2 = FindClosestVertex(FIntVector(bMidpoint.X, bMinLocation.Y, 0),
+			FIntVector(bMidpoint.X, bMaxLocation.Y, 0),
+			intersection2);
+		UE_LOG(LogDungeonGen, Log, TEXT("Intersection 2: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
+			hallwayAStart2.X, hallwayAStart2.Y, hallwayAStart2.Z,
+			intersection2.X, intersection2.Y, intersection2.Z,
+			hallwayBStart2.X, hallwayBStart2.Y, hallwayBStart2.Z);
+
+		bool bCanPlaceHallway1 = PathIsClear(intersection1, hallwayAStart1, HALLWAY_WIDTH, DungeonFloor) &&
+			PathIsClear(intersection1, hallwayBStart1, HALLWAY_WIDTH, DungeonFloor);
+		bool bCanPlaceHallway2 = PathIsClear(intersection2, hallwayAStart2, HALLWAY_WIDTH, DungeonFloor) &&
+			PathIsClear(intersection2, hallwayBStart2, HALLWAY_WIDTH, DungeonFloor);
+
+		if (bCanPlaceHallway1)
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("Intersection 1 can be placed."));
+		}
+		if (bCanPlaceHallway2)
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("Intersection 2 can be placed."));
+		}
+
+		if (bCanPlaceHallway1 && bCanPlaceHallway2 && Rng.GetFraction() > 0.5f || bCanPlaceHallway1 && !bCanPlaceHallway2)
+		{
+			hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+				intersection1, hallwayAStart1, HALLWAY_WIDTH, true);
+			hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+				intersection1, hallwayBStart1, HALLWAY_WIDTH, true);
+		}
+		else if (bCanPlaceHallway2)
+		{
+			hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+				intersection2, hallwayAStart2, HALLWAY_WIDTH, true);
+			hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+				intersection2, hallwayBStart2, HALLWAY_WIDTH, true);
+		}
+		else
+		{
+			UE_LOG(LogDungeonGen, Error, TEXT("Could not place hallways! No valid way to place them."));
+			
+			// Place them anyway; they'll have to intersect
+			if (Rng.GetFraction() > 0.5f)
+			{
+				hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+					intersection1, hallwayAStart1, HALLWAY_WIDTH, true);
+				hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+					intersection1, hallwayBStart1, HALLWAY_WIDTH, true);
+			}
+			else
+			{
+				hallway1->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+					intersection2, hallwayAStart2, HALLWAY_WIDTH, true);
+				hallway2->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
+					intersection2, hallwayBStart2, HALLWAY_WIDTH, true);
+			}
+		}
+		
 
 		hallways.Add(hallway1);
 		hallways.Add(hallway2);
@@ -917,534 +1069,6 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 			hallway1->MissionNeighbors.Add(A);
 		}
 	}
-	/*// Each location corresponds to the top-left of the room
-	// a|bLocation ______
-	//            |  A|B |
-	//            |______|
-	//
-	//    b|aLocation _________
-	//               |   B|A   |
-	//               |_________|
-
-	// Sort them into top and bottom
-	if (aLocation.Y > bLocation.Y)
-	{
-		// B is above A, reverse them
-		FIntVector bottom = aLocation;
-		aLocation = bLocation;
-		bLocation = bottom;
-
-		// Reverse the pointers as well
-		ADungeonRoom* bottomRoom = A;
-		A = B;
-		B = bottomRoom;
-	}
-	// New:
-	// aLocation ______
-	//          |  A   |
-	//          |______|
-	//
-	//    bLocation _________
-	//             |    B    |
-	//             |_________|
-
-	// Edge case:
-	// Rooms aligned on Y axis
-	// bLocation _________     aLocation ______
-	//          |    B    |             |   A  |
-	//          |         |             |______|
-	//          |_________|
-
-	if (aLocation.Y == bLocation.Y)
-	{
-		// Set A to be the shorter of the two rooms
-		if (B->YSize() < A->YSize())
-		{
-			FIntVector tempVector = aLocation;
-			aLocation = bLocation;
-			bLocation = tempVector;
-
-			ADungeonRoom* tempRoom = A;
-			A = B;
-			B = tempRoom;
-		}
-
-		// New:
-		// aLocation _________     bLocation ______
-		//          |    A    |             |   B  |
-		//          |         |             |______|
-		//          |_________|
-	}
-
-	// If they share a border, we don't need to do any processing at all
-	if (bLocation.X == aLocation.X + A->XSize())
-	{
-		// Share border along Y axis
-		//  _________ ______
-		// |    A    |   B  |
-		// |         |______|
-		// |_________|
-
-		// Ensure that there is actually overlap between their edges
-		// A is guaranteed to be above or on the same level as B
-		if (bLocation.Y > aLocation.Y + A->YSize())
-		{
-			return hallways;
-		}
-	}
-	if (bLocation.Y == aLocation.Y + A->YSize())
-	{
-		//  _________ 
-		// |    A    |
-		// |         |
-		// |_________|
-		// |     |
-		// |  B  |
-		// |_____|
-		if (bLocation.X + B->XSize() > aLocation.X && bLocation.X < aLocation.X + A->XSize())
-		{
-			return hallways;
-		}
-	}
-
-	FString hallwayName = A->GetName() + " - " + B->GetName();
-
-	// We can select any point between aLocation.X to bLocation.X + b width (XSize())
-	// This int is an X coordinate in world space
-	int32 randomLocation = -1;
-	// If there's an overlap between rooms, limit it to that overlap
-	// This prevents overly-winding hallways
-	if (bLocation.X > aLocation.X && bLocation.X < aLocation.X + A->XSize())
-	{
-		// B starts somewhere between start of A and end of A
-		int32 endRange = FMath::Min(bLocation.X + B->XSize(), aLocation.X + A->XSize());
-		if (endRange - bLocation.X - (HALLWAY_EDGE_OFFSET * 2) >= HALLWAY_WIDTH)
-		{
-			randomLocation = Rng.RandRange(bLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
-		}
-	}
-	else if (aLocation.X > bLocation.X && aLocation.X < bLocation.X + B->XSize())
-	{
-		// A starts somewhere between start of B and end of B
-		int32 endRange = FMath::Min(bLocation.X + B->XSize(), aLocation.X + A->XSize());
-		if (endRange - bLocation.X - (HALLWAY_EDGE_OFFSET * 2) >= HALLWAY_WIDTH)
-		{
-			randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, endRange - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
-		}
-	}
-	if(randomLocation == -1)
-	{
-		// Select it to be either completely in A OR completely in B, but not touching both
-		/*if (bLocation.X > aLocation.X)
-		{
-			// A is to the left of B
-			if (Rng.GetFraction() > 0.5f)
-			{
-				// Use A for our point
-			}
-			else
-			{
-				// Use B for our point
-			}
-		}
-		else
-		{
-			// A is to the right of B
-			if (Rng.GetFraction() > 0.5f)
-			{
-				// Use A for our point
-			}
-			else
-			{
-				// Use B for our point
-			}
-		}*/
-		/*randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, bLocation.X + B->XSize() - HALLWAY_EDGE_OFFSET - 1 - HALLWAY_WIDTH);
-	}
-	// Edge cases:
-	// Point not in either room
-	// aLocation ______
-	//          |  A   |
-	//          |______|
-	//                     ^
-	//                     Point
-	//
-	//                    bLocation _________
-	//                             |    B    |
-	//                             |_________|
-	if (randomLocation > aLocation.X + A->XSize() && randomLocation < bLocation.X ||
-		randomLocation > bLocation.X + B->XSize() && randomLocation < aLocation.X)
-	{
-		// Limit it to be somewhere along only room A
-		randomLocation = Rng.RandRange(aLocation.X + HALLWAY_EDGE_OFFSET, aLocation.X + A->XSize() - HALLWAY_EDGE_OFFSET - 1);
-		// New:
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//              ^
-		//              Point
-		//
-		//                    bLocation _________
-		//                             |    B    |
-		//                             |_________|
-	}
-
-	// Edge case:
-	// Rooms aligned on Y axis (no top or bottom)
-	// aLocation ______     bLocation _________
-	//          |  A   |             |    B    |
-	//          |______|             |_________|
-	//           ^
-	//           Point
-	if (aLocation.Y == bLocation.Y)
-	{
-		hallwayName.Append(" (Y Coordinates are the Same)");
-		// A is guaranteed to be the same size or smaller on the Y axis
-		randomLocation = Rng.RandRange(aLocation.Y + HALLWAY_EDGE_OFFSET, aLocation.Y + A->YSize() - HALLWAY_EDGE_OFFSET - 1);
-
-		// aLocation ______                   bLocation _________
-		//          |  A   |<-Point                    |    B    |
-		//          |______|                           |_________|
-		FIntVector hallwayStart; 
-		FIntVector hallwayEnd;
-		if (aLocation.X < bLocation.X)
-		{
-			// A is to the left of B
-			hallwayStart = FIntVector(aLocation.X + A->XSize(), randomLocation, aLocation.Z);
-			hallwayEnd = FIntVector(bLocation.X, randomLocation, bLocation.Z);
-		}
-		else
-		{
-			// B is to the left of A
-			hallwayStart = FIntVector(bLocation.X + B->XSize(), randomLocation, aLocation.Z);
-			hallwayEnd = FIntVector(aLocation.X, randomLocation, bLocation.Z);
-		}
-		// aLocation ______                   bLocation _________
-		//          |  A   |<-hallwayStart hallwayEnd->|    B    |
-		//          |______|                           |_________|
-		
-		// Goal:
-		//           ______                             _________
-		//          |  A   |___________________________|    B    |
-		//          |______|                           |_________|
-
-		//ADungeonRoom* hallway = NewObject<ADungeonRoom>(A->GetOwner(), FName(*hallwayName));
-		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-		hallway->Rename(*hallwayName);
-		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
-			hallwayStart, hallwayEnd, HALLWAY_WIDTH);
-		//hallway->InitializeRoom(
-		//	DefaultTile, hallwayEnd.X - hallwayStart.X, HALLWAY_WIDTH, 
-		//	hallwayStart.X, hallwayStart.Y, hallwayStart.Z, 
-		//	HallwaySymbol, Rng, false);
-		hallways.Add(hallway);
-
-		if (A->MissionNeighbors.Contains(B))
-		{
-			A->MissionNeighbors.Remove(B);
-			A->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(B);
-		}
-		else
-		{
-			B->MissionNeighbors.Remove(A);
-			B->MissionNeighbors.Add(hallway);
-			hallway->MissionNeighbors.Add(A);
-		}
-	}
-	else
-	{
-		// There are now 3 different possibilities:
-		// A (Point only touching room A):
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//           ^
-		//           Point
-		//
-		//    bLocation _________
-		//             |    B    |
-		//             |_________|
-		//
-		// B (Point in the intersection of both rooms:
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//               ^
-		//               Point
-		//
-		//    bLocation _________
-		//             |    B    |
-		//             |_________|
-		//
-		// C (Point only touching room B):
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//           
-		//                   Point
-		//                   v
-		//    bLocation _________
-		//             |    B    |
-		//             |_________|
-
-		// Solutions are as follows:
-		// A:
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//           |
-		//           |
-		//           |
-		//    bLocation _________
-		//           |_|    B    |
-		//             |_________|
-		//
-		// B:
-		// aLocation ______
-		//          |  A   |
-		//          |______|
-		//               |
-		//               |
-		//               |
-		//    bLocation _|_______
-		//             |    B    |
-		//             |_________|
-		//
-		// C:
-		// aLocation ______
-		//          |  A   |_
-		//          |______| |
-		//                   |
-		//                   |
-		//                   |
-		//    bLocation _____|___
-		//             |    B    |
-		//             |_________|
-
-		if (randomLocation < bLocation.X || 
-			randomLocation > aLocation.X && randomLocation > bLocation.X + B->XSize())
-		{
-			// Case A (Point only touching room A)
-			// aLocation ______
-			//          |  A   |
-			//          |______|
-			//           ^
-			//           Point
-			//
-			//    bLocation _________
-			//             |    B    |
-			//             |_________|
-			FString hallwayAName = hallwayName + " (Case A) A";
-			FString hallwayBName = hallwayName + " (Case A) B";
-
-			// Select a random location along the Y direction of room B
-			//    bLocation _________
-			//   Point B ->|    B    |
-			//             |_________|
-			int32 pointB = Rng.RandRange(bLocation.Y - HALLWAY_EDGE_OFFSET, bLocation.Y + B->YSize() - HALLWAY_EDGE_OFFSET - 1);
-			// Define points
-			FIntVector aHallwayStart = FIntVector(randomLocation, aLocation.Y + A->YSize(), aLocation.Z);
-			FIntVector hallwayIntersection = FIntVector(randomLocation, pointB, bLocation.Z);
-
-			// Create hallway A
-			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-			hallwayA->Rename(*hallwayAName);
-
-			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
-			hallways.Add(hallwayA);
-
-			FIntVector bHallwayStart;
-
-			if (aLocation.X > bLocation.X)
-			{
-				// Edge case: B is to the left of A
-				//                            aLocation ______
-				//                                     |  A   |
-				//                                     |______|
-				//                                aHallway->|
-				//                                          |
-				//                                          |
-				//        bLocation _________               |
-				//                 |    B    |______________|<-intersection
-				//                 |_________|^ Point B
-				hallwayBName += " Edge Case";
-				bHallwayStart = FIntVector(bLocation.X + B->XSize() - HALLWAY_WIDTH, pointB, bLocation.Z);
-			}
-			else
-			{
-				//     aLocation ______
-				//              |  A   |
-				//              |______|
-				//     aHallway->|
-				//               |
-				//               |
-				//        bLocation _________
-				// intersection->|_|    B    |
-				//                ^|_________|
-				//         bHallway
-
-				bHallwayStart = FIntVector(bLocation.X, pointB, bLocation.Z);
-			}
-
-			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-			hallwayB->Rename(*hallwayBName);
-			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, bHallwayStart, hallwayIntersection, HALLWAY_WIDTH);
-			hallways.Add(hallwayB);
-
-			// Fix the mission neighbors array
-			if (A->MissionNeighbors.Contains(B))
-			{
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				B->MissionNeighbors.Remove(A);
-				B->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(A);
-			}
-		}
-		else if (	randomLocation > bLocation.X && randomLocation < bLocation.X + B->XSize() &&
-					randomLocation < aLocation.X + A->XSize())
-		{
-			// Case B (Point intersects both rooms)
-			// aLocation ______
-			//          |  A   |
-			//          |______|
-			//               ^
-			//               Point
-			//
-			//    bLocation _________
-			//             |    B    |
-			//             |_________|
-			hallwayName.Append(" (Case B)");
-
-			FIntVector hallwayStart = FIntVector(randomLocation, aLocation.Y + A->YSize(), aLocation.Z);
-			FIntVector hallwayEnd = FIntVector(randomLocation, bLocation.Y, bLocation.Z);
-
-			// aLocation ______
-			//          |  A   |
-			//          |______|
-			//               |
-			//               |
-			//               |
-			//    bLocation _|_______
-			//             |    B    |
-			//             |_________|
-
-			ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-			hallway->Rename(*hallwayName);
-			//hallway->InitializeRoom(
-			//	DefaultTile, hallwayEnd.X - hallwayStart.X, HALLWAY_WIDTH,
-			//	hallwayStart.X, hallwayStart.Y, hallwayStart.Z,
-			//	HallwaySymbol, Rng, false);
-			hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
-				hallwayStart, hallwayEnd, HALLWAY_WIDTH);
-			hallways.Add(hallway);
-
-			// Fix the mission neighbors
-			if (A->MissionNeighbors.Contains(B))
-			{
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallway);
-				hallway->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				B->MissionNeighbors.Remove(A);
-				B->MissionNeighbors.Add(hallway);
-				hallway->MissionNeighbors.Add(A);
-			}
-		}
-		else
-		{
-			// Case C (Point only touching room B)
-			// aLocation ______
-			//          |  A   |
-			//          |______|
-			//           
-			//                   
-			//                   Point
-			//    bLocation _____v___
-			//             |    B    |
-			//             |_________|
-			FString hallwayAName = hallwayName + " (Case C) A";
-			FString hallwayBName = hallwayName + " (Case C) B";
-
-			// Select a random position along the Y direction of room A
-			// aLocation ______
-			//          |  A   |<-Point A
-			//          |______|
-			int32 pointA = Rng.RandRange(aLocation.Y - HALLWAY_EDGE_OFFSET, aLocation.Y + A->YSize() - HALLWAY_EDGE_OFFSET - 1);
-
-			// Create a vector pointing to the top of room B, at the random location we selected
-			FIntVector bHallwayStart = FIntVector(randomLocation, bLocation.Y, bLocation.Z);
-			FIntVector intersection = FIntVector(randomLocation, pointA, aLocation.Z);
-
-			// Create hallway A
-			ADungeonRoom* hallwayB = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-			hallwayB->Rename(*hallwayBName);
-			hallwayB->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, intersection, bHallwayStart, HALLWAY_WIDTH);
-			hallways.Add(hallwayB);
-
-			FIntVector aHallwayStart;
-			if (aLocation.X < bLocation.X)
-			{
-				// Edge case: B is to the left of A
-				//                            aLocation ______
-				//                            Point A->|  A   |
-				//                                     |______|
-				//
-				//
-				//                      Point
-				//        bLocation ____v____
-				//                 |    B    |
-				//                 |_________|
-				aHallwayStart = FIntVector(aLocation.X, pointA, aLocation.Z);
-			}
-			else
-			{
-				// aLocation ______
-				//          |  A   |_
-				//          |______| |
-				//                   |
-				//                   |
-				//                   |
-				//    bLocation _____|___
-				//             |    B    |
-				//             |_________|
-
-				aHallwayStart = FIntVector(aLocation.X + A->XSize(), pointA, bLocation.Z);
-			}
-			
-			ADungeonRoom* hallwayA = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
-			hallwayA->Rename(*hallwayAName);
-			
-			hallwayA->InitializeRoomFromPoints(DefaultTile, HallwaySymbol, aHallwayStart, intersection, HALLWAY_WIDTH);
-			hallways.Add(hallwayA);
-
-			// Fix the mission neighbors array
-			if (A->MissionNeighbors.Contains(B))
-			{
-				A->MissionNeighbors.Remove(B);
-				A->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(B);
-			}
-			else
-			{
-				B->MissionNeighbors.Remove(A);
-				B->MissionNeighbors.Add(hallwayB);
-				hallwayB->MissionNeighbors.Add(hallwayA);
-				hallwayA->MissionNeighbors.Add(A);
-			}
-		}
-	}*/
-
 	return hallways;
 }
 

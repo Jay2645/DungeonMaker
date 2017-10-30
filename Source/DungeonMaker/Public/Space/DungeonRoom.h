@@ -172,7 +172,7 @@ protected:
 
 	UFUNCTION()
 	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
+	
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnPlayerEnterRoom();
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
@@ -194,7 +194,7 @@ public:
 			bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
 	
 	void InitializeRoomFromPoints(const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol, 
-		FIntVector StartLocation, FIntVector EndLocation, int32 Width);
+		FIntVector StartLocation, FIntVector EndLocation, int32 Width, bool bIsJoinedToHallway = false);
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
@@ -222,6 +222,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	TArray<FIntVector> GetTileLocations(const UDungeonTile* Tile);
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	static bool PathIsClear(FIntVector StartLocation, FIntVector EndLocation, int32 SweepWidth, FDungeonFloor& DungeonFloor);
 
 	// Change the tile at the given coordinates to a specified tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
@@ -256,4 +259,7 @@ public:
 		FRandomStream& Rng, const UDungeonMissionSymbol* HallwaySymbol, 
 		const UDungeonTile* DefaultTile, FDungeonFloor& DungeonFloor);
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
+
+protected:
+	static FIntVector FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, const FIntVector& Destination);
 };

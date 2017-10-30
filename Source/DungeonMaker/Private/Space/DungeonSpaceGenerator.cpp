@@ -86,17 +86,24 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		leaf->UpdateRoomWithNeighbors();
 	}
 
-	TSet<ADungeonRoom*> newHallways;
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		newHallways.Append(room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace));
-	}
-	MissionRooms.Append(newHallways);
-
+	// Place our rooms in the dungeon, so we know where they are
+	// during hallway generation
 	for (ADungeonRoom* room : MissionRooms)
 	{
 		room->UpdateDungeonFloor(DungeonSpace);
 	}
+
+	TSet<ADungeonRoom*> newHallways;
+	for (ADungeonRoom* room : MissionRooms)
+	{
+		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace);
+		for (ADungeonRoom* hallway : roomHallways)
+		{
+			hallway->UpdateDungeonFloor(DungeonSpace);
+		}
+		newHallways.Append(roomHallways);
+	}
+	MissionRooms.Append(newHallways);
 
 	DoFloorWideTileReplacement(DungeonSpace, PreGenerationRoomReplacementPhases, Rng);
 
