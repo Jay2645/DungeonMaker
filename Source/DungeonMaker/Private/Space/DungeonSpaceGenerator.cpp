@@ -12,8 +12,11 @@ UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 	MaxGeneratedRooms = -1;
 }
 
-void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng)
+void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
 {
+	TotalSymbolCount = SymbolCount;
+	DungeonSpace.AddDefaulted(1);
+
 	RootLeaf = NewObject<UBSPLeaf>();
 	RootLeaf->InitializeLeaf(0, 0, DungeonSize, DungeonSize, NULL);
 
@@ -90,26 +93,26 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	// during hallway generation
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		room->UpdateDungeonFloor(DungeonSpace);
+		room->UpdateDungeonFloor(DungeonSpace[0]);
 	}
 
 	TSet<ADungeonRoom*> newHallways;
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace);
+		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace[0]);
 		for (ADungeonRoom* hallway : roomHallways)
 		{
-			hallway->UpdateDungeonFloor(DungeonSpace);
+			hallway->UpdateDungeonFloor(DungeonSpace[0]);
 		}
 		newHallways.Append(roomHallways);
 	}
 	MissionRooms.Append(newHallways);
 
-	DoFloorWideTileReplacement(DungeonSpace, PreGenerationRoomReplacementPhases, Rng);
+	DoFloorWideTileReplacement(DungeonSpace[0], PreGenerationRoomReplacementPhases, Rng);
 
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		room->DoTileReplacement(DungeonSpace, Rng);
+		room->DoTileReplacement(DungeonSpace[0], Rng);
 
 		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
 		for (const UDungeonTile* tile : roomTiles)
@@ -126,7 +129,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 		}
 	}
 
-	DoFloorWideTileReplacement(DungeonSpace, PostGenerationRoomReplacementPhases, Rng);
+	DoFloorWideTileReplacement(DungeonSpace[0], PostGenerationRoomReplacementPhases, Rng);
 
 	if (bDebugDungeon)
 	{
@@ -136,7 +139,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(int32 DungeonSize, UDungeonMissi
 	{
 		for (ADungeonRoom* room : MissionRooms)
 		{
-			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace);
+			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace[0]);
 			room->OnRoomGenerationComplete();
 		}
 	}
@@ -148,8 +151,7 @@ void UDungeonSpaceGenerator::DrawDebugSpace()
 	{
 		room->DrawDebugRoom();
 	}
-
-	DungeonSpace.DrawDungeonFloor(GetOwner(), 1);
+	DungeonSpace[0].DrawDungeonFloor(GetOwner(), 1);
 }
 
 void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng)
@@ -315,7 +317,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	room->Rename(*roomName);
 	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultRoomTile, 
-		leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
+		(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
 		leaf->XPosition, leaf->YPosition, 0,
 		(UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
 

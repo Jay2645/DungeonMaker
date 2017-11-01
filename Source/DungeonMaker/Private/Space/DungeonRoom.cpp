@@ -68,7 +68,7 @@ void ADungeonRoom::BeginPlay()
 	int32 zPosition = position.Z;
 
 	// Initialize this room
-	InitializeRoom(DebugDefaultTile, DebugRoomMaxExtents.X, DebugRoomMaxExtents.Y,
+	InitializeRoom(DebugDefaultTile, RoomDifficulty, DebugRoomMaxExtents.X, DebugRoomMaxExtents.Y,
 		xPosition, yPosition, zPosition, Symbol, rng, false);
 	// Create hallways
 	TSet<ADungeonRoom*> newRooms;// = MakeHallways(rng, DebugDefaultTile, DebugHallwaySymbol);
@@ -223,14 +223,14 @@ void ADungeonRoom::InitializeRoomFromPoints(
 		return;
 	}
 
-	InitializeRoom(DefaultRoomTile, width, height,
+	InitializeRoom(DefaultRoomTile, RoomDifficulty, width, height,
 		startingLocation.X, startingLocation.Y, 0,
 		RoomSymbol, rng, false, true);
 
 }
 
 void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
-	int32 MaxXSize, int32 MaxYSize,
+	float Difficulty, int32 MaxXSize, int32 MaxYSize,
 	int32 XPosition, int32 YPosition, int32 ZPosition,
 	const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
 	bool bUseRandomDimensions, bool bIsDeterminedFromPoints)
@@ -238,10 +238,12 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultRoomTile,
 	const int ROOM_BORDER_SIZE = 1;
 	MaxXSize = FMath::Abs(MaxXSize);
 	MaxYSize = FMath::Abs(MaxYSize);
+	RoomLevel = (uint8)ZPosition;
 
 	DebugDefaultTile = DefaultRoomTile;
 	DebugSeed = Rng.GetCurrentSeed();
 	Symbol = RoomSymbol;
+	RoomDifficulty = Difficulty;
 
 	int32 xSize;
 	int32 ySize;
@@ -422,6 +424,12 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 		}
 	}
 
+#if !UE_BUILD_SHIPPING
+	FVector tileStringLocation = GetActorLocation();
+	FVector tileStringOffset = FVector(XSize() * UDungeonTile::TILE_SIZE * 0.5f, YSize() * UDungeonTile::TILE_SIZE * 0.5f, 250.0f);
+	DrawDebugString(GetWorld(), tileStringLocation + tileStringOffset, *GetName());
+#endif
+
 	DetermineGroundScatter(tileLocations, Rng, DungeonFloor);
 }
 
@@ -565,6 +573,13 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 				}
 
 				FTransform tileTransform = GetTileTransformFromTileSpace(location);
+				if (!scatter.bConformToGrid)
+				{
+					FVector offset = FVector::ZeroVector;
+					offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+					offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+					tileTransform.AddToTranslation(offset);
+				}
 				FTransform scatterTransform = scatter.ObjectOffset;
 				FVector tilePosition = tileTransform.GetLocation();
 				FVector scatterPosition = scatterTransform.GetLocation();
@@ -844,6 +859,11 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 {
 	const int32 HALLWAY_WIDTH = 3;
 	const int32 HALLWAY_EDGE_OFFSET = 1;
+	if (A == NULL || B == NULL)
+	{
+		UE_LOG(LogDungeonGen, Fatal, TEXT("One of the supplied rooms to the hallway generator was null!"));
+		return TSet<ADungeonRoom*>();
+	}
 
 	FString hallwayName = A->GetName() + " - " + B->GetName();
 
@@ -897,9 +917,14 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 	if (!bMustBeLHallway && bOverlapX)
 	{
 		int32 midpointX = FMath::RoundToInt(midpoint.X);
+		UE_LOG(LogDungeonGen, Log, TEXT("Current:%d. Intersection min location: %d, Max location: %d"), midpointX, intersectionMinLocation.X, intersectionMaxLocation.X);
+		while (midpointX + HALLWAY_WIDTH > intersectionMaxLocation.X && midpointX > intersectionMinLocation.X)
+		{
+			midpointX--;
+		}
+		UE_LOG(LogDungeonGen, Log, TEXT("New midpoint: %d"), midpointX);
 
 		// Create vertical hallway along midpoint
-
 		FIntVector hallwayStart = FIntVector(midpointX, intersectionMinLocation.Y, intersectionMinLocation.Z);
 		FIntVector hallwayEnd = FIntVector(midpointX, intersectionMaxLocation.Y, intersectionMaxLocation.Z);
 
@@ -925,9 +950,15 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 	}
 	else if (!bMustBeLHallway && bOverlapY)
 	{
+		int32 midpointY = FMath::RoundToInt(midpoint.Y);
+		while (midpointY + HALLWAY_WIDTH > intersectionMinLocation.Y && midpointY >= intersectionMaxLocation.Y)
+		{
+			midpointY--;
+		}
+
 		// Create horizontal hallway along midpoint
-		FIntVector hallwayStart = FIntVector(intersectionMinLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMinLocation.Z);
-		FIntVector hallwayEnd = FIntVector(intersectionMaxLocation.X, FMath::RoundToInt(midpoint.Y), intersectionMaxLocation.Z);
+		FIntVector hallwayStart = FIntVector(intersectionMinLocation.X, midpointY, intersectionMinLocation.Z);
+		FIntVector hallwayEnd = FIntVector(intersectionMaxLocation.X, midpointY, intersectionMaxLocation.Z);
 		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 		hallwayName += " Y";
 		hallway->Rename(*hallwayName);
@@ -1030,7 +1061,7 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		}
 		else
 		{
-			UE_LOG(LogDungeonGen, Error, TEXT("Could not place hallways! No valid way to place them."));
+			UE_LOG(LogDungeonGen, Error, TEXT("No valid way to connect %s and %s!"), *A->GetName(), *B->GetName());
 			
 			// Place them anyway; they'll have to intersect
 			if (Rng.GetFraction() > 0.5f)

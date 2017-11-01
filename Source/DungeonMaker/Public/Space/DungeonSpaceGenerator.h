@@ -38,25 +38,30 @@ public:
 
 	// The maximum size of any room in this dungeon, in meters.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DungeonSize = 128;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxRoomSize = 24;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TSet<UBSPLeaf*> MissionLeaves;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TSet<ADungeonRoom*> MissionRooms;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TSet<ADungeonRoom*> UnresolvedHooks;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	FDungeonFloor DungeonSpace;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	TArray<FDungeonFloor> DungeonSpace;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	int32 TotalSymbolCount;
+
 
 public:	
-	void CreateDungeonSpace(int32 DungeonSize, UDungeonMissionNode* Head, FRandomStream& Rng);
+	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();
 
 protected:

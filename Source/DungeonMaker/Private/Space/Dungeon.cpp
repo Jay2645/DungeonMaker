@@ -23,7 +23,6 @@ void ADungeon::BeginPlay()
 	// Dungeons grow exponentially; we need to create leaves to match
 	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
 	// x^2/1378 + (1319 x)/1378 + 26526/689
-	int32 x = Mission->DungeonSize * DungeonSizeMultiplier;
-	Space->CreateDungeonSpace(FMath::CeilToInt(((x * x) / 1378) + ((1319 * x) / 1378) + (26526 / 689)), Mission->Head, rng);
+	Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
 	//Space->DrawDebugSpace();
 }

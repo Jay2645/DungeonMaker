@@ -78,6 +78,8 @@ public:
 	// Should we place this object randomly in the room?
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bUseRandomLocation;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bConformToGrid;
 	// What's the minimum count of objects we should place?
 	// Only used if we're using a random count.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
@@ -95,6 +97,7 @@ public:
 		AllowedDirections.Add(ETileDirection::Center);
 		bUseRandomCount = false;
 		bUseRandomLocation = true;
+		bConformToGrid = true;
 		bPlaceAdjacentToNextRooms = true;
 		bPlaceAdjacentToPriorRooms = true;
 		MinCount = 0;
@@ -145,7 +148,10 @@ public:
 	// A list of actors that get scattered throughout the room
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Props")
 	TMap<const UDungeonTile*, FGroundScatterSet> GroundScatter;
-
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
+	float RoomDifficulty;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
+	uint8 RoomLevel;
 	// Debug
 
 	// Should this room be generated "standalone"?
@@ -188,7 +194,7 @@ public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 		void InitializeRoom(const UDungeonTile* DefaultRoomTile,
-			int32 MaxXSize, int32 MaxYSize,
+			float Difficulty, int32 MaxXSize, int32 MaxYSize,
 			int32 XPosition, int32 YPosition, int32 ZPosition,
 			const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
 			bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);

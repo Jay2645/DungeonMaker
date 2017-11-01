@@ -49,7 +49,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TSet<UDungeonMissionNode*> ParentNodes;
 
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<FMissionNodeData> NextNodes;
 
