@@ -164,9 +164,6 @@ bool ADungeonRoom::PathIsClear(FIntVector StartLocation, FIntVector EndLocation,
 		ySize = 0;
 	}
 
-	FDungeonRoomMetadata room = DungeonFloor.ToRoom();
-	UE_LOG(LogDungeonGen, Log, TEXT("Dungeon Size: %d x %d; layout: %s"), room.XSize(), room.YSize(), *room.ToString());
-
 	for (int y = StartLocation.Y; y < StartLocation.Y + ySize; y++)
 	{
 		for (int x = StartLocation.X; x < StartLocation.X + xSize; x++)

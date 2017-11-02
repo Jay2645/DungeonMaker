@@ -188,7 +188,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		// We haven't processed all our parent nodes yet!
 		// We should be processed further on down the line, once our next parent node
 		// finishes being processed.
-		UE_LOG(LogDungeonGen, Warning, TEXT("Deferring processing of %s because not all its parents have been processed yet."), *Node->GetSymbolDescription());
+		UE_LOG(LogDungeonGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
 		return true;
 	}
 	if (AvailableLeaves.Num() == 0 && bIsTightCoupling)
@@ -289,11 +289,19 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		AvailableLeaves.Append(neighboringLeaves);
 	}
 	AllOpenLeaves.Append(AvailableLeaves);
+	TArray<UDungeonMissionNode*> deferredNodes;
 	// Now we process all non-tightly coupled nodes
 	for (int i = 0; i < nextToProcess.Num(); i++)
 	{
 		if (MaxGeneratedRooms < 0 || MaxGeneratedRooms > MissionRooms.Num() + 1)
 		{
+			// If we're not tightly coupled, ensure that we have all our required parents generated
+			if (ProcessedNodes.Intersect(nextToProcess[i]->ParentNodes).Num() != nextToProcess[i]->ParentNodes.Num())
+			{
+				// Defer processing a bit
+				deferredNodes.Add(nextToProcess[i]);
+				continue;
+			}
 			bool bSuccesfullyPairedChild = PairNodesToLeaves(nextToProcess[i], AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
 			if (!bSuccesfullyPairedChild)
 			{
@@ -330,6 +338,72 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	MissionRooms.Add(room);
 
 	MissionLeaves.Add(leaf);
+
+	// Attempt to place our deferred nodes
+	TMap<UDungeonMissionNode*, uint8> attemptCount;
+	const uint8 MAX_ATTEMPT_COUNT = 12;
+	while (deferredNodes.Num() > 0)
+	{
+		UDungeonMissionNode* currentNode = deferredNodes[0];
+		deferredNodes.RemoveAt(0);
+		if (attemptCount.Contains(currentNode))
+		{
+			attemptCount[currentNode]++;
+		}
+		else
+		{
+			attemptCount.Add(currentNode, 1);
+		}
+
+		if (ProcessedNodes.Intersect(currentNode->ParentNodes).Num() == currentNode->ParentNodes.Num())
+		{
+			bool bSuccesfullyPairedChild = PairNodesToLeaves(currentNode, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
+			if (!bSuccesfullyPairedChild)
+			{
+				// Failed to find a child leaf; back out
+				ProcessedNodes.Remove(Node);
+				// Restart -- next time, we'll select a different leaf
+				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+			}
+			else
+			{
+				// Stop keeping track of this
+				attemptCount.Remove(currentNode);
+			}
+		}
+		else
+		{
+			if (attemptCount[currentNode] < MAX_ATTEMPT_COUNT)
+			{
+				deferredNodes.Add(currentNode);
+			}
+		}
+	}
+
+	if (attemptCount.Num() > 0)
+	{
+		UE_LOG(LogDungeonGen, Log, TEXT("Couldn't generate %d rooms!"), attemptCount.Num());
+		for (auto& kvp : attemptCount)
+		{
+			UDungeonMissionNode* node = kvp.Key;
+			FString roomName = node->Symbol.GetSymbolDescription();
+			roomName.Append(" (");
+			roomName.AppendInt(node->Symbol.SymbolID);
+			roomName.AppendChar(')');
+			UE_LOG(LogDungeonGen, Log, TEXT("%s is missing:"), *roomName);
+			TSet<UDungeonMissionNode*> missingNodes = node->ParentNodes.Difference(ProcessedNodes);
+
+			for (UDungeonMissionNode* parent : missingNodes)
+			{
+				FString parentRoomName = parent->Symbol.GetSymbolDescription();
+				parentRoomName.Append(" (");
+				parentRoomName.AppendInt(parent->Symbol.SymbolID);
+				parentRoomName.AppendChar(')');
+				UE_LOG(LogDungeonGen, Log, TEXT("%s"), *parentRoomName);
+			}
+		}
+	}
 
 	return true;
 }
