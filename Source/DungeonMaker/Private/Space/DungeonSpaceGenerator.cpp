@@ -322,6 +322,9 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	roomName.AppendInt(leaf->RoomSymbol->Symbol.SymbolID);
 	roomName.AppendChar(')');
 	ADungeonRoom* room = (ADungeonRoom*)GetWorld()->SpawnActor(((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng));
+#if WITH_EDITOR
+	room->SetFolderPath("Rooms");
+#endif
 	room->Rename(*roomName);
 	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultRoomTile, 

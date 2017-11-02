@@ -421,11 +421,11 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 		}
 	}
 
-#if !UE_BUILD_SHIPPING
+/*#if !UE_BUILD_SHIPPING
 	FVector tileStringLocation = GetActorLocation();
 	FVector tileStringOffset = FVector(XSize() * UDungeonTile::TILE_SIZE * 0.5f, YSize() * UDungeonTile::TILE_SIZE * 0.5f, 250.0f);
 	DrawDebugString(GetWorld(), tileStringLocation + tileStringOffset, *GetName());
-#endif
+#endif*/
 
 	DetermineGroundScatter(tileLocations, Rng, DungeonFloor);
 }
@@ -604,6 +604,11 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 				} while (selectedActor == NULL);
 
 				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(selectedActor, objectTransform);
+#if WITH_EDITOR
+				FString folderPath = "Rooms/Scatter Actors/";
+				folderPath.Append(selectedActor->GetName());
+				scatterActor->SetFolderPath(FName(*folderPath));
+#endif
 				currentScatterCount++;
 			}
 		}
@@ -926,6 +931,9 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		FIntVector hallwayEnd = FIntVector(midpointX, intersectionMaxLocation.Y, intersectionMaxLocation.Z);
 
 		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+#if WITH_EDITOR
+		hallway->SetFolderPath("Rooms/Hallways");
+#endif
 		hallwayName += " X";
 		hallway->Rename(*hallwayName);
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
@@ -957,6 +965,9 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		FIntVector hallwayStart = FIntVector(intersectionMinLocation.X, midpointY, intersectionMinLocation.Z);
 		FIntVector hallwayEnd = FIntVector(intersectionMaxLocation.X, midpointY, intersectionMaxLocation.Z);
 		ADungeonRoom* hallway = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+#if WITH_EDITOR
+		hallway->SetFolderPath("Rooms/Hallways");
+#endif
 		hallwayName += " Y";
 		hallway->Rename(*hallwayName);
 		hallway->InitializeRoomFromPoints(DefaultTile, HallwaySymbol,
@@ -982,6 +993,10 @@ TSet<ADungeonRoom*> ADungeonRoom::ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
 		// No overlap at all, or not enough to count
 		ADungeonRoom* hallway1 = (ADungeonRoom*)A->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
 		ADungeonRoom* hallway2 = (ADungeonRoom*)B->GetWorld()->SpawnActor(HallwaySymbol->GetRoomType(Rng));
+#if WITH_EDITOR
+		hallway1->SetFolderPath("Rooms/Hallways");
+		hallway2->SetFolderPath("Rooms/Hallways");
+#endif
 
 		FString hallway1Name = hallwayName + " 1";
 		FString hallway2Name = hallwayName + " 2";
