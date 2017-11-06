@@ -165,7 +165,11 @@ public:
 	int32 DebugSeed;
 	// If we're being generated standalone, what tile should we use as our default tile?
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
-	const UDungeonTile* DebugDefaultTile;
+	const UDungeonTile* DebugDefaultFloorTile;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	const UDungeonTile* DebugDefaultWallTile;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
+	const UDungeonTile* DebugDefaultEntranceTile;
 	// How large can our debug room be?
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
 	FIntVector DebugRoomMaxExtents;
@@ -177,7 +181,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	virtual void OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnPlayerEnterRoom();
@@ -193,14 +198,17 @@ protected:
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-		void InitializeRoom(const UDungeonTile* DefaultRoomTile,
+		void InitializeRoom(const UDungeonTile* DefaultFloorTile,
+			const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
 			float Difficulty, int32 MaxXSize, int32 MaxYSize,
 			int32 XPosition, int32 YPosition, int32 ZPosition,
 			const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
 			bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
 	
-	void InitializeRoomFromPoints(const UDungeonTile* DefaultRoomTile, const UDungeonMissionSymbol* RoomSymbol, 
-		FIntVector StartLocation, FIntVector EndLocation, int32 Width, bool bIsJoinedToHallway = false);
+	void InitializeRoomFromPoints(const UDungeonTile* DefaultFloorTile,
+		const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
+		const UDungeonMissionSymbol* RoomSymbol, FIntVector StartLocation, FIntVector EndLocation,
+		int32 Width, bool bIsJoinedToHallway = false);
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FDungeonFloor& DungeonFloor, FRandomStream &Rng);
@@ -208,7 +216,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void UpdateDungeonFloor(FDungeonFloor& DungeonFloor);
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultTile,
+	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultFloorTile, 
+		const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
 		const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor);
 	// Places this room's tile meshes in the game world.
 	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
@@ -230,7 +239,8 @@ public:
 	TArray<FIntVector> GetTileLocations(const UDungeonTile* Tile);
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	static bool PathIsClear(FIntVector StartLocation, FIntVector EndLocation, int32 SweepWidth, FDungeonFloor& DungeonFloor);
+	static bool PathIsClear(FIntVector StartLocation, FIntVector EndLocation, 
+		int32 SweepWidth, FDungeonFloor& DungeonFloor);
 
 	// Change the tile at the given coordinates to a specified tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
@@ -261,11 +271,13 @@ public:
 	void OnRoomGenerationComplete();
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B,
-		FRandomStream& Rng, const UDungeonMissionSymbol* HallwaySymbol, 
-		const UDungeonTile* DefaultTile, FDungeonFloor& DungeonFloor);
+		static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng,
+			const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor,
+			const UDungeonTile* DefaultFloorTile, const UDungeonTile* DefaultWallTile, 
+			const UDungeonTile* DefaultEntranceTile);
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 
 protected:
-	static FIntVector FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, const FIntVector& Destination);
+	static FIntVector FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, 
+		const FIntVector& Destination);
 };

@@ -22,7 +22,11 @@ public:
 	UBSPLeaf* StartLeaf;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	const UDungeonTile* DefaultRoomTile;
+	const UDungeonTile* DefaultFloorTile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	const UDungeonTile* DefaultWallTile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	const UDungeonTile* DefaultEntranceTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonMissionSymbol* HallwaySymbol;
 

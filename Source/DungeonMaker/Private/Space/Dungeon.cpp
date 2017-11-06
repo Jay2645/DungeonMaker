@@ -20,9 +20,5 @@ void ADungeon::BeginPlay()
 
 	Mission->TryToCreateDungeon(rng);
 
-	// Dungeons grow exponentially; we need to create leaves to match
-	// Equation is based on fitting {{16, 54}, {43, 81}, {69, 108}}
-	// x^2/1378 + (1319 x)/1378 + 26526/689
 	Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
-	//Space->DrawDebugSpace();
 }

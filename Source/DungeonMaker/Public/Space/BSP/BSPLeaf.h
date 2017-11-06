@@ -89,7 +89,7 @@ public:
 	UFUNCTION()
 	void DetermineNeighbors();
 	UFUNCTION()
-	void SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng);
+	void SetMissionNode(UDungeonMissionNode* Node);
 
 	UFUNCTION()
 	void SetRoom(ADungeonRoom* NewRoom);

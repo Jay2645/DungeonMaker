@@ -102,7 +102,7 @@ void UBSPLeaf::DetermineNeighbors()
 	}
 }
 
-void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node, const UDungeonTile* DefaultRoomTile, FRandomStream& Rng)
+void UBSPLeaf::SetMissionNode(UDungeonMissionNode* Node)
 {
 	RoomSymbol = Node;
 }

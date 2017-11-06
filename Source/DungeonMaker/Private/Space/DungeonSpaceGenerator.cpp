@@ -99,7 +99,8 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	TSet<ADungeonRoom*> newHallways;
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultRoomTile, HallwaySymbol, DungeonSpace[0]);
+		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultFloorTile, 
+			DefaultWallTile, DefaultEntranceTile, HallwaySymbol, DungeonSpace[0]);
 		for (ADungeonRoom* hallway : roomHallways)
 		{
 			hallway->UpdateDungeonFloor(DungeonSpace[0]);
@@ -239,7 +240,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	ProcessedNodes.Add(Node);
 
 	// Let this leaf contain the room symbol
-	leaf->SetMissionNode(Node, DefaultRoomTile, Rng);
+	leaf->SetMissionNode(Node);
 	if (leafLink.FromLeaf != NULL)
 	{
 		leaf->AddMissionLeaf(leafLink.FromLeaf);
@@ -327,7 +328,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 #endif
 	room->Rename(*roomName);
 	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
-	room->InitializeRoom(DefaultRoomTile, 
+	room->InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, 
 		(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
 		leaf->XPosition, leaf->YPosition, 0,
 		(UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
@@ -339,7 +340,6 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		UnresolvedHooks.Add(room);
 	}
 	MissionRooms.Add(room);
-
 	MissionLeaves.Add(leaf);
 
 	// Attempt to place our deferred nodes
