@@ -37,6 +37,20 @@ public:
 	float Difficulty;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	ADungeonRoom* SpawnedRoom;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	FNumberedGraphSymbol DungeonSymbol;
+
+	FFloorRoom()
+	{
+		RoomClass = NULL;
+		Location = FIntVector::ZeroValue;
+		NeighboringRooms = TSet<FIntVector>();
+		NeighboringTightlyCoupledRooms = TSet<FIntVector>();
+		IncomingRoom = FIntVector::ZeroValue;
+		Difficulty = 0.0f;
+		SpawnedRoom = NULL;
+		DungeonSymbol = FNumberedGraphSymbol();
+	}
 
 	TSet<FIntVector> GetOutgoingRooms() const
 	{

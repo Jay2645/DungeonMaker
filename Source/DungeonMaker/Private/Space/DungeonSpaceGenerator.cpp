@@ -21,27 +21,32 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	int32 symbolsPerFloor = floorSideSize * floorSideSize;
 	do 
 	{
-		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), TEXT("Floor"));
+		FString floorName = "Floor ";
+		floorName.AppendInt(DungeonSpace.Num());
+
+		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), FName(*floorName));
 		floor->RoomSize = RoomSize;
 		floor->FloorSize = DungeonSize;
-		floor->InitializeDungeonFloor();
+		floor->DungeonLevel = (uint8)DungeonSpace.Num();
+
+		UE_LOG(LogDungeonGen, Log, TEXT("Created floor at %d"), floor->DungeonLevel);
+
 		if (DungeonSpace.Num() > 0)
 		{
 			floor->BottomNeighbor = DungeonSpace[DungeonSpace.Num() - 1];
 			DungeonSpace[DungeonSpace.Num() - 1]->TopNeighbor = floor;
 		}
-		floor->DungeonLevel = (uint8)DungeonSpace.Num();
+
 		DungeonSpace.Add(floor);
 
+		floor->InitializeDungeonFloor();
 		SymbolCount -= symbolsPerFloor;
 	} 
 	while (SymbolCount > 0);
 
 	// Initialize floors
-	for (int i = 0; i < DungeonSpace.Num(); i++)
-	{
-		DungeonSpace[i]->CreateDungeonSpace(Head, FIntVector(0, 0, i), TotalSymbolCount, Rng);
-	}
+	// The bottom floor initializes all other floors as well
+	DungeonSpace[0]->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
 
 	DrawDebugSpace();
 

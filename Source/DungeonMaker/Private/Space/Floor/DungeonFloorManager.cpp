@@ -715,9 +715,15 @@ TSet<FIntVector> UDungeonFloorManager::GetAvailableLocations(FIntVector Location
 					continue;
 				}
 
-				if (GetRoomFromFloorCoordinates(possibleLocation).RoomClass != NULL)
+				UDungeonFloorManager* manager = FindFloorManagerForLocation(possibleLocation);
+				if (manager == NULL)
 				{
-					// Room already placed
+					// Out of range
+					continue;
+				}
+				if (manager->DungeonFloor[possibleLocation.Y][possibleLocation.X].RoomClass != NULL)
+				{
+					// Already placed
 					continue;
 				}
 
@@ -735,6 +741,7 @@ FFloorRoom UDungeonFloorManager::MakeFloorRoom(UDungeonMissionNode* Node, FIntVe
 	room.RoomClass = ((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng);
 	room.Location = Location;
 	room.Difficulty = Node->Symbol.SymbolID / (float)TotalSymbolCount;
+	room.DungeonSymbol = Node->Symbol;
 	return room;
 }
 
@@ -760,9 +767,10 @@ UDungeonFloorManager* UDungeonFloorManager::FindFloorManagerForLocation(FIntVect
 	}
 
 	// Check to see if this is on another level
-	if ((uint8)Location.Z != DungeonLevel)
+	uint8 zLocation = (uint8)Location.Z;
+	if (zLocation != DungeonLevel)
 	{
-		if ((uint8)Location.Z > DungeonLevel)
+		if (zLocation > DungeonLevel)
 		{
 			if (TopNeighbor == NULL)
 			{
@@ -770,10 +778,11 @@ UDungeonFloorManager* UDungeonFloorManager::FindFloorManagerForLocation(FIntVect
 			}
 			else
 			{
+				check(TopNeighbor->DungeonLevel > DungeonLevel);
 				return TopNeighbor->FindFloorManagerForLocation(Location);
 			}
 		}
-		if ((uint8)Location.Z < DungeonLevel)
+		if (zLocation < DungeonLevel)
 		{
 			if (BottomNeighbor == NULL)
 			{
@@ -781,16 +790,17 @@ UDungeonFloorManager* UDungeonFloorManager::FindFloorManagerForLocation(FIntVect
 			}
 			else
 			{
+				check(BottomNeighbor->DungeonLevel < DungeonLevel);
 				return BottomNeighbor->FindFloorManagerForLocation(Location);
 			}
 		}
 	}
-	// DungeonFloor sizes vary from level to level
-	if (Location.X > DungeonFloor.XSize())
+	// DungeonFloor sizes can vary from level to level
+	if (Location.X >= DungeonFloor.XSize())
 	{
 		return NULL;
 	}
-	if (Location.Y > DungeonFloor.YSize())
+	if (Location.Y >= DungeonFloor.YSize())
 	{
 		return NULL;
 	}
@@ -877,17 +887,27 @@ void UDungeonFloorManager::GenerateDungeonRooms(UDungeonMissionNode* Head, FIntV
 		// Update the DungeonFloor with this room
 		SetRoom(room);
 
+		UE_LOG(LogDungeonGen, Log, TEXT("Placing %s (%d) at (%d, %d, %d). Symbols remaining: %d"), *room.DungeonSymbol.GetSymbolDescription(), room.DungeonSymbol.SymbolID, room.Location.X, room.Location.Y, room.Location.Z, missionNodes.Num());
+		
 		// Add new locations to the available rooms array
-		TSet<FIntVector> newLocations = GetAvailableLocations(room.Location);
-		for (FIntVector location : newLocations)
+		if (((UDungeonMissionSymbol*)room.DungeonSymbol.Symbol)->bAllowedToHaveChildren)
 		{
-			availableRooms.Add(location, room.Location);
+			TSet<FIntVector> newLocations = GetAvailableLocations(room.Location);
+			for (FIntVector location : newLocations)
+			{
+				availableRooms.Add(location, room.Location);
+			}
+		}
+		UE_LOG(LogDungeonGen, Log, TEXT("Available rooms:"));
+		for (auto& kvp : availableRooms)
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("(%d, %d, %d)"), kvp.Key.X, kvp.Key.Y, kvp.Key.Z);
 		}
 
 		// Update our list of child rooms
 		// Reserved rooms have already done this, since they have a special
 		// list of tightly-coupled neighbors
-		if (!bWasReserved)
+		if (!bWasReserved && room.Location != room.IncomingRoom)
 		{
 			AddChild(room.Location, room.IncomingRoom);
 		}
