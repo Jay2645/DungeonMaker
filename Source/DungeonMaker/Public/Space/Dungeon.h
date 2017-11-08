@@ -6,7 +6,6 @@
 #include "DungeonTile.h"
 #include "DungeonMissionGenerator.h"
 #include "DungeonSpaceGenerator.h"
-#include "BSP/BSPLeaf.h"
 #include "GameFramework/Actor.h"
 #include "Dungeon.generated.h"
 

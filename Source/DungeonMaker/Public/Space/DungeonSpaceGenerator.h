@@ -5,7 +5,11 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
-#include "BSPLeaf.h"
+#include "Tiles/RoomReplacementPattern.h"
+#include "Tiles/DungeonTile.h"
+#include "Rooms/DungeonRoom.h"
+#include "Floor/DungeonFloorManager.h"
+#include "../Mission/DungeonMissionNode.h"
 #include "DungeonSpaceGenerator.generated.h"
 
 
@@ -17,9 +21,6 @@ class DUNGEONMAKER_API UDungeonSpaceGenerator : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UDungeonSpaceGenerator();
-
-	UBSPLeaf* RootLeaf;
-	UBSPLeaf* StartLeaf;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultFloorTile;
@@ -27,8 +28,6 @@ public:
 	const UDungeonTile* DefaultWallTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultEntranceTile;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	const UDungeonMissionSymbol* HallwaySymbol;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxGeneratedRooms;
@@ -40,14 +39,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;
 
-	// The maximum size of any room in this dungeon, in meters.
+	// The size (in tiles) of this dungeon.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DungeonSize = 128;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 MaxRoomSize = 24;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TSet<UBSPLeaf*> MissionLeaves;
+	// The size of a room in this dungeon, in tiles.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RoomSize = 24;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TSet<ADungeonRoom*> MissionRooms;
@@ -59,17 +57,11 @@ public:
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TArray<FDungeonFloor> DungeonSpace;
+	TArray<UDungeonFloorManager*> DungeonSpace;
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	int32 TotalSymbolCount;
-
 
 public:	
 	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();
-
-protected:
-	bool PairNodesToLeaves(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves, UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves, bool bIsTightCoupling = false);
-	FBSPLink GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng, TSet<UBSPLeaf*>& ProcessedLeaves);
-	void DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng);
 };

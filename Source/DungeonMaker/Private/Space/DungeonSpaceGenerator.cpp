@@ -15,9 +15,37 @@ UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
 {
 	TotalSymbolCount = SymbolCount;
-	DungeonSpace.AddDefaulted(1);
 
-	RootLeaf = NewObject<UBSPLeaf>();
+	// Create floors
+	int32 floorSideSize = FMath::CeilToInt(FMath::Sqrt((float)DungeonSize / (float)RoomSize));
+	int32 symbolsPerFloor = floorSideSize * floorSideSize;
+	do 
+	{
+		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), TEXT("Floor"));
+		floor->RoomSize = RoomSize;
+		floor->FloorSize = DungeonSize;
+		floor->InitializeDungeonFloor();
+		if (DungeonSpace.Num() > 0)
+		{
+			floor->BottomNeighbor = DungeonSpace[DungeonSpace.Num() - 1];
+			DungeonSpace[DungeonSpace.Num() - 1]->TopNeighbor = floor;
+		}
+		floor->DungeonLevel = (uint8)DungeonSpace.Num();
+		DungeonSpace.Add(floor);
+
+		SymbolCount -= symbolsPerFloor;
+	} 
+	while (SymbolCount > 0);
+
+	// Initialize floors
+	for (int i = 0; i < DungeonSpace.Num(); i++)
+	{
+		DungeonSpace[i]->CreateDungeonSpace(Head, FIntVector(0, 0, i), TotalSymbolCount, Rng);
+	}
+
+	DrawDebugSpace();
+
+	/*RootLeaf = NewObject<UBSPLeaf>();
 	RootLeaf->InitializeLeaf(0, 0, DungeonSize, DungeonSize, NULL);
 
 
@@ -143,10 +171,18 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace[0]);
 			room->OnRoomGenerationComplete();
 		}
-	}
+	}*/
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace()
+{
+	for (int i = 0; i < DungeonSpace.Num(); i++)
+	{
+		DungeonSpace[i]->DrawDebugSpace(i);
+	}
+}
+
+/*void UDungeonSpaceGenerator::DrawDebugSpace()
 {
 	for (ADungeonRoom* room : MissionRooms)
 	{
@@ -449,4 +485,4 @@ FBSPLink UDungeonSpaceGenerator::GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBS
 		}
 	} while (leaf.AvailableLeaf == NULL);
 	return leaf;
-}
+}*/
