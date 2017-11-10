@@ -204,9 +204,9 @@ bool URoomReplacementPattern::FindAndReplaceFloor(UDungeonFloorManager* ReplaceF
 	return false;
 }
 
-float URoomReplacementPattern::GetActualSelectionChance(ADungeonRoom* Input) const
+float URoomReplacementPattern::GetActualSelectionChance(ADungeonRoom* InputRoom) const
 {
-	return SelectionChance + (Input->GetRoomDifficulty() * SelectionDifficultyModifier);
+	return SelectionChance + (InputRoom->GetRoomDifficulty() * SelectionDifficultyModifier);
 }
 
 uint8 URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)

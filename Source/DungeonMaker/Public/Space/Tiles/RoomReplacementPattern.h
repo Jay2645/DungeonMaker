@@ -58,7 +58,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
 	bool FindAndReplaceFloor(UDungeonFloorManager* ReplaceFloor);
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
-	float GetActualSelectionChance(ADungeonRoom* Input) const;
+	float GetActualSelectionChance(ADungeonRoom* InputRoom) const;
 
 protected:
 	uint8 MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
