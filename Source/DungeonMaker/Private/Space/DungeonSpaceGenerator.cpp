@@ -2,7 +2,6 @@
 
 #include "DungeonSpaceGenerator.h"
 
-
 // Sets default values for this component's properties
 UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 {
@@ -29,7 +28,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		floor->FloorSize = DungeonSize;
 		floor->DungeonLevel = (uint8)DungeonSpace.Num();
 
-		UE_LOG(LogDungeonGen, Log, TEXT("Created floor at %d"), floor->DungeonLevel);
+		UE_LOG(LogSpaceGen, Log, TEXT("Created floor at %d"), floor->DungeonLevel);
 
 		if (DungeonSpace.Num() > 0)
 		{
@@ -67,7 +66,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 			UBSPLeaf* leaf = leaves[i];
 			if (leaf == NULL)
 			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("Null leaf found!"));
+				UE_LOG(LogSpaceGen, Warning, TEXT("Null leaf found!"));
 				continue;
 			}
 			nextLeaves.Add(leaf);
@@ -114,7 +113,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
+	UE_LOG(LogSpaceGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
 
 	// Once we're done making leaves, do some post-processing
 	for (UBSPLeaf* leaf : MissionLeaves)
@@ -230,18 +229,18 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		// We haven't processed all our parent nodes yet!
 		// We should be processed further on down the line, once our next parent node
 		// finishes being processed.
-		UE_LOG(LogDungeonGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
+		UE_LOG(LogSpaceGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
 		return true;
 	}
 	if (AvailableLeaves.Num() == 0 && bIsTightCoupling)
 	{
 		// Out of leaves to process
-		UE_LOG(LogDungeonGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
+		UE_LOG(LogSpaceGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 	if (AllOpenLeaves.Num() == 0 && !bIsTightCoupling)
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
+		UE_LOG(LogSpaceGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 	if (MaxGeneratedRooms >= 0 && MaxGeneratedRooms <= MissionRooms.Num())
@@ -250,7 +249,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		return true;
 	}
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableLeaves.Num(), Node->NextNodes.Num());
+	UE_LOG(LogSpaceGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableLeaves.Num(), Node->NextNodes.Num());
 	// Find an open leaf to add this to
 	UBSPLeaf* leaf = NULL;
 	FBSPLink leafLink;
@@ -261,7 +260,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		if (leaf == NULL)
 		{
 			// No open leaf available for us; back out
-			UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
+			UE_LOG(LogSpaceGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
 			return false;
 		}
 	}
@@ -272,7 +271,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		if (leaf == NULL)
 		{
 			// No open leaf available for us; back out
-			UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
+			UE_LOG(LogSpaceGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
 			return false;
 		}
 	}
@@ -315,7 +314,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 					// Failed to find a child leaf; back out
 					ProcessedNodes.Remove(Node);
 					// Restart -- next time, we'll select a different leaf
-					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
+					UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
 					return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 				}
 			}
@@ -350,7 +349,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
 				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 			}
 		}
@@ -368,7 +367,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 	room->SetFolderPath("Rooms");
 #endif
 	room->Rename(*roomName);
-	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
+	UE_LOG(LogSpaceGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, 
 		(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
 		leaf->XPosition, leaf->YPosition, 0,
@@ -407,7 +406,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
 				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
 			}
 			else
@@ -427,7 +426,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 
 	if (attemptCount.Num() > 0)
 	{
-		UE_LOG(LogDungeonGen, Log, TEXT("Couldn't generate %d rooms!"), attemptCount.Num());
+		UE_LOG(LogSpaceGen, Log, TEXT("Couldn't generate %d rooms!"), attemptCount.Num());
 		for (auto& kvp : attemptCount)
 		{
 			UDungeonMissionNode* node = kvp.Key;
@@ -435,7 +434,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 			roomName.Append(" (");
 			roomName.AppendInt(node->Symbol.SymbolID);
 			roomName.AppendChar(')');
-			UE_LOG(LogDungeonGen, Log, TEXT("%s is missing:"), *roomName);
+			UE_LOG(LogSpaceGen, Log, TEXT("%s is missing:"), *roomName);
 			TSet<UDungeonMissionNode*> missingNodes = node->ParentNodes.Difference(ProcessedNodes);
 
 			for (UDungeonMissionNode* parent : missingNodes)
@@ -444,7 +443,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 				parentRoomName.Append(" (");
 				parentRoomName.AppendInt(parent->Symbol.SymbolID);
 				parentRoomName.AppendChar(')');
-				UE_LOG(LogDungeonGen, Log, TEXT("%s"), *parentRoomName);
+				UE_LOG(LogSpaceGen, Log, TEXT("%s"), *parentRoomName);
 			}
 		}
 	}
@@ -484,7 +483,7 @@ FBSPLink UDungeonSpaceGenerator::GetOpenLeaf(UDungeonMissionNode* Node, TSet<FBS
 		if (neighbors.Num() < nodesToCheck.Num())
 		{
 			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
-			UE_LOG(LogDungeonGen, Warning, TEXT("Abandoning processing %s for node %s because it has fewer neighbors (%d) than it does tightly-coupled nodes (%d)."), *leaf.AvailableLeaf->GetName(), *Node->GetSymbolDescription(), AvailableLeaves.Num(), nodesToCheck.Num());
+			UE_LOG(LogSpaceGen, Warning, TEXT("Abandoning processing %s for node %s because it has fewer neighbors (%d) than it does tightly-coupled nodes (%d)."), *leaf.AvailableLeaf->GetName(), *Node->GetSymbolDescription(), AvailableLeaves.Num(), nodesToCheck.Num());
 			leaf = FBSPLink();
 			continue;
 		}

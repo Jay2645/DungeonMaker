@@ -6,7 +6,7 @@
 #include "StateMachineSymbol.h"
 #include "GrammarAlphabet.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogDungeonGen, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogMissionGen, Log, All);
 
 /**
  * Very similar to a State Machine Symbol, but with an additional bool.

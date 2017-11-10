@@ -63,7 +63,7 @@ void FDungeonFloor::Set(FFloorRoom Room)
 
 void FDungeonFloor::UpdateChildren(FIntVector A, FIntVector B)
 {
-	UE_LOG(LogDungeonGen, Log, TEXT("(%d, %d, %d) neighbors (%d, %d, %d)."), A.X, A.Y, A.Z, B.X, B.Y, B.Z);
+	UE_LOG(LogSpaceGen, Log, TEXT("(%d, %d, %d) neighbors (%d, %d, %d)."), A.X, A.Y, A.Z, B.X, B.Y, B.Z);
 	DungeonRooms[A.Y][A.X].NeighboringRooms.Add(B);
 	DungeonRooms[B.Y][B.X].NeighboringRooms.Add(A);
 }

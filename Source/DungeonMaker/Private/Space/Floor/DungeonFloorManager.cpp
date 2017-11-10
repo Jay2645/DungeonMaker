@@ -81,7 +81,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 			UBSPLeaf* leaf = leaves[i];
 			if (leaf == NULL)
 			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("Null leaf found!"));
+				UE_LOG(LogSpaceGen, Warning, TEXT("Null leaf found!"));
 				continue;
 			}
 			nextLeaves.Add(leaf);
@@ -128,7 +128,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	TSet<UBSPLeaf*> processedLeaves;
 	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
+	UE_LOG(LogSpaceGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
 
 	// Once we're done making leaves, do some post-processing
 	for (UBSPLeaf* leaf : MissionLeaves)
@@ -235,22 +235,22 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 		// We haven't processed all our parent nodes yet!
 		// We should be processed further on down the line, once our next parent node
 		// finishes being processed.
-		UE_LOG(LogDungeonGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
+		UE_LOG(LogSpaceGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
 		return true;
 	}
 	if (AvailableRooms.Num() == 0 && bIsTightCoupling)
 	{
 		// Out of leaves to process
-		UE_LOG(LogDungeonGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
+		UE_LOG(LogSpaceGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 	if (AllOpenRooms.Num() == 0 && !bIsTightCoupling)
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
+		UE_LOG(LogSpaceGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableRooms.Num(), Node->NextNodes.Num());
+	UE_LOG(LogSpaceGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableRooms.Num(), Node->NextNodes.Num());
 	// Find an open room to add this to
 	TKeyValuePair<FIntVector, FIntVector> roomLocation;
 	if (bIsTightCoupling)
@@ -287,7 +287,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 					// Failed to find a child leaf; back out
 					ProcessedNodes.Remove(Node);
 					// Restart -- next time, we'll select a different leaf
-					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
+					UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
 					return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 				}
 		}
@@ -319,7 +319,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
 				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 			}
 	}
@@ -336,7 +336,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 	room->SetFolderPath("Rooms");
 #endif
 	room->Rename(*roomName);
-	UE_LOG(LogDungeonGen, Log, TEXT("Created room for %s."), *roomName);
+	UE_LOG(LogSpaceGen, Log, TEXT("Created room for %s."), *roomName);
 	room->InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, 
 		(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
 		leaf->XPosition, leaf->YPosition, 0,
@@ -375,7 +375,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
 				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 			}
 			else
@@ -395,7 +395,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 
 	if (attemptCount.Num() > 0)
 	{
-		UE_LOG(LogDungeonGen, Log, TEXT("Couldn't generate %d rooms!"), attemptCount.Num());
+		UE_LOG(LogSpaceGen, Log, TEXT("Couldn't generate %d rooms!"), attemptCount.Num());
 		for (auto& kvp : attemptCount)
 		{
 			UDungeonMissionNode* node = kvp.Key;
@@ -403,7 +403,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 			roomName.Append(" (");
 			roomName.AppendInt(node->Symbol.SymbolID);
 			roomName.AppendChar(')');
-			UE_LOG(LogDungeonGen, Log, TEXT("%s is missing:"), *roomName);
+			UE_LOG(LogSpaceGen, Log, TEXT("%s is missing:"), *roomName);
 			TSet<UDungeonMissionNode*> missingNodes = node->ParentNodes.Difference(ProcessedNodes);
 
 			for (UDungeonMissionNode* parent : missingNodes)
@@ -412,7 +412,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 				parentRoomName.Append(" (");
 				parentRoomName.AppendInt(parent->Symbol.SymbolID);
 				parentRoomName.AppendChar(')');
-				UE_LOG(LogDungeonGen, Log, TEXT("%s"), *parentRoomName);
+				UE_LOG(LogSpaceGen, Log, TEXT("%s"), *parentRoomName);
 			}
 		}
 	}
@@ -463,7 +463,7 @@ void UDungeonFloorManager::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVec
 	} while (!bPathIsValid);*/
 	if (!bPathIsValid)
 	{
-		UE_LOG(LogDungeonGen, Error, TEXT("Invalid path!"));
+		UE_LOG(LogSpaceGen, Error, TEXT("Invalid path!"));
 	}
 }
 
@@ -480,7 +480,7 @@ const UDungeonTile* UDungeonFloorManager::GetTileFromTileSpace(FIntVector TileSp
 	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
 	if (room.SpawnedRoom == NULL)
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
+		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
 		return NULL;
 	}
 	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
@@ -493,7 +493,7 @@ void UDungeonFloorManager::UpdateTileFromTileSpace(FIntVector TileSpaceLocation,
 	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
 	if (room.SpawnedRoom == NULL)
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
+		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
 		return;
 	}
 	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
@@ -597,7 +597,7 @@ void UDungeonFloorManager::SetRoom(FFloorRoom Room)
 	UDungeonFloorManager* manager = FindFloorManagerForLocation(Room.Location);
 	if (manager == NULL)
 	{
-		UE_LOG(LogDungeonGen, Error, TEXT("Could not set room because floor manager was invalid!"));
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room because floor manager was invalid!"));
 		return;
 	}
 	
@@ -741,16 +741,16 @@ bool UDungeonFloorManager::VerifyPathIsValid(FIntVector StartLocation)
 		{
 			// Everything left in this list has already been deferred!
 			// Path isn't valid
-			UE_LOG(LogDungeonGen, Warning, TEXT("Couldn't process %d nodes because they've been deferred!"), nextToProcess.Num());
-			UE_LOG(LogDungeonGen, Warning, TEXT("Nodes left to process:"));
+			UE_LOG(LogSpaceGen, Warning, TEXT("Couldn't process %d nodes because they've been deferred!"), nextToProcess.Num());
+			UE_LOG(LogSpaceGen, Warning, TEXT("Nodes left to process:"));
 			for (FFloorRoom room : nextToProcess)
 			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("%s (%d)"), *room.DungeonSymbol.GetSymbolDescription(), room.DungeonSymbol.SymbolID);
+				UE_LOG(LogSpaceGen, Warning, TEXT("%s (%d)"), *room.DungeonSymbol.GetSymbolDescription(), room.DungeonSymbol.SymbolID);
 			}
-			UE_LOG(LogDungeonGen, Warning, TEXT("Deferred nodes"));
+			UE_LOG(LogSpaceGen, Warning, TEXT("Deferred nodes"));
 			for (UDungeonMissionNode* node : deferred)
 			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("%s (%d)"), *node->GetSymbolDescription(), node->Symbol.SymbolID);
+				UE_LOG(LogSpaceGen, Warning, TEXT("%s (%d)"), *node->GetSymbolDescription(), node->Symbol.SymbolID);
 			}
 			return false;
 		}
@@ -767,10 +767,10 @@ bool UDungeonFloorManager::VerifyPathIsValid(FIntVector StartLocation)
 		TSet<UDungeonMissionNode*> unprocessedParents = node->ParentNodes.Difference(seen);
 		if (unprocessedParents.Num() > 0)
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());
+			UE_LOG(LogSpaceGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());
 			for (UDungeonMissionNode* parent : unprocessedParents)
 			{
-				UE_LOG(LogDungeonGen, Log, TEXT("Missing: %s (%d)"), *parent->GetSymbolDescription(), parent->Symbol.SymbolID);
+				UE_LOG(LogSpaceGen, Log, TEXT("Missing: %s (%d)"), *parent->GetSymbolDescription(), parent->Symbol.SymbolID);
 			}
 			// Defer this node
 			nextToProcess.Add(next);

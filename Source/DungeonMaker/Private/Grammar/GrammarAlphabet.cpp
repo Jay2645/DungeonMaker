@@ -2,4 +2,4 @@
 
 #include "GrammarAlphabet.h"
 
-DEFINE_LOG_CATEGORY(LogDungeonGen);
+DEFINE_LOG_CATEGORY(LogMissionGen);

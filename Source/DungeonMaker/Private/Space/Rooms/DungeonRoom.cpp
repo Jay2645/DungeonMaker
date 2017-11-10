@@ -4,6 +4,7 @@
 #include <DrawDebugHelpers.h>
 #include "GameFramework/Character.h"
 
+DEFINE_LOG_CATEGORY(LogSpaceGen);
 
 // Sets default values for this component's properties
 ADungeonRoom::ADungeonRoom()
@@ -434,7 +435,7 @@ void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 				// Already processed this room
 				continue;
 			}
-			UE_LOG(LogDungeonGen, Log, TEXT("%s is neighboring %s."), *GetName(), *room->GetName());
+			UE_LOG(LogSpaceGen, Log, TEXT("%s is neighboring %s."), *GetName(), *room->GetName());
 			seenRooms.Add(room);
 			// Work out where the walls of this neighbor are
 			if (x == -1 || x == XSize())
@@ -521,13 +522,13 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 
 void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, FRandomStream& Rng)
 {
-	UE_LOG(LogDungeonGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), TileLocations.Num());
+	UE_LOG(LogSpaceGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), TileLocations.Num());
 	for (auto& kvp : TileLocations)
 	{
 		const UDungeonTile* tile = kvp.Key;
 		if (!GroundScatter.Contains(tile))
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("%s had no ground scatter defined for %s."), *GetName(), *tile->TileID.ToString());
+			UE_LOG(LogSpaceGen, Log, TEXT("%s had no ground scatter defined for %s."), *GetName(), *tile->TileID.ToString());
 			continue;
 		}
 		FGroundScatterSet scatterSet = GroundScatter[tile];
@@ -536,7 +537,7 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 		{
 			if (scatter.ScatterObjects.Num() == 0)
 			{
-				UE_LOG(LogDungeonGen, Warning, TEXT("Null scatter object in room %s!"), *GetName());
+				UE_LOG(LogSpaceGen, Warning, TEXT("Null scatter object in room %s!"), *GetName());
 				continue;
 			}
 			TArray<FIntVector> locations;
@@ -807,7 +808,7 @@ void ADungeonRoom::DrawDebugRoom()
 {
 	if (XSize() == 0 || YSize() == 0)
 	{
-		UE_LOG(LogDungeonGen, Error, TEXT("%s had no room defined (both X and Y sizes were set to 0)!"), *Symbol->Description.ToString());
+		UE_LOG(LogSpaceGen, Error, TEXT("%s had no room defined (both X and Y sizes were set to 0)!"), *Symbol->Description.ToString());
 	}
 
 	float halfX = XSize() / 2.0f;
@@ -979,7 +980,7 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 	const int32 HALLWAY_EDGE_OFFSET = 1;
 	if (A == NULL || B == NULL)
 	{
-		UE_LOG(LogDungeonGen, Fatal, TEXT("One of the supplied rooms to the hallway generator was null!"));
+		UE_LOG(LogSpaceGen, Fatal, TEXT("One of the supplied rooms to the hallway generator was null!"));
 		return TSet<ADungeonRoom*>();
 	}
 
@@ -1025,15 +1026,15 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogDungeonGen, Log, TEXT("Connecting %s (%d, %d, %d) - (%d, %d, %d) to %s (%d, %d, %d) - (%d, %d, %d)."),
+	UE_LOG(LogSpaceGen, Log, TEXT("Connecting %s (%d, %d, %d) - (%d, %d, %d) to %s (%d, %d, %d) - (%d, %d, %d)."),
 		*A->GetName(), aMinLocation.X, aMinLocation.Y, aMinLocation.Z, aMaxLocation.X, aMaxLocation.Y, aMaxLocation.Z,
 		*B->GetName(), bMinLocation.X, bMinLocation.Y, bMinLocation.Z, bMaxLocation.X, bMaxLocation.Y, bMaxLocation.Z);
-	UE_LOG(LogDungeonGen, Log, TEXT("Hallways intersect from (%d, %d, %d) (min) to (%d, %d, %d) (max). Midpoint is (%f, %f, %f)."),
+	UE_LOG(LogSpaceGen, Log, TEXT("Hallways intersect from (%d, %d, %d) (min) to (%d, %d, %d) (max). Midpoint is (%f, %f, %f)."),
 		intersectionMinLocation.X, intersectionMinLocation.Y, intersectionMinLocation.Z, intersectionMaxLocation.X, intersectionMaxLocation.Y, intersectionMaxLocation.Z,
 		midpoint.X, midpoint.Y, midpoint.Z);
 	if (bMustBeLHallway)
 	{
-		UE_LOG(LogDungeonGen, Log, TEXT("There's not enough space between our rooms to generate a normal hallway; it will have a corner."));
+		UE_LOG(LogSpaceGen, Log, TEXT("There's not enough space between our rooms to generate a normal hallway; it will have a corner."));
 	}
 #endif
 
@@ -1041,13 +1042,13 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 	if (!bMustBeLHallway && bOverlapX)
 	{
 		int32 midpointX = FMath::RoundToInt(midpoint.X);
-		UE_LOG(LogDungeonGen, Log, TEXT("Current:%d. Intersection min location: %d, Max location: %d"), midpointX, intersectionMinLocation.X, intersectionMaxLocation.X);
+		UE_LOG(LogSpaceGen, Log, TEXT("Current:%d. Intersection min location: %d, Max location: %d"), midpointX, intersectionMinLocation.X, intersectionMaxLocation.X);
 		while (midpointX + HALLWAY_WIDTH > intersectionMaxLocation.X && 
 			midpointX > intersectionMinLocation.X)
 		{
 			midpointX--;
 		}
-		UE_LOG(LogDungeonGen, Log, TEXT("New midpoint: %d"), midpointX);
+		UE_LOG(LogSpaceGen, Log, TEXT("New midpoint: %d"), midpointX);
 
 		// Create vertical hallway along midpoint
 		// We "undo" the offset on the one axis that needs to be along the edge
@@ -1133,7 +1134,7 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 		FIntVector aMidpoint = FIntVector(FMath::RoundToInt((aMinLocation.X + aMaxLocation.X) / 2.0f), FMath::RoundToInt((aMinLocation.Y + aMaxLocation.Y) / 2.0f), FMath::RoundToInt((aMinLocation.Z + aMaxLocation.Z) / 2.0f));
 		FIntVector bMidpoint = FIntVector(FMath::RoundToInt((bMinLocation.X + bMaxLocation.X) / 2.0f), FMath::RoundToInt((bMinLocation.Y + bMaxLocation.Y) / 2.0f), FMath::RoundToInt((bMinLocation.Z + bMaxLocation.Z) / 2.0f));
 		
-		UE_LOG(LogDungeonGen, Log, TEXT("First midpoint: (%d, %d, %d); second midpoint: (%d, %d, %d)."),
+		UE_LOG(LogSpaceGen, Log, TEXT("First midpoint: (%d, %d, %d); second midpoint: (%d, %d, %d)."),
 			aMidpoint.X, aMidpoint.Y, aMidpoint.Z, bMidpoint.X, bMidpoint.Y, bMidpoint.Z);
 
 		// Intersection 1: Uses the X midpoint of A and the Y midpoint of B
@@ -1148,7 +1149,7 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 		FIntVector hallwayBStart1 = FindClosestVertex(FIntVector(bMinLocation.X, bMidpoint.Y, 0),
 			FIntVector(bMaxLocation.X, bMidpoint.Y, 0),
 			intersection1);
-		UE_LOG(LogDungeonGen, Log, TEXT("Intersection 1: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
+		UE_LOG(LogSpaceGen, Log, TEXT("Intersection 1: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
 			hallwayAStart1.X, hallwayAStart1.Y, hallwayAStart1.Z,
 			intersection1.X, intersection1.Y, intersection1.Z, 
 			hallwayBStart1.X, hallwayBStart1.Y, hallwayBStart1.Z);
@@ -1165,7 +1166,7 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 		FIntVector hallwayBStart2 = FindClosestVertex(FIntVector(bMidpoint.X, bMinLocation.Y, 0),
 			FIntVector(bMidpoint.X, bMaxLocation.Y, 0),
 			intersection2);
-		UE_LOG(LogDungeonGen, Log, TEXT("Intersection 2: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
+		UE_LOG(LogSpaceGen, Log, TEXT("Intersection 2: (%d, %d, %d) -> (%d, %d, %d) -> (%d, %d, %d)."),
 			hallwayAStart2.X, hallwayAStart2.Y, hallwayAStart2.Z,
 			intersection2.X, intersection2.Y, intersection2.Z,
 			hallwayBStart2.X, hallwayBStart2.Y, hallwayBStart2.Z);
@@ -1177,11 +1178,11 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 
 		if (bCanPlaceHallway1)
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("Intersection 1 can be placed."));
+			UE_LOG(LogSpaceGen, Log, TEXT("Intersection 1 can be placed."));
 		}
 		if (bCanPlaceHallway2)
 		{
-			UE_LOG(LogDungeonGen, Log, TEXT("Intersection 2 can be placed."));
+			UE_LOG(LogSpaceGen, Log, TEXT("Intersection 2 can be placed."));
 		}
 
 		if (bCanPlaceHallway1 && bCanPlaceHallway2 && Rng.GetFraction() > 0.5f || bCanPlaceHallway1 && !bCanPlaceHallway2)
@@ -1200,7 +1201,7 @@ FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 		}
 		else
 		{
-			UE_LOG(LogDungeonGen, Error, TEXT("No valid way to connect %s and %s!"), *A->GetName(), *B->GetName());
+			UE_LOG(LogSpaceGen, Error, TEXT("No valid way to connect %s and %s!"), *A->GetName(), *B->GetName());
 			
 			// Place them anyway; they'll have to intersect
 			if (Rng.GetFraction() > 0.5f)

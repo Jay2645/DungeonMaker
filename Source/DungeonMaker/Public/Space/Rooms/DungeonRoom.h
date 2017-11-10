@@ -11,6 +11,8 @@
 #include "DungeonFloorManager.h"
 #include "DungeonRoom.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogSpaceGen, Log, All);
+
 UENUM(BlueprintType)
 enum class ETileDirection : uint8
 {

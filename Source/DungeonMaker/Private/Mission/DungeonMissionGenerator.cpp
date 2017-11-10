@@ -52,7 +52,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogDungeonGen, Log, TEXT("Completed dungeon:"));
+	UE_LOG(LogMissionGen, Log, TEXT("Completed dungeon:"));
 	PrintDebugDungeon();
 #endif
 }
@@ -68,7 +68,7 @@ void UDungeonMissionGenerator::FindNodeMatches(TArray<const UDungeonMissionGramm
 	TArray<FGraphLink> links;
 	links.Add(us);
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Checking if %s is a valid input."), *us.Symbol.GetSymbolDescription());
+	UE_LOG(LogMissionGen, Log, TEXT("Checking if %s is a valid input."), *us.Symbol.GetSymbolDescription());
 
 	CheckGrammarMatches(AllowedGrammars, links, StartingLocation, bFoundMatches, OutAcceptableGrammars);
 
@@ -82,7 +82,7 @@ void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMiss
 	us.Symbol = StartingLocation->Symbol;
 	us.bIsTightlyCoupled = StartingLocation->bTightlyCoupledToParent;
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Trying to match childen of %s!"), *us.Symbol.GetSymbolDescription());
+	UE_LOG(LogMissionGen, Log, TEXT("Trying to match childen of %s!"), *us.Symbol.GetSymbolDescription());
 
 	// Iterate over each child
 	for (FMissionNodeData& nextNode : StartingLocation->NextNodes)
@@ -97,7 +97,7 @@ void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMiss
 
 		links.Add(next);
 
-		UE_LOG(LogDungeonGen, Log, TEXT("Checking coupling %s->%s"), *us.Symbol.GetSymbolDescription(), *next.Symbol.GetSymbolDescription());
+		UE_LOG(LogMissionGen, Log, TEXT("Checking coupling %s->%s"), *us.Symbol.GetSymbolDescription(), *next.Symbol.GetSymbolDescription());
 
 		CheckGrammarMatches(AllowedGrammars, links, StartingLocation, false, OutAcceptableGrammars);
 	}
@@ -105,7 +105,7 @@ void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMiss
 #if !UE_BUILD_SHIPPING
 	if (OutAcceptableGrammars.Num() == 0)
 	{
-		UE_LOG(LogDungeonGen, Warning, TEXT("No symbols matched any child combination of %s."), *StartingLocation->GetSymbolDescription());
+		UE_LOG(LogMissionGen, Warning, TEXT("No symbols matched any child combination of %s."), *StartingLocation->GetSymbolDescription());
 	}
 #endif
 }
@@ -140,7 +140,7 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 					}
 				}
 			}
-			UE_LOG(LogDungeonGen, Log, TEXT("Replacing %s with %s."), *linkString, *output->ToString());
+			UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *linkString, *output->ToString());
 #endif
 			// Make us less likely to be chosen if we've been chosen a lot before
 			float weightModifier = 1.0f;
@@ -250,7 +250,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingL
 	checkf(AllowedGrammars.Num() > 0, TEXT("There were no allowed grammars for dungeon generation!"));
 	checkf(RemainingMaxStepCount >= 0, TEXT("Dungeon generation ran out of steps! You have an overflow issue."));
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Trying to create a dungeon starting from %s."), *StartingLocation->GetSymbolDescription());
+	UE_LOG(LogMissionGen, Log, TEXT("Trying to create a dungeon starting from %s."), *StartingLocation->GetSymbolDescription());
 
 	if (StartingLocation->Symbol.Symbol->bIsTerminalNode)
 	{
@@ -272,7 +272,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingL
 	// Try to see if we have a grammar that accepts only us
 	FindNodeMatches(AllowedGrammars, StartingLocation, acceptableGrammars);
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Found %d acceptable grammars for %s."), acceptableGrammars.Num(), *StartingLocation->GetSymbolDescription());
+	UE_LOG(LogMissionGen, Log, TEXT("Found %d acceptable grammars for %s."), acceptableGrammars.Num(), *StartingLocation->GetSymbolDescription());
 
 	// Replace and look again
 	if (acceptableGrammars.Num() > 0)
@@ -283,7 +283,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingL
 	else
 	{
 		// No matching grammars; turn into a hook
-		UE_LOG(LogDungeonGen, Error, TEXT("%s had no matching grammars."), *StartingLocation->GetSymbolDescription());
+		UE_LOG(LogMissionGen, Error, TEXT("%s had no matching grammars."), *StartingLocation->GetSymbolDescription());
 		UnresolvedHooks.Add(StartingLocation);
 		for (FMissionNodeData& node : StartingLocation->NextNodes)
 		{
@@ -365,7 +365,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 	}
 	const UGraphOutputGrammar* shape = GrammarReplaceResult.Grammar;
 	FString grammarChain = shape->ToString();
-	UE_LOG(LogDungeonGen, Log, TEXT("Replacing %s with %s."), *initialShape, *grammarChain);
+	UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *initialShape, *grammarChain);
 
 	TArray<FGraphLink> toProcess;
 	FGraphLink head = shape->Head;
@@ -441,7 +441,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogDungeonGen, Log, TEXT("Dungeon after replacement:"));
+	UE_LOG(LogMissionGen, Log, TEXT("Dungeon after replacement:"));
 	PrintDebugDungeon();
 #endif
 }

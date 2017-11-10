@@ -49,7 +49,7 @@ void UDungeonMissionNode::PrintNode(int32 IndentLevel)
 	output.Append(" (");
 	output.AppendInt(Symbol.SymbolID);
 	output.AppendChar(')');
-	UE_LOG(LogDungeonGen, Log, TEXT("%s"), *output);
+	UE_LOG(LogMissionGen, Log, TEXT("%s"), *output);
 	
 	for (FMissionNodeData& node : NextNodes)
 	{
