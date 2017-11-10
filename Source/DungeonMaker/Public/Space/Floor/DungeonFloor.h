@@ -23,6 +23,7 @@ struct DUNGEONMAKER_API FFloorRoom
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	TSubclassOf<ADungeonRoom> RoomClass;
+	UDungeonMissionNode* RoomNode;
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FIntVector Location;

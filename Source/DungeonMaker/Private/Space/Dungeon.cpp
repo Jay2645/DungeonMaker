@@ -16,8 +16,17 @@ ADungeon::ADungeon()
 void ADungeon::BeginPlay()
 {
 	Super::BeginPlay();
-	FRandomStream rng(Seed);
-
+	FRandomStream rng;
+	if (bChooseRandomSeedAtRuntime)
+	{
+		FDateTime now = FDateTime::UtcNow();
+		rng = FRandomStream(now.ToUnixTimestamp());
+	}
+	else
+	{
+		rng = FRandomStream(Seed);
+	}
+	UE_LOG(LogDungeonGen, Log, TEXT("Creating dungeon out of seed %d."), Seed);
 	Mission->TryToCreateDungeon(rng);
 
 	Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);

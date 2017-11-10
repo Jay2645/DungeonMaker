@@ -13,7 +13,8 @@
 
 
 /*
-* 
+* This is a class which takes a DungeonMission and converts it into a DungeonFloor, representing
+* the space in the level.
 */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class DUNGEONMAKER_API UDungeonFloorManager : public UActorComponent
@@ -72,6 +73,8 @@ public:
 	// Gets a room based on tile space coordinates.
 	FFloorRoom GetRoomFromTileSpace(FIntVector TileSpaceLocation);
 
+	TArray<FFloorRoom> GetAllNeighbors(FFloorRoom Room);
+
 	void CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 		int32 SymbolCount, FRandomStream& Rng);
 
@@ -83,34 +86,20 @@ public:
 	int XSize() const;
 	int YSize() const;
 private:
-	// Takes a DungeonMissionNode and reserves spaces for all its tightly-coupled children (if any).
-	// Note that the ParentLocation and GrandparentLocation may be modified if a tightly-coupled chain
-	// doesn't "fit" in the dungeon.
-	void ProcessTightlyCoupledNodes(UDungeonMissionNode* Parent,
-		FFloorRoom& ParentRoom, TMap<UDungeonMissionNode*, FIntVector>& NodeLocations,
-		FRandomStream& Rng, TMap<FIntVector, FIntVector>& AvailableRooms,
-		FIntVector& GrandparentLocation, int32 SymbolCount, TMap<FIntVector, FFloorRoom>& ReservedRooms);
-	
-	// This verifies that the parent room list is valid.
-	// If it isn't, it will search for a new location which will provide a valid parent room list.
-	bool VerifyParentRoomList(TSet<FIntVector>& AvailableParentRooms,
-		TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>>& UndoList,
-		TMap<FIntVector, FIntVector>& AvailableRooms,
-		TMap<UDungeonMissionNode*, TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>>>& NodesToReserve,
-		TSet<UDungeonMissionNode*>& TightlyCoupledChildren, FIntVector& ParentLocation,
-		FRandomStream& Rng, FIntVector& GrandparentLocation, TSet<FIntVector>& PlacedLocations,
-		TArray<UDungeonMissionNode*>& NextNodes, TSet<FIntVector> AttemptedLocations);
+	bool PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms, 
+		FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms, 
+		FIntVector EntranceRoom, TMap<FIntVector, FIntVector>& AllOpenRooms, 
+		bool bIsTightCoupling, int32 TotalSymbolCount);
 
-
-	//void DoFloorWideTileReplacement(TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng);
-	// Gets all open room spaces neighboring a location.
 	TSet<FIntVector> GetAvailableLocations(FIntVector Location, TSet<FIntVector> IgnoredLocations = TSet<FIntVector>());
 	FFloorRoom MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location,
 		FRandomStream& Rng, int32 TotalSymbolCount);
 	void SetRoom(FFloorRoom Room);
 	UDungeonFloorManager* FindFloorManagerForLocation(FIntVector Location);
-	void AddChild(FIntVector RoomLocation, FIntVector RoomParent);
 	void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
 
 	FIntVector ConvertToFloorSpace(FIntVector TileSpaceVector) const;
+	TKeyValuePair<FIntVector, FIntVector> GetOpenRoom(UDungeonMissionNode* Node,
+		TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms);
+	bool VerifyPathIsValid(FIntVector StartLocation);
 };

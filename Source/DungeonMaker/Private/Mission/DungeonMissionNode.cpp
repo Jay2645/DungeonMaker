@@ -119,6 +119,15 @@ void UDungeonMissionNode::TopologicalVisit(UDungeonMissionNode* Node, TSet<UDung
 	{
 		return;
 	}
+	TSet<UDungeonMissionNode*> allMarkedNodes = Marked.Union(TemporaryMarked);
+	for (UDungeonMissionNode* parent : Node->ParentNodes)
+	{
+		if (!allMarkedNodes.Contains(parent))
+		{
+			// We haven't processed all our parents yet
+			return;
+		}
+	}
 	TemporaryMarked.Add(Node);
 	// Visit all children
 	for (FMissionNodeData child : Node->NextNodes)

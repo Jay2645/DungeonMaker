@@ -5,12 +5,13 @@
 
 void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOffset)
 {
-	FColor randomColor = FColor::MakeRandomColor();
 
 	for (int x = 0; x < XSize(); x++)
 	{
 		for (int y = 0; y < YSize(); y++)
 		{
+			FColor randomColor = FColor::MakeRandomColor();
+
 			int32 xOffset = x;
 			int32 yOffset = y;
 
@@ -33,7 +34,23 @@ void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOff
 			TSubclassOf<ADungeonRoom> room = DungeonRooms[y][x].RoomClass;
 			if (room != NULL)
 			{
-				DrawDebugString(Context->GetWorld(), midpoint, room->GetName());
+				FString symbolDescription = DungeonRooms[y][x].DungeonSymbol.GetSymbolDescription();
+				symbolDescription += " (";
+				symbolDescription.AppendInt(DungeonRooms[y][x].DungeonSymbol.SymbolID);
+				symbolDescription += ")";
+				DrawDebugString(Context->GetWorld(), midpoint, symbolDescription);
+			}
+
+			for (FIntVector neighborLocation : DungeonRooms[y][x].NeighboringRooms)
+			{
+				FVector otherMidpoint = FVector((neighborLocation.X + 0.5f) * offset, (neighborLocation.Y + 0.5f) * offset, neighborLocation.Z * offset);
+				DrawDebugLine(Context->GetWorld(), midpoint, otherMidpoint, randomColor, true);
+			}
+			for (FIntVector neighborLocation : DungeonRooms[y][x].NeighboringTightlyCoupledRooms)
+			{
+				FVector otherMidpoint = FVector((neighborLocation.X + 0.5f) * offset, (neighborLocation.Y + 0.5f) * offset, neighborLocation.Z * offset);
+				DrawDebugLine(Context->GetWorld(), midpoint, otherMidpoint, randomColor, true);
+				DrawDebugLine(Context->GetWorld(), midpoint + FVector(0.0f, 0.0f, 50.0f), otherMidpoint + FVector(0.0f, 0.0f, 50.0f), randomColor, true);
 			}
 		}
 	}
@@ -46,6 +63,7 @@ void FDungeonFloor::Set(FFloorRoom Room)
 
 void FDungeonFloor::UpdateChildren(FIntVector A, FIntVector B)
 {
+	UE_LOG(LogDungeonGen, Log, TEXT("(%d, %d, %d) neighbors (%d, %d, %d)."), A.X, A.Y, A.Z, B.X, B.Y, B.Z);
 	DungeonRooms[A.Y][A.X].NeighboringRooms.Add(B);
 	DungeonRooms[B.Y][B.X].NeighboringRooms.Add(A);
 }

@@ -18,17 +18,15 @@ public:
 	// Sets default values for this actor's properties
 	ADungeon();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Mission")
 	UDungeonMissionGenerator* Mission;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Space")
 	UDungeonSpaceGenerator* Space;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 Seed = 1234;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 DungeonSizeMultiplier = 3;
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
+	bool bChooseRandomSeedAtRuntime = false;
 
 protected:
 	// Called when the game starts or when spawned

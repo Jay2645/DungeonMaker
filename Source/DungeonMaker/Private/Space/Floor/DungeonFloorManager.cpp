@@ -26,6 +26,30 @@ FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(FIntVector TileSpaceLocati
 	return GetRoomFromFloorCoordinates(floorSpaceLocation);
 }
 
+TArray<FFloorRoom> UDungeonFloorManager::GetAllNeighbors(FFloorRoom Room)
+{
+	TArray<FFloorRoom> neighbors;
+	for (FIntVector neighbor : Room.NeighboringRooms)
+	{
+		UDungeonFloorManager* manager = FindFloorManagerForLocation(neighbor);
+		if (manager == NULL)
+		{
+			continue;
+		}
+		neighbors.Add(manager->DungeonFloor[neighbor.Y][neighbor.X]);
+	}
+	for (FIntVector neighbor : Room.NeighboringTightlyCoupledRooms)
+	{
+		UDungeonFloorManager* manager = FindFloorManagerForLocation(neighbor);
+		if (manager == NULL)
+		{
+			continue;
+		}
+		neighbors.Add(manager->DungeonFloor[neighbor.Y][neighbor.X]);
+	}
+	return neighbors;
+}
+
 // Sets default values for this component's properties
 /* UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 {
@@ -194,13 +218,12 @@ void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFl
 			}
 		}
 	}
-}
+}*/
 
-bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
-	TSet<FBSPLink>& AvailableLeaves, FRandomStream& Rng,
-	TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<UBSPLeaf*>& ProcessedLeaves,
-	UBSPLeaf* EntranceLeaf, TSet<FBSPLink>& AllOpenLeaves,
-	bool bIsTightCoupling)
+bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms,
+	FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms,
+	FIntVector EntranceRoom, TMap<FIntVector, FIntVector>& AllOpenRooms,
+	bool bIsTightCoupling, int32 TotalSymbolCount)
 {
 	if (ProcessedNodes.Contains(Node))
 	{
@@ -215,73 +238,42 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		UE_LOG(LogDungeonGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet (%d / %d)."), *Node->GetSymbolDescription(), ProcessedNodes.Intersect(Node->ParentNodes).Num(), Node->ParentNodes.Num());
 		return true;
 	}
-	if (AvailableLeaves.Num() == 0 && bIsTightCoupling)
+	if (AvailableRooms.Num() == 0 && bIsTightCoupling)
 	{
 		// Out of leaves to process
 		UE_LOG(LogDungeonGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
-	if (AllOpenLeaves.Num() == 0 && !bIsTightCoupling)
+	if (AllOpenRooms.Num() == 0 && !bIsTightCoupling)
 	{
 		UE_LOG(LogDungeonGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
-	if (MaxGeneratedRooms >= 0 && MaxGeneratedRooms <= MissionRooms.Num())
-	{
-		// Generated max number of rooms
-		return true;
-	}
 
-	UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableLeaves.Num(), Node->NextNodes.Num());
-	// Find an open leaf to add this to
-	UBSPLeaf* leaf = NULL;
-	FBSPLink leafLink;
+	UE_LOG(LogDungeonGen, Log, TEXT("Creating room for %s! Leaves available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableRooms.Num(), Node->NextNodes.Num());
+	// Find an open room to add this to
+	TKeyValuePair<FIntVector, FIntVector> roomLocation;
 	if (bIsTightCoupling)
 	{
-		leafLink = GetOpenLeaf(Node, AvailableLeaves, Rng, ProcessedLeaves);
-		leaf = leafLink.AvailableLeaf;
-		if (leaf == NULL)
-		{
-			// No open leaf available for us; back out
-			UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
-			return false;
-		}
+		roomLocation = GetOpenRoom(Node, AvailableRooms, Rng, ProcessedRooms);
 	}
 	else
 	{
-		leafLink = GetOpenLeaf(Node, AllOpenLeaves, Rng, ProcessedLeaves);
-		leaf = leafLink.AvailableLeaf;
-		if (leaf == NULL)
-		{
-			// No open leaf available for us; back out
-			UE_LOG(LogDungeonGen, Warning, TEXT("%s could not find an open leaf."), *Node->GetSymbolDescription());
-			return false;
-		}
+		roomLocation = GetOpenRoom(Node, AllOpenRooms, Rng, ProcessedRooms);
 	}
 	
-	ProcessedLeaves.Add(leaf);
+	ProcessedRooms.Add(roomLocation.Key);
 	ProcessedNodes.Add(Node);
 
-	// Let this leaf contain the room symbol
-	leaf->SetMissionNode(Node);
-	if (leafLink.FromLeaf != NULL)
+	// Grab all our neighbor rooms, excluding those which have already been processed
+	TSet<FIntVector> neighboringRooms = GetAvailableLocations(roomLocation.Key, ProcessedRooms);
+	TMap<FIntVector, FIntVector> roomNeighborMap;
+	// Map us to be the neighbor to all our neighbors
+	for (FIntVector neighbor : neighboringRooms)
 	{
-		leaf->AddMissionLeaf(leafLink.FromLeaf);
+		roomNeighborMap.Add(neighbor, roomLocation.Key);
 	}
 
-	// Grab all our neighbor leaves, excluding those which have already been processed
-	TSet<FBSPLink> neighboringLeaves;
-	for (UBSPLeaf* neighbor : leaf->LeafNeighbors)
-	{
-		if (ProcessedLeaves.Contains(neighbor))
-		{
-			continue;
-		}
-		FBSPLink link;
-		link.AvailableLeaf = neighbor;
-		link.FromLeaf = leaf;
-		neighboringLeaves.Add(link);
-	}
 	// Find all the tightly coupled nodes attached to our current node
 	TArray<UDungeonMissionNode*> nextToProcess;
 	for (FMissionNodeData& neighborNode : Node->NextNodes)
@@ -289,18 +281,15 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		if (neighborNode.bTightlyCoupledToParent)
 		{
 			// If we're tightly coupled to our parent, ensure we get added to a neighboring leaf
-			if (MaxGeneratedRooms < 0 || MaxGeneratedRooms > MissionRooms.Num() + 1)
-			{
-				bool bSuccesfullyPairedChild = PairNodesToLeaves(neighborNode.Node, neighboringLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, true);
+				bool bSuccesfullyPairedChild = PairNodesToRooms(neighborNode.Node, roomNeighborMap, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, true, TotalSymbolCount);
 				if (!bSuccesfullyPairedChild)
 				{
 					// Failed to find a child leaf; back out
 					ProcessedNodes.Remove(Node);
 					// Restart -- next time, we'll select a different leaf
-					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves to match our tightly-coupled leaves."), *Node->GetSymbolDescription());
-					return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+					UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
+					return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 				}
-			}
 		}
 		else
 		{
@@ -310,15 +299,13 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 
 	if (((UDungeonMissionSymbol*)Node->Symbol.Symbol)->bAllowedToHaveChildren)
 	{
-		AvailableLeaves.Append(neighboringLeaves);
+		AvailableRooms.Append(roomNeighborMap);
 	}
-	AllOpenLeaves.Append(AvailableLeaves);
+	AllOpenRooms.Append(AvailableRooms);
 	TArray<UDungeonMissionNode*> deferredNodes;
 	// Now we process all non-tightly coupled nodes
 	for (int i = 0; i < nextToProcess.Num(); i++)
 	{
-		if (MaxGeneratedRooms < 0 || MaxGeneratedRooms > MissionRooms.Num() + 1)
-		{
 			// If we're not tightly coupled, ensure that we have all our required parents generated
 			if (ProcessedNodes.Intersect(nextToProcess[i]->ParentNodes).Num() != nextToProcess[i]->ParentNodes.Num())
 			{
@@ -326,20 +313,19 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 				deferredNodes.Add(nextToProcess[i]);
 				continue;
 			}
-			bool bSuccesfullyPairedChild = PairNodesToLeaves(nextToProcess[i], AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
+			bool bSuccesfullyPairedChild = PairNodesToRooms(nextToProcess[i], AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
 			if (!bSuccesfullyPairedChild)
 			{
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
 				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 			}
-		}
 	}
 
 
-	// All done making the leaf!
+	/*// All done making the leaf!
 	// Now we make our room
 	FString roomName = leaf->RoomSymbol->GetSymbolDescription();
 	roomName.Append(" (");
@@ -363,7 +349,7 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		UnresolvedHooks.Add(room);
 	}
 	MissionRooms.Add(room);
-	MissionLeaves.Add(leaf);
+	MissionLeaves.Add(leaf);*/
 
 	// Attempt to place our deferred nodes
 	TMap<UDungeonMissionNode*, uint8> attemptCount;
@@ -383,14 +369,14 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 
 		if (ProcessedNodes.Intersect(currentNode->ParentNodes).Num() == currentNode->ParentNodes.Num())
 		{
-			bool bSuccesfullyPairedChild = PairNodesToLeaves(currentNode, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, leaf, AllOpenLeaves, false);
+			bool bSuccesfullyPairedChild = PairNodesToRooms(currentNode, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
 			if (!bSuccesfullyPairedChild)
 			{
 				// Failed to find a child leaf; back out
 				ProcessedNodes.Remove(Node);
 				// Restart -- next time, we'll select a different leaf
 				UE_LOG(LogDungeonGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-				return PairNodesToLeaves(Node, AvailableLeaves, Rng, ProcessedNodes, ProcessedLeaves, EntranceLeaf, AllOpenLeaves, bIsTightCoupling);
+				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
 			}
 			else
 			{
@@ -431,14 +417,54 @@ bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,
 		}
 	}
 
+	// Make the actual room
+	FFloorRoom room = MakeFloorRoom(Node, roomLocation.Key, Rng, TotalSymbolCount);
+	SetRoom(room);
+	UDungeonFloorManager* ourManager = FindFloorManagerForLocation(roomLocation.Key);
+	UDungeonFloorManager* otherManager = FindFloorManagerForLocation(roomLocation.Value);
+	// Don't bother setting neighbors if one of the neighbors would be invalid
+	if (ourManager != NULL && otherManager != NULL)
+	{
+		// Link the children
+		if (bIsTightCoupling)
+		{
+			ourManager->DungeonFloor.DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
+			otherManager->DungeonFloor.DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
+		}
+		else
+		{
+			ourManager->DungeonFloor.DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
+			otherManager->DungeonFloor.DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
+		}
+	}
+
 	return true;
-}*/
+}
 
 void UDungeonFloorManager::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 	int32 SymbolCount, FRandomStream& Rng)
 {
-	// Create space for each room on the DungeonFloor
-	GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
+	bool bPathIsValid = false;
+	//do
+	//{
+		// Create space for each room on the DungeonFloor
+		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
+		bPathIsValid = VerifyPathIsValid(StartLocation);
+		/*if (!bPathIsValid)
+		{
+			// Invalid path; restart
+			UDungeonFloorManager* next = this;
+			do
+			{
+				next->InitializeDungeonFloor();
+				next = next->TopNeighbor;
+			} while (next != NULL);
+		}
+	} while (!bPathIsValid);*/
+	if (!bPathIsValid)
+	{
+		UE_LOG(LogDungeonGen, Error, TEXT("Invalid path!"));
+	}
 }
 
 void UDungeonFloorManager::InitializeDungeonFloor()
@@ -484,203 +510,22 @@ int UDungeonFloorManager::YSize() const
 	return DungeonFloor.YSize();
 }
 
-void UDungeonFloorManager::ProcessTightlyCoupledNodes(UDungeonMissionNode* Parent,
-	FFloorRoom& ParentRoom, TMap<UDungeonMissionNode*, FIntVector>& NodeLocations,
-	FRandomStream& Rng, TMap<FIntVector, FIntVector>& AvailableRooms,
-	FIntVector& GrandparentLocation, int32 SymbolCount, TMap<FIntVector, FFloorRoom>& ReservedRooms)
-{
-	// Gather up all the children we need
-	TSet<UDungeonMissionNode*> tightlyCoupledChildren;
-	for (FMissionNodeData child : Parent->NextNodes)
-	{
-		// We only care about tightly-coupled nodes
-		if (child.bTightlyCoupledToParent)
-		{
-			tightlyCoupledChildren.Add(child.Node);
-		}
-	}
-
-	// This keeps track of all nodes we're going to need to reserve
-	// It's an array of the "undo" stack for each child
-	TMap<UDungeonMissionNode*, TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>>> nodesToReserve;
-
-	// Process all children
-	while (tightlyCoupledChildren.Num() < 0)
-	{
-		UDungeonMissionNode* child = tightlyCoupledChildren.Array()[0];
-
-		TSet<FIntVector> availableParentRooms = GetAvailableLocations(ParentRoom.Location);
-		// This node begins a tightly-coupled chain
-		// Sort the child nodes
-		TArray<UDungeonMissionNode*> nextNodes = UDungeonMissionNode::GetDepthFirstSortedNodes(child, true);
-
-		// Maintain an "undo" list of rooms for this child
-		TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>> undoList;
-
-		// This set contains a list of all nodes which have been finalized and placed,
-		// but not added to the actual dungeon floor yet
-		TSet<FIntVector> placedLocations;
-		// ...like our parent room
-		placedLocations.Add(ParentRoom.Location);
-
-		// Process each node in the tightly-coupled chain
-		// This will break once all tightly-coupled nodes have been processed
-		while (nextNodes.Num() > 0)
-		{
-			// Process the head node
-			UDungeonMissionNode* node = nextNodes[0];
-			nextNodes.RemoveAt(0);
-			if (NodeLocations.Contains(node))
-			{
-				// Already processed in some way
-				continue;
-			}
-
-			// Keep track of all locations attempted this cycle
-			TSet<FIntVector> attemptedLocations = TSet<FIntVector>(placedLocations);
-
-			// Find an open space bordering our parent
-			TArray<FIntVector> parentOpenSpaces = availableParentRooms.Array();
-			FIntVector childLocation = parentOpenSpaces[Rng.RandRange(0, parentOpenSpaces.Num())];
-
-			// Update our parent room list using this child as the parent
-			// The depth-first search should filter out everything but things which are
-			// tightly-coupled to us.
-			availableParentRooms = GetAvailableLocations(childLocation, attemptedLocations);
-
-			// Update the lists with our new child location
-			attemptedLocations.Add(childLocation);
-			undoList.Add(TKeyValuePair<UDungeonMissionNode*, FIntVector>(node, childLocation));
-
-			bool isValid = VerifyParentRoomList(availableParentRooms, undoList, 
-				AvailableRooms, nodesToReserve, tightlyCoupledChildren, ParentRoom.Location, Rng, 
-				GrandparentLocation, placedLocations, nextNodes, attemptedLocations);
-			check(isValid);
-		}
-		// Tightly-coupled chain has been finalized
-		// Let us process it next time
-		nodesToReserve.Add(child, undoList);
-	}
-
-	// All done!
-	// Time to actually reserve the nodes
-	for (auto& kvp : nodesToReserve)
-	{
-		TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>> undoList = kvp.Value;
-		for (int i = 0; i < undoList.Num(); i++)
-		{
-			// Add it to the location lookup
-			NodeLocations.Add(undoList[i].Key, undoList[i].Value);
-			// Create a room based on this node
-			FFloorRoom childRoom = MakeFloorRoom(undoList[i].Key, undoList[i].Value, Rng, SymbolCount);
-
-			// Point the parent to point at this child (and vice versa)
-			if (i == 0)
-			{
-				ParentRoom.NeighboringTightlyCoupledRooms.Add(childRoom.Location);
-				childRoom.NeighboringTightlyCoupledRooms.Add(ParentRoom.Location);
-				childRoom.IncomingRoom = ParentRoom.Location;
-			}
-			else
-			{
-				ReservedRooms[undoList[i - 1].Value].NeighboringTightlyCoupledRooms.Add(childRoom.Location);
-				childRoom.NeighboringTightlyCoupledRooms.Add(ReservedRooms[undoList[i - 1].Value].Location);
-				childRoom.IncomingRoom = ReservedRooms[undoList[i - 1].Value].Location;
-			}
-
-			// Reserve it, but don't add its children to the main open node array yet
-			ReservedRooms.Add(undoList[i].Value, childRoom);
-
-			// The room will be actually placed and processed once the "main" search 
-			// algorithm catches up to this node. That way, keys don't get placed behind locks
-		}
-	}
-}
-
-bool UDungeonFloorManager::VerifyParentRoomList(TSet<FIntVector>& AvailableParentRooms, 
-	TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>>& UndoList, 
-	TMap<FIntVector, FIntVector>& AvailableRooms, 
-	TMap<UDungeonMissionNode*, TArray<TKeyValuePair<UDungeonMissionNode*, FIntVector>>>& NodesToReserve, 
-	TSet<UDungeonMissionNode*>& TightlyCoupledChildren, FIntVector& ParentLocation, 
-	FRandomStream& Rng, FIntVector& GrandparentLocation, TSet<FIntVector>& PlacedLocations, 
-	TArray<UDungeonMissionNode *>& NextNodes, TSet<FIntVector> AttemptedLocations)
-{
-	// Check to ensure the next step will be able to place a valid room
-	// If not:
-	// * Select another available parent room, filtering out the room we just tried
-	// * If we're out of rooms we haven't tried, step "back in time" to the last 
-	// node we processed
-	// * If we're out of nodes to process in this chain, something went wrong with
-	// the parent to the chain -- try to find another place to stick the parent
-	// * Error out if we run out of places to stick our parent room
-	while (AvailableParentRooms.Num() == 0)
-	{
-		// We can't place this room here!
-		// We don't have enough spaces to place this chain
-		UE_LOG(LogDungeonGen, Warning, TEXT("Ran out of open rooms when trying to create child room!"));
-
-		if (UndoList.Num() == 0)
-		{
-			// Out of undos for this tightly-coupled chain!
-			UE_LOG(LogDungeonGen, Warning, TEXT("Ran out of undos!"));
-			// Fail if we're out of rooms
-			return false;
-
-			// We're going to pick a new location for our parent
-			// This means that all work involving child rooms we've previously worked
-			// on is now invalid
-
-			// Mark the nodes as not yet processed
-			for (auto& kvp : NodesToReserve)
-			{
-				TightlyCoupledChildren.Add(kvp.Key);
-			}
-			// Clear the stack of processed nodes
-			NodesToReserve.Empty();
-
-			// Select a new parent location
-			TArray<FIntVector> availableRoomLocations;
-			AvailableRooms.GetKeys(availableRoomLocations);
-			// Select a random location
-			ParentLocation = availableRoomLocations[Rng.RandRange(0, availableRoomLocations.Num() - 1)];
-			GrandparentLocation = AvailableRooms[ParentLocation];
-			AvailableRooms.Remove(ParentLocation);
-
-			// We're restarting from the top, so with different starting point
-			// an already-tried location may be valid
-			PlacedLocations.Empty();
-			PlacedLocations.Add(ParentLocation);
-
-			// Get all newly-available child locations
-			AvailableParentRooms = GetAvailableLocations(ParentLocation);
-			// We know there's at least one valid room left due to the check above
-			// The available parent rooms will get processed in the next iteration
-			// of the while loop
-		}
-		else
-		{
-			// Fetch the most recent undo
-			TKeyValuePair<UDungeonMissionNode*, FIntVector> undo = UndoList[UndoList.Num() - 1];
-			// Remove it from the undo list
-			UndoList.RemoveAt(UndoList.Num() - 1);
-			// Ensure we process this node next
-			NextNodes.Insert(undo.Key, 0);
-			// Get a new list of parent rooms
-			// The attemptedLocations filter ensures we won't select the same location that
-			// got us into this mess
-			AvailableParentRooms = GetAvailableLocations(undo.Value, AttemptedLocations);
-			// If there are no available parent rooms, the while loop we're in right
-			// now will restart
-			// Otherwise, we'll retry processing this node, selecting a different room
-		}
-	}
-	return true;
-}
-
 TSet<FIntVector> UDungeonFloorManager::GetAvailableLocations(FIntVector Location, 
 	TSet<FIntVector> IgnoredLocations /*= TSet<FIntVector>()*/)
 {
 	TSet<FIntVector> availableLocations;
+
+	UDungeonFloorManager* ourManager = FindFloorManagerForLocation(Location);
+	if (ourManager != NULL && ourManager->DungeonFloor[Location.Y][Location.X].DungeonSymbol.Symbol != NULL)
+	{
+		UDungeonMissionSymbol* symbol = (UDungeonMissionSymbol*)ourManager->DungeonFloor[Location.Y][Location.X].DungeonSymbol.Symbol;
+		if (!symbol->bAllowedToHaveChildren)
+		{
+			// Not allowed to have children; return empty set
+			return availableLocations;
+		}
+	}
+
 	for (int x = -1; x <= 1; x++)
 	{
 		for (int y = -1; y <= 1; y++)
@@ -742,6 +587,7 @@ FFloorRoom UDungeonFloorManager::MakeFloorRoom(UDungeonMissionNode* Node, FIntVe
 	room.Location = Location;
 	room.Difficulty = Node->Symbol.SymbolID / (float)TotalSymbolCount;
 	room.DungeonSymbol = Node->Symbol;
+	room.RoomNode = Node;
 	return room;
 }
 
@@ -807,111 +653,17 @@ UDungeonFloorManager* UDungeonFloorManager::FindFloorManagerForLocation(FIntVect
 	return this;
 }
 
-void UDungeonFloorManager::AddChild(FIntVector RoomLocation, FIntVector RoomParent)
-{
-	DungeonFloor.UpdateChildren(RoomLocation, RoomParent);
-}
-
 void UDungeonFloorManager::GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount)
 {
-	TArray<UDungeonMissionNode*> missionNodes = UDungeonMissionNode::GetTopologicalSortedNodes(Head);
-	// A map where the key is a list of available locations
-	// and the value is the origin location.
 	TMap<FIntVector, FIntVector> availableRooms;
-	
-	// Add our start location as an available room
-	availableRooms.Add(StartLocation, FIntVector::ZeroValue);
+	TSet<UDungeonMissionNode*> processedNodes;
+	TSet<FIntVector> processedRooms;
+	TMap<FIntVector, FIntVector> openRooms;
 
-	// Where rooms are "reserved".
-	TMap<FIntVector, FFloorRoom> reservedRooms;
-	// A map of nodes to their locations.
-	TMap<UDungeonMissionNode*, FIntVector> nodeLocations;
-	bool bWasReserved = false;
+	availableRooms.Add(StartLocation, FIntVector(-1, -1, -1));
+	openRooms.Add(StartLocation, FIntVector(-1, -1, -1));
 
-	while (missionNodes.Num() > 0)
-	{
-		UDungeonMissionNode* next = missionNodes[0];
-		missionNodes.RemoveAt(0);
-
-		FFloorRoom room;
-
-		if (nodeLocations.Contains(next))
-		{
-			// Already reserved or placed; time to find out which
-			FIntVector foundLocation = nodeLocations[next];
-			if (reservedRooms.Contains(foundLocation))
-			{
-				// We're reserving this room; time to make it physical
-				// Tell the main algorithm to use this room
-				room = reservedRooms[foundLocation];
-
-				// Remove it from the list of reserved rooms
-				reservedRooms.Remove(foundLocation);
-				bWasReserved = true;
-			}
-			else
-			{
-				// Room already processed, but not reserved
-				// We don't care about it anymore
-				continue;
-			}
-		}
-		else
-		{
-			checkf(availableRooms.Num() > 0, TEXT("Ran out of available rooms! Either add more levels to the dungeon, make it bigger, or shrink the size of each room."));
-
-			// If we're here, that means we're a new node
-			TArray<FIntVector> availableRoomLocations;
-			availableRooms.GetKeys(availableRoomLocations);
-			// Select a random location
-			FIntVector roomLocation = availableRoomLocations[Rng.RandRange(0, availableRoomLocations.Num() - 1)];
-			FIntVector roomParent = availableRooms[roomLocation];
-			availableRooms.Remove(roomLocation);
-
-			// Create a room from this node
-			room = MakeFloorRoom(next, roomLocation, Rng, SymbolCount);
-
-			// Reserve any tightly-coupled child nodes
-			// Note that this method may modify the location this room is being placed in
-			ProcessTightlyCoupledNodes(next, room, nodeLocations, Rng, availableRooms,
-				roomParent, SymbolCount, reservedRooms);
-			// The room location may have been modified; update it
-			roomLocation = room.Location;
-			// The room's parent may have also been modified
-			room.IncomingRoom = roomParent;
-
-			// Place the room on this floor
-			nodeLocations.Add(next, roomLocation);
-		}
-
-		// Update the DungeonFloor with this room
-		SetRoom(room);
-
-		UE_LOG(LogDungeonGen, Log, TEXT("Placing %s (%d) at (%d, %d, %d). Symbols remaining: %d"), *room.DungeonSymbol.GetSymbolDescription(), room.DungeonSymbol.SymbolID, room.Location.X, room.Location.Y, room.Location.Z, missionNodes.Num());
-		
-		// Add new locations to the available rooms array
-		if (((UDungeonMissionSymbol*)room.DungeonSymbol.Symbol)->bAllowedToHaveChildren)
-		{
-			TSet<FIntVector> newLocations = GetAvailableLocations(room.Location);
-			for (FIntVector location : newLocations)
-			{
-				availableRooms.Add(location, room.Location);
-			}
-		}
-		UE_LOG(LogDungeonGen, Log, TEXT("Available rooms:"));
-		for (auto& kvp : availableRooms)
-		{
-			UE_LOG(LogDungeonGen, Log, TEXT("(%d, %d, %d)"), kvp.Key.X, kvp.Key.Y, kvp.Key.Z);
-		}
-
-		// Update our list of child rooms
-		// Reserved rooms have already done this, since they have a special
-		// list of tightly-coupled neighbors
-		if (!bWasReserved && room.Location != room.IncomingRoom)
-		{
-			AddChild(room.Location, room.IncomingRoom);
-		}
-	}
+	PairNodesToRooms(Head, availableRooms, Rng, processedNodes, processedRooms, StartLocation, openRooms, false, SymbolCount);
 }
 
 FIntVector UDungeonFloorManager::ConvertToFloorSpace(FIntVector TileSpaceVector) const
@@ -923,4 +675,117 @@ FIntVector UDungeonFloorManager::ConvertToFloorSpace(FIntVector TileSpaceVector)
 	TileSpaceVector.Y = FMath::FloorToInt(TileSpaceVector.Y / (float)RoomSize);
 	// Z is left alone -- it's assumed that Z in tile space and floor space are the same
 	return TileSpaceVector;
+}
+
+TKeyValuePair<FIntVector, FIntVector> UDungeonFloorManager::GetOpenRoom(UDungeonMissionNode* Node, 
+	TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms)
+{
+	TSet<UDungeonMissionNode*> nodesToCheck;
+	for (FMissionNodeData& neighborNode : Node->NextNodes)
+	{
+		if (neighborNode.bTightlyCoupledToParent)
+		{
+			nodesToCheck.Add(neighborNode.Node);
+		}
+	}
+
+	FIntVector roomLocation = FIntVector(-1, -1, -1);
+	FIntVector parentLocation = FIntVector(-1, -1, -1);
+
+	do
+	{
+		if (AvailableRooms.Num() == 0)
+		{
+			return TKeyValuePair<FIntVector, FIntVector>(roomLocation, parentLocation);
+		}
+		int32 leafIndex = Rng.RandRange(0, AvailableRooms.Num() - 1);
+		TArray<FIntVector> allAvailableRooms;
+		AvailableRooms.GetKeys(allAvailableRooms);
+		roomLocation = allAvailableRooms[leafIndex];
+		parentLocation = AvailableRooms[roomLocation];
+		AvailableRooms.Remove(roomLocation);
+
+		if (ProcessedRooms.Contains(roomLocation))
+		{
+			// Already processed this leaf
+			roomLocation = FIntVector(-1, -1, -1);
+			parentLocation = FIntVector(-1, -1, -1);
+			continue;
+		}
+
+		TSet<FIntVector> neighbors = GetAvailableLocations(roomLocation, ProcessedRooms);
+
+		if (neighbors.Num() < nodesToCheck.Num())
+		{
+			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
+			roomLocation = FIntVector(-1, -1, -1);
+			parentLocation = FIntVector(-1, -1, -1);
+			continue;
+		}
+	} while (roomLocation.X == -1 && roomLocation.Y == -1 && roomLocation.Z == -1);
+	return TKeyValuePair<FIntVector, FIntVector>(roomLocation, parentLocation);
+}
+
+bool UDungeonFloorManager::VerifyPathIsValid(FIntVector StartLocation)
+{
+	TSet<UDungeonMissionNode*> seen;
+	TArray<FFloorRoom> nextToProcess;
+
+	UDungeonFloorManager* manager = FindFloorManagerForLocation(StartLocation);
+	nextToProcess.Add(manager->DungeonFloor[StartLocation.Y][StartLocation.X]);
+
+	TSet<UDungeonMissionNode*> deferred;
+	while (nextToProcess.Num() > 0)
+	{
+		if (nextToProcess.Num() == deferred.Num())
+		{
+			// Everything left in this list has already been deferred!
+			// Path isn't valid
+			UE_LOG(LogDungeonGen, Warning, TEXT("Couldn't process %d nodes because they've been deferred!"), nextToProcess.Num());
+			UE_LOG(LogDungeonGen, Warning, TEXT("Nodes left to process:"));
+			for (FFloorRoom room : nextToProcess)
+			{
+				UE_LOG(LogDungeonGen, Warning, TEXT("%s (%d)"), *room.DungeonSymbol.GetSymbolDescription(), room.DungeonSymbol.SymbolID);
+			}
+			UE_LOG(LogDungeonGen, Warning, TEXT("Deferred nodes"));
+			for (UDungeonMissionNode* node : deferred)
+			{
+				UE_LOG(LogDungeonGen, Warning, TEXT("%s (%d)"), *node->GetSymbolDescription(), node->Symbol.SymbolID);
+			}
+			return false;
+		}
+		FFloorRoom next = nextToProcess[0];
+		nextToProcess.RemoveAt(0);
+		UDungeonMissionNode* node = next.RoomNode;
+		if (seen.Contains(node))
+		{
+			// Already seen this node
+			continue;
+		}
+
+		// Get a list of all parents not yet processed
+		TSet<UDungeonMissionNode*> unprocessedParents = node->ParentNodes.Difference(seen);
+		if (unprocessedParents.Num() > 0)
+		{
+			UE_LOG(LogDungeonGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());
+			for (UDungeonMissionNode* parent : unprocessedParents)
+			{
+				UE_LOG(LogDungeonGen, Log, TEXT("Missing: %s (%d)"), *parent->GetSymbolDescription(), parent->Symbol.SymbolID);
+			}
+			// Defer this node
+			nextToProcess.Add(next);
+			deferred.Add(node);
+		}
+		else
+		{
+			// All parents have been processed!
+			// Since we've made some progress, empty the deferred array (only used to tell if we get stuck)
+			deferred.Empty();
+			// Mark this node as processed
+			seen.Add(node);
+			// Append all our children to our next to process array
+			nextToProcess.Append(GetAllNeighbors(next));
+		}
+	}
+	return true;
 }
