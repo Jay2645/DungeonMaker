@@ -8,6 +8,7 @@
 #include "Tiles/RoomReplacementPattern.h"
 #include "Tiles/DungeonTile.h"
 #include "Rooms/DungeonRoom.h"
+#include "Floor/DungeonMissionSpaceHandler.h"
 #include "Floor/DungeonFloorManager.h"
 #include "../Mission/DungeonMissionNode.h"
 #include "DungeonSpaceGenerator.generated.h"
@@ -61,8 +62,14 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	int32 TotalSymbolCount;
 
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TArray<FDungeonFloor> DungeonSpace;
+
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	TArray<UDungeonFloorManager*> Floors;
 public:	
 	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();
+	FIntVector ConvertToFloorSpace(FIntVector TileSpaceLocation);
+	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation);
 };

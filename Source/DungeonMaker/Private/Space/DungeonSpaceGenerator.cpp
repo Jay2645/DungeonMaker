@@ -31,110 +31,21 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	
 	MissionSpaceHandler = NewObject<UDungeonMissionSpaceHandler>(GetOuter(), TEXT("Mission Space Manager"));
 	MissionSpaceHandler->RoomSize = RoomSize;
-	MissionSpaceHandler->InitializeDungeonFloor(dungeonLevelSizes);
-	// Initialize floors
-	DungeonSpace = MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
+	MissionSpaceHandler->InitializeDungeonFloor(this, dungeonLevelSizes);
+	// Map the mission to the space
+	MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
 
-	DrawDebugSpace();
-
-	/*RootLeaf = NewObject<UBSPLeaf>();
-	RootLeaf->InitializeLeaf(0, 0, DungeonSize, DungeonSize, NULL);
-
-
-	bool didSplit = true;
-	TArray<UBSPLeaf*> leaves;
-	leaves.Add(RootLeaf);
-
-	while (didSplit)
+	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
-		TArray<UBSPLeaf*> nextLeaves;
-		didSplit = false;
-		for (int i = 0; i < leaves.Num(); i++)
-		{
-			UBSPLeaf* leaf = leaves[i];
-			if (leaf == NULL)
-			{
-				UE_LOG(LogSpaceGen, Warning, TEXT("Null leaf found!"));
-				continue;
-			}
-			nextLeaves.Add(leaf);
-			if (leaf->HasChildren())
-			{
-				// Already processed
-				continue;
-			}
-			// If this leaf is too big, or a 75% chance 
-			if (leaf->SideIsLargerThan(MaxRoomSize) || Rng.GetFraction() > 0.25f)
-			{
-				if (leaf->Split(Rng))
-				{
-					// Add the child leaves to our nextLeaves array
-					nextLeaves.Add(leaf->RightChild);
-					nextLeaves.Add(leaf->LeftChild);
-					didSplit = true;
-				}
-			}
-		}
-		// Now that we're out of the for loop, update the array for the next pass
-		leaves = nextLeaves;
+		FString floorName = "Floor ";
+		floorName.AppendInt(i);
+		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), FName(*floorName));
+		floor->InitializeFloorManager(this, i);
+		Floors.Add(floor);
+		floor->SpawnRooms(Rng);
 	}
-
-	// Done splitting; find nearest neighbors
-	for (int i = 0; i < leaves.Num(); i++)
-	{
-		leaves[i]->DetermineNeighbors();
-	}
-
-	StartLeaf = RootLeaf;
-	while (StartLeaf->LeftChild != NULL)
-	{
-		StartLeaf = StartLeaf->LeftChild;
-	}
-
-	TSet<FBSPLink> availableLeaves;
-	FBSPLink start;
-	start.AvailableLeaf = StartLeaf;
-	start.FromLeaf = NULL;
-	availableLeaves.Add(start);
-
-	TSet<UDungeonMissionNode*> processedNodes;
-	TSet<UBSPLeaf*> processedLeaves;
-	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
-
-	UE_LOG(LogSpaceGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
-
-	// Once we're done making leaves, do some post-processing
-	for (UBSPLeaf* leaf : MissionLeaves)
-	{
-		leaf->UpdateRoomWithNeighbors();
-	}
-
-	// Place our rooms in the dungeon, so we know where they are
-	// during hallway generation
 	for (ADungeonRoom* room : MissionRooms)
 	{
-		room->UpdateDungeonFloor(DungeonSpace[0]);
-	}
-
-	TSet<ADungeonRoom*> newHallways;
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultFloorTile, 
-			DefaultWallTile, DefaultEntranceTile, HallwaySymbol, DungeonSpace[0]);
-		for (ADungeonRoom* hallway : roomHallways)
-		{
-			hallway->UpdateDungeonFloor(DungeonSpace[0]);
-		}
-		newHallways.Append(roomHallways);
-	}
-	MissionRooms.Append(newHallways);
-
-	DoFloorWideTileReplacement(DungeonSpace[0], PreGenerationRoomReplacementPhases, Rng);
-
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		room->DoTileReplacement(DungeonSpace[0], Rng);
-
 		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
 		for (const UDungeonTile* tile : roomTiles)
 		{
@@ -150,25 +61,36 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		}
 	}
 
-	DoFloorWideTileReplacement(DungeonSpace[0], PostGenerationRoomReplacementPhases, Rng);
-
 	if (bDebugDungeon)
 	{
 		DrawDebugSpace();
 	}
 	else
 	{
-		for (ADungeonRoom* room : MissionRooms)
+		for (UDungeonFloorManager* floor : Floors)
 		{
-			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace[0]);
-			room->OnRoomGenerationComplete();
+			floor->SpawnRoomMeshes(ComponentLookup, Rng);
 		}
-	}*/
+	}
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace()
 {
 	MissionSpaceHandler->DrawDebugSpace();
+	for (int i = 0; i < Floors.Num(); i++)
+	{
+		Floors[i]->DrawDebugSpace();
+	}
+}
+
+FIntVector UDungeonSpaceGenerator::ConvertToFloorSpace(FIntVector TileSpaceLocation)
+{
+	return MissionSpaceHandler->ConvertToFloorSpace(TileSpaceLocation);
+}
+
+FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation)
+{
+	return MissionSpaceHandler->GetRoomFromFloorCoordinates(FloorSpaceLocation);
 }
 
 /*void UDungeonSpaceGenerator::DrawDebugSpace()
@@ -178,24 +100,6 @@ void UDungeonSpaceGenerator::DrawDebugSpace()
 		room->DrawDebugRoom();
 	}
 	DungeonSpace[0].DrawDungeonFloor(GetOwner(), 1);
-}
-
-void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng)
-{
-	// Replace them based on our replacement rules
-	for (int i = 0; i < ReplacementPhases.Num(); i++)
-	{
-		TArray<URoomReplacementPattern*> replacementPatterns = ReplacementPhases[i].ReplacementPatterns;
-		while (replacementPatterns.Num() > 0)
-		{
-			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
-			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(DungeonFloor))
-			{
-				// Couldn't find a replacement in this room
-				replacementPatterns.RemoveAt(rngIndex);
-			}
-		}
-	}
 }
 
 bool UDungeonSpaceGenerator::PairNodesToLeaves(UDungeonMissionNode* Node,

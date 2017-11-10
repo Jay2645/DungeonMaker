@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonRoom.h"
+#include "DungeonSpaceGenerator.h"
+#include "DungeonFloorManager.h"
 #include <DrawDebugHelpers.h>
 #include "GameFramework/Character.h"
 
@@ -229,26 +231,28 @@ void ADungeonRoom::InitializeRoomFromPoints(const UDungeonTile* DefaultFloorTile
 
 }*/
 
-void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultFloorTile, 
+void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const UDungeonTile* DefaultFloorTile, 
 	const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
-	float Difficulty, int32 MaxXSize, int32 MaxYSize,
-	int32 XPosition, int32 YPosition, int32 ZPosition,
-	const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
-	bool bUseRandomDimensions, bool bIsDeterminedFromPoints)
+	UDungeonFloorManager* FloorManager, int32 MaxXSize, int32 MaxYSize,
+	int32 XPosition, int32 YPosition, int32 ZPosition, FFloorRoom Room,
+	FRandomStream &Rng, bool bUseRandomDimensions, bool bIsDeterminedFromPoints)
 {
 	const int ROOM_BORDER_SIZE = 1;
 	MaxXSize = FMath::Abs(MaxXSize);
 	MaxYSize = FMath::Abs(MaxYSize);
 	RoomLevel = (uint8)ZPosition;
+	RoomMetadata = Room;
+
+	DungeonSpace = SpaceGenerator;
+	DungeonFloor = FloorManager;
 
 	DebugDefaultWallTile = DefaultWallTile;
 	DebugDefaultFloorTile = DefaultFloorTile;
 	DebugDefaultEntranceTile = DefaultEntranceTile;
 
 	DebugSeed = Rng.GetCurrentSeed();
-	Symbol = RoomSymbol;
-	RoomDifficulty = Difficulty;
-
+	Symbol = (const UDungeonMissionSymbol*)Room.DungeonSymbol.Symbol;
+	
 	int32 xSize;
 	int32 ySize;
 	/*if (bIsDeterminedFromPoints)
@@ -319,6 +323,8 @@ void ADungeonRoom::InitializeRoom(const UDungeonTile* DefaultFloorTile,
 	RoomTrigger->SetBoxExtent(halfExtents);
 
 	OnRoomInitialized();
+
+	UE_LOG(LogSpaceGen, Log, TEXT("Initialized %s to dimensions %d x %d."), *GetName(), RoomTiles.XSize(), RoomTiles.YSize());
 }
 
 void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
@@ -828,7 +834,7 @@ void ADungeonRoom::DrawDebugRoom()
 
 	for (FIntVector neighborLocation : RoomMetadata.NeighboringRooms)
 	{
-		FFloorRoom room = DungeonFloor->GetRoomFromFloorCoordinates(neighborLocation);
+		FFloorRoom room = DungeonSpace->GetRoomFromFloorCoordinates(neighborLocation);
 		if (room.SpawnedRoom == NULL)
 		{
 			continue;
@@ -851,7 +857,7 @@ void ADungeonRoom::DrawDebugRoom()
 
 	for (FIntVector neighborLocation : RoomMetadata.NeighboringTightlyCoupledRooms)
 	{
-		FFloorRoom room = DungeonFloor->GetRoomFromFloorCoordinates(neighborLocation);
+		FFloorRoom room = DungeonSpace->GetRoomFromFloorCoordinates(neighborLocation);
 		if (room.SpawnedRoom == NULL)
 		{
 			continue;
@@ -1249,4 +1255,29 @@ void ADungeonRoom::SetTileGridCoordinates(FIntVector CurrentLocation, const UDun
 	int32 xPosition = FMath::RoundToInt(position.X / UDungeonTile::TILE_SIZE);
 	int32 yPosition = FMath::RoundToInt(position.Y / UDungeonTile::TILE_SIZE);
 	Set(CurrentLocation.X - xPosition, CurrentLocation.Y - yPosition, Tile);
+}
+
+float ADungeonRoom::GetRoomDifficulty() const
+{
+	return RoomMetadata.Difficulty;
+}
+
+void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng)
+{
+	TSet<FIntVector> neighbors = RoomMetadata.NeighboringRooms.Union(RoomMetadata.NeighboringTightlyCoupledRooms);
+	for (FIntVector neighbor : neighbors)
+	{
+		// We handle spawning the entrance to the room above or to the right of us
+		// The other room will spawn any other entrances
+		if (neighbor.X > RoomMetadata.Location.X)
+		{
+			int entranceLocation = Rng.RandRange(1, YSize() - 2);
+			Set(XSize() - 1, entranceLocation, EntranceTile);
+		}
+		if (neighbor.Y > RoomMetadata.Location.Y)
+		{
+			int entranceLocation = Rng.RandRange(1, XSize() - 2);
+			Set(entranceLocation, YSize() - 1, EntranceTile);
+		}
+	}
 }

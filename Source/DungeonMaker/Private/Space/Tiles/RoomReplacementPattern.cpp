@@ -104,7 +104,7 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 	return false;
 }
 
-/*bool URoomReplacementPattern::FindAndReplaceFloor(UDungeonMissionSpaceHandler* ReplaceFloor)
+bool URoomReplacementPattern::FindAndReplaceFloor(UDungeonFloorManager* ReplaceFloor)
 {
 	checkf(Input.IsNotNull(), TEXT("You didn't specify any input for replacement data!"));
 
@@ -202,7 +202,7 @@ bool URoomReplacementPattern::FindAndReplace(FDungeonRoomMetadata& ReplaceRoom)
 	}
 
 	return false;
-}*/
+}
 
 uint8 URoomReplacementPattern::MatchesReplacement(FDungeonRoomMetadata& InputToCheck)
 {

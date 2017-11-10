@@ -13,6 +13,8 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogSpaceGen, Log, All);
 
+class UDungeonSpaceGenerator;
+
 UENUM(BlueprintType)
 enum class ETileDirection : uint8
 {
@@ -134,19 +136,19 @@ public:
 	USceneComponent* DummyRoot;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	UBoxComponent* RoomTrigger;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
+	FFloorRoom RoomMetadata;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	TArray<FRoomReplacements> RoomReplacementPhases;
 	// A list of actors that get scattered throughout the room
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Props")
 	TMap<const UDungeonTile*, FGroundScatterSet> GroundScatter;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
-	float RoomDifficulty;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
 	uint8 RoomLevel;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
-	FFloorRoom RoomMetadata;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
-	UDungeonMissionSpaceHandler* DungeonFloor;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
+	UDungeonFloorManager* DungeonFloor;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Space")
+	UDungeonSpaceGenerator* DungeonSpace;
 
 	// Debug
 
@@ -190,12 +192,11 @@ protected:
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-		void InitializeRoom(const UDungeonTile* DefaultFloorTile,
+		void InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const UDungeonTile* DefaultFloorTile,
 			const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
-			float Difficulty, int32 MaxXSize, int32 MaxYSize,
-			int32 XPosition, int32 YPosition, int32 ZPosition,
-			const UDungeonMissionSymbol* RoomSymbol, FRandomStream &Rng,
-			bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
+			UDungeonFloorManager* FloorManager, int32 MaxXSize, int32 MaxYSize,
+			int32 XPosition, int32 YPosition, int32 ZPosition, FFloorRoom Room,
+			FRandomStream &Rng, bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
 	
 	/*void InitializeRoomFromPoints(const UDungeonTile* DefaultFloorTile,
 		const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
@@ -268,6 +269,10 @@ public:
 			const UDungeonTile* DefaultFloorTile, const UDungeonTile* DefaultWallTile, 
 			const UDungeonTile* DefaultEntranceTile);*/
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	float GetRoomDifficulty() const;
+	void TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng);
 protected:
 	/*static FIntVector FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, 
 		const FIntVector& Destination);*/
