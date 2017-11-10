@@ -8,7 +8,7 @@
 #include "RoomReplacementPattern.generated.h"
 
 class URoomReplacementPattern;
-class UDungeonFloorManager;
+class UDungeonMissionSpaceHandler;
 
 USTRUCT(BlueprintType)
 struct FRoomReplacements
@@ -44,8 +44,8 @@ public:
 	URoomReplacementPattern();
 	UFUNCTION(BlueprintCallable)
 	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom);
-	UFUNCTION(BlueprintCallable)
-	bool FindAndReplaceFloor(UDungeonFloorManager* ReplaceFloor);
+	//UFUNCTION(BlueprintCallable)
+	//bool FindAndReplaceFloor(UDungeonMissionSpaceHandler* ReplaceFloor);
 protected:
 	uint8 MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
 };

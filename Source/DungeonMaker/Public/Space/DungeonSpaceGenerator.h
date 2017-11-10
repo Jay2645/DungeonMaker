@@ -57,10 +57,11 @@ public:
 	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TArray<UDungeonFloorManager*> DungeonSpace;
+	UDungeonMissionSpaceHandler* MissionSpaceHandler;
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	int32 TotalSymbolCount;
 
+	TArray<FDungeonFloor> DungeonSpace;
 public:	
 	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();

@@ -4,223 +4,242 @@
 #include "DungeonMissionSymbol.h"
 
 
-void UDungeonFloorManager::DrawDebugSpace(int32 ZOffset)
+void UDungeonMissionSpaceHandler::DrawDebugSpace()
 {
-	DungeonFloor.DrawDungeonFloor(GetOwner(), RoomSize, ZOffset);
+	for (int i = 0; i < DungeonSpace.Num(); i++)
+	{
+		DungeonSpace[i].DrawDungeonFloor(GetOwner(), RoomSize, i);
+	}
 }
 
-FFloorRoom UDungeonFloorManager::GetRoomFromFloorCoordinates(FIntVector FloorSpaceCoordinates)
+FFloorRoom UDungeonMissionSpaceHandler::GetRoomFromFloorCoordinates(FIntVector FloorSpaceCoordinates)
 {
-	UDungeonFloorManager* manager = FindFloorManagerForLocation(FloorSpaceCoordinates);
-	if (manager == NULL)
+	if (!IsLocationValid(FloorSpaceCoordinates))
 	{
 		return FFloorRoom();
 	}
-	return manager->DungeonFloor[FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
+	return DungeonSpace[FloorSpaceCoordinates.Z][FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
 }
 
-FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(FIntVector TileSpaceLocation)
+FFloorRoom UDungeonMissionSpaceHandler::GetRoomFromTileSpace(FIntVector TileSpaceLocation)
 {
 	// Convert to floor space
 	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
 	return GetRoomFromFloorCoordinates(floorSpaceLocation);
 }
 
-TArray<FFloorRoom> UDungeonFloorManager::GetAllNeighbors(FFloorRoom Room)
+bool UDungeonMissionSpaceHandler::IsLocationValid(FIntVector FloorSpaceCoordinates) const
+{
+	// If it's below 0, it's always invalid
+	if (FloorSpaceCoordinates.X < 0 || FloorSpaceCoordinates.Y < 0 || FloorSpaceCoordinates.Z < 0)
+	{
+		return false;
+	}
+	// If it's above our total number of floors, it's also invalid
+	if (FloorSpaceCoordinates.Z >= DungeonSpace.Num())
+	{
+		return false;
+	}
+	FDungeonFloor floor = DungeonSpace[FloorSpaceCoordinates.Z];
+	return FloorSpaceCoordinates.X < floor.XSize() && FloorSpaceCoordinates.Y < floor.YSize();
+}
+
+TArray<FFloorRoom> UDungeonMissionSpaceHandler::GetAllNeighbors(FFloorRoom Room)
 {
 	TArray<FFloorRoom> neighbors;
 	for (FIntVector neighbor : Room.NeighboringRooms)
 	{
-		UDungeonFloorManager* manager = FindFloorManagerForLocation(neighbor);
-		if (manager == NULL)
+		if (!IsLocationValid(neighbor))
 		{
 			continue;
 		}
-		neighbors.Add(manager->DungeonFloor[neighbor.Y][neighbor.X]);
+		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
 	}
 	for (FIntVector neighbor : Room.NeighboringTightlyCoupledRooms)
 	{
-		UDungeonFloorManager* manager = FindFloorManagerForLocation(neighbor);
-		if (manager == NULL)
+		if (!IsLocationValid(neighbor))
 		{
 			continue;
 		}
-		neighbors.Add(manager->DungeonFloor[neighbor.Y][neighbor.X]);
+		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
 	}
 	return neighbors;
 }
 
-// Sets default values for this component's properties
-/* UDungeonSpaceGenerator::UDungeonSpaceGenerator()
+TArray<FDungeonFloor>&  UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
+	int32 SymbolCount, FRandomStream& Rng)
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
-	MaxGeneratedRooms = -1;
+	bool bPathIsValid = false;
+	do
+	{
+		// Create space for each room on the DungeonFloor
+		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
+		bPathIsValid = VerifyPathIsValid(StartLocation);
+		if (!bPathIsValid)
+		{
+			// Invalid path; restart
+			TArray<int32> levelSizes;
+			for (int i = 0; i < DungeonSpace.Num(); i++)
+			{
+				levelSizes.Add(DungeonSpace[i].XSize());
+			}
+			InitializeDungeonFloor(levelSizes);
+		}
+	} while (!bPathIsValid);
+
+	return DungeonSpace;
 }
 
-void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
+void UDungeonMissionSpaceHandler::InitializeDungeonFloor(TArray<int32> LevelSizes)
 {
-	TotalSymbolCount = SymbolCount;
-	DungeonSpace.AddDefaulted(1);
-
-	RootLeaf = NewObject<UBSPLeaf>();
-	RootLeaf->InitializeLeaf(0, 0, DungeonSize, DungeonSize, NULL);
-
-
-	bool didSplit = true;
-	TArray<UBSPLeaf*> leaves;
-	leaves.Add(RootLeaf);
-
-	while (didSplit)
+	DungeonSpace = TArray<FDungeonFloor>();
+	DungeonSpace.SetNum(LevelSizes.Num());
+	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
-		TArray<UBSPLeaf*> nextLeaves;
-		didSplit = false;
-		for (int i = 0; i < leaves.Num(); i++)
-		{
-			UBSPLeaf* leaf = leaves[i];
-			if (leaf == NULL)
-			{
-				UE_LOG(LogSpaceGen, Warning, TEXT("Null leaf found!"));
-				continue;
-			}
-			nextLeaves.Add(leaf);
-			if (leaf->HasChildren())
-			{
-				// Already processed
-				continue;
-			}
-			// If this leaf is too big, or a 75% chance 
-			if (leaf->SideIsLargerThan(MaxRoomSize) || Rng.GetFraction() > 0.25f)
-			{
-				if (leaf->Split(Rng))
-				{
-					// Add the child leaves to our nextLeaves array
-					nextLeaves.Add(leaf->RightChild);
-					nextLeaves.Add(leaf->LeftChild);
-					didSplit = true;
-				}
-			}
-		}
-		// Now that we're out of the for loop, update the array for the next pass
-		leaves = nextLeaves;
-	}
-
-	// Done splitting; find nearest neighbors
-	for (int i = 0; i < leaves.Num(); i++)
-	{
-		leaves[i]->DetermineNeighbors();
-	}
-
-	StartLeaf = RootLeaf;
-	while (StartLeaf->LeftChild != NULL)
-	{
-		StartLeaf = StartLeaf->LeftChild;
-	}
-
-	TSet<FBSPLink> availableLeaves;
-	FBSPLink start;
-	start.AvailableLeaf = StartLeaf;
-	start.FromLeaf = NULL;
-	availableLeaves.Add(start);
-
-	TSet<UDungeonMissionNode*> processedNodes;
-	TSet<UBSPLeaf*> processedLeaves;
-	PairNodesToLeaves(Head, availableLeaves, Rng, processedNodes, processedLeaves, StartLeaf, availableLeaves);
-
-	UE_LOG(LogSpaceGen, Log, TEXT("Created %d leaves, matching %d nodes."), MissionLeaves.Num(), processedNodes.Num());
-
-	// Once we're done making leaves, do some post-processing
-	for (UBSPLeaf* leaf : MissionLeaves)
-	{
-		leaf->UpdateRoomWithNeighbors();
-	}
-
-	// Place our rooms in the dungeon, so we know where they are
-	// during hallway generation
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		room->UpdateDungeonFloor(DungeonSpace[0]);
-	}
-
-	TSet<ADungeonRoom*> newHallways;
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		TSet<ADungeonRoom*> roomHallways = room->MakeHallways(Rng, DefaultFloorTile, 
-			DefaultWallTile, DefaultEntranceTile, HallwaySymbol, DungeonSpace[0]);
-		for (ADungeonRoom* hallway : roomHallways)
-		{
-			hallway->UpdateDungeonFloor(DungeonSpace[0]);
-		}
-		newHallways.Append(roomHallways);
-	}
-	MissionRooms.Append(newHallways);
-
-	DoFloorWideTileReplacement(DungeonSpace[0], PreGenerationRoomReplacementPhases, Rng);
-
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		room->DoTileReplacement(DungeonSpace[0], Rng);
-
-		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
-		for (const UDungeonTile* tile : roomTiles)
-		{
-			if (ComponentLookup.Contains(tile) || tile->TileMesh == NULL)
-			{
-				continue;
-			}
-			// Otherwise, create a new InstancedStaticMeshComponent
-			UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
-			tileMesh->RegisterComponent();
-			tileMesh->SetStaticMesh(tile->TileMesh);
-			ComponentLookup.Add(tile, tileMesh);
-		}
-	}
-
-	DoFloorWideTileReplacement(DungeonSpace[0], PostGenerationRoomReplacementPhases, Rng);
-
-	if (bDebugDungeon)
-	{
-		DrawDebugSpace();
-	}
-	else
-	{
-		for (ADungeonRoom* room : MissionRooms)
-		{
-			room->PlaceRoomTiles(ComponentLookup, Rng, DungeonSpace[0]);
-			room->OnRoomGenerationComplete();
-		}
+		DungeonSpace[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i]);
 	}
 }
 
-void UDungeonSpaceGenerator::DrawDebugSpace()
+/*const UDungeonTile* UDungeonMissionSpaceHandler::GetTileFromTileSpace(FIntVector TileSpaceLocation)
 {
-	for (ADungeonRoom* room : MissionRooms)
+	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
+	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
+	if (room.SpawnedRoom == NULL)
 	{
-		room->DrawDebugRoom();
+		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
+		return NULL;
 	}
-	DungeonSpace[0].DrawDungeonFloor(GetOwner(), 1);
+	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
+	return room.SpawnedRoom->GetTile(localTileOffset.X, localTileOffset.Y);
 }
 
-void UDungeonSpaceGenerator::DoFloorWideTileReplacement(FDungeonFloor& DungeonFloor, TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng)
+void UDungeonMissionSpaceHandler::UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile)
 {
-	// Replace them based on our replacement rules
-	for (int i = 0; i < ReplacementPhases.Num(); i++)
+	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
+	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
+	if (room.SpawnedRoom == NULL)
 	{
-		TArray<URoomReplacementPattern*> replacementPatterns = ReplacementPhases[i].ReplacementPatterns;
-		while (replacementPatterns.Num() > 0)
-		{
-			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
-			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(DungeonFloor))
-			{
-				// Couldn't find a replacement in this room
-				replacementPatterns.RemoveAt(rngIndex);
-			}
-		}
+		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
+		return;
 	}
+	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
+	room.SpawnedRoom->SetTileGridCoordinates(localTileOffset, NewTile);
+}
+
+int UDungeonMissionSpaceHandler::XSize() const
+{
+	return DungeonFloor.XSize();
+}
+
+int UDungeonMissionSpaceHandler::YSize() const
+{
+	return DungeonFloor.YSize();
 }*/
 
-bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms,
+TSet<FIntVector> UDungeonMissionSpaceHandler::GetAvailableLocations(FIntVector Location, 
+	TSet<FIntVector> IgnoredLocations /*= TSet<FIntVector>()*/)
+{
+	TSet<FIntVector> availableLocations;
+
+	if (IsLocationValid(Location) && DungeonSpace[Location.Z][Location.Y][Location.X].DungeonSymbol.Symbol != NULL)
+	{
+		UDungeonMissionSymbol* symbol = (UDungeonMissionSymbol*)DungeonSpace[Location.Z][Location.Y][Location.X].DungeonSymbol.Symbol;
+		if (!symbol->bAllowedToHaveChildren)
+		{
+			// Not allowed to have children; return empty set
+			return availableLocations;
+		}
+	}
+
+	for (int x = -1; x <= 1; x++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int z = -1; z <= 1; z++)
+			{
+				// Don't count ourselves
+				if (x == 0 && y == 0 && z == 0)
+				{
+					continue;
+				}
+				// Don't count diagonals
+				if ((x == 1 || x == -1) && (y == 1 || y == -1))
+				{
+					continue;
+				}
+				// Z only counts directly above or directly below
+				if ((z == 1 || z == -1) && x != 0 && y != 0)
+				{
+					continue;
+				}
+				// We only want to include Z if we have a valid Z neighboring us
+				if (z == 1 && Location.Z + 1 < DungeonSpace.Num() || z == -1 && Location.Z - 1 >= 0)
+				{
+					continue;
+				}
+
+				FIntVector possibleLocation = Location + FIntVector(x, y, z);
+				if (IgnoredLocations.Contains(possibleLocation))
+				{
+					// Ignoring this location
+					continue;
+				}
+
+				if (!IsLocationValid(possibleLocation))
+				{
+					// Out of range
+					continue;
+				}
+				if (DungeonSpace[possibleLocation.Z][possibleLocation.Y][possibleLocation.X].RoomClass != NULL)
+				{
+					// Already placed
+					continue;
+				}
+
+				availableLocations.Add(possibleLocation);
+			}
+		}
+	}
+	return availableLocations;
+}
+
+FFloorRoom UDungeonMissionSpaceHandler::MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location, 
+	FRandomStream& Rng, int32 TotalSymbolCount)
+{
+	FFloorRoom room = FFloorRoom();
+	room.RoomClass = ((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng);
+	room.Location = Location;
+	room.Difficulty = Node->Symbol.SymbolID / (float)TotalSymbolCount;
+	room.DungeonSymbol = Node->Symbol;
+	room.RoomNode = Node;
+	return room;
+}
+
+void UDungeonMissionSpaceHandler::SetRoom(FFloorRoom Room)
+{
+	// Verify that the location is valid
+	if (!IsLocationValid(Room.Location))
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room at (%d, %d, %d) because it was an invalid location!"), Room.Location.X, Room.Location.Y, Room.Location.Z);
+		return;
+	}
+	DungeonSpace[Room.Location.Z].Set(Room);
+}
+
+void UDungeonMissionSpaceHandler::GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount)
+{
+	TMap<FIntVector, FIntVector> availableRooms;
+	TSet<UDungeonMissionNode*> processedNodes;
+	TSet<FIntVector> processedRooms;
+	TMap<FIntVector, FIntVector> openRooms;
+
+	availableRooms.Add(StartLocation, FIntVector(-1, -1, -1));
+	openRooms.Add(StartLocation, FIntVector(-1, -1, -1));
+
+	PairNodesToRooms(Head, availableRooms, Rng, processedNodes, processedRooms, StartLocation, openRooms, false, SymbolCount);
+}
+
+bool UDungeonMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms,
 	FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms,
 	FIntVector EntranceRoom, TMap<FIntVector, FIntVector>& AllOpenRooms,
 	bool bIsTightCoupling, int32 TotalSymbolCount)
@@ -261,7 +280,7 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 	{
 		roomLocation = GetOpenRoom(Node, AllOpenRooms, Rng, ProcessedRooms);
 	}
-	
+
 	ProcessedRooms.Add(roomLocation.Key);
 	ProcessedNodes.Add(Node);
 
@@ -281,15 +300,15 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 		if (neighborNode.bTightlyCoupledToParent)
 		{
 			// If we're tightly coupled to our parent, ensure we get added to a neighboring leaf
-				bool bSuccesfullyPairedChild = PairNodesToRooms(neighborNode.Node, roomNeighborMap, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, true, TotalSymbolCount);
-				if (!bSuccesfullyPairedChild)
-				{
-					// Failed to find a child leaf; back out
-					ProcessedNodes.Remove(Node);
-					// Restart -- next time, we'll select a different leaf
-					UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
-					return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
-				}
+			bool bSuccesfullyPairedChild = PairNodesToRooms(neighborNode.Node, roomNeighborMap, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, true, TotalSymbolCount);
+			if (!bSuccesfullyPairedChild)
+			{
+				// Failed to find a child leaf; back out
+				ProcessedNodes.Remove(Node);
+				// Restart -- next time, we'll select a different leaf
+				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
+				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
+			}
 		}
 		else
 		{
@@ -306,22 +325,22 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 	// Now we process all non-tightly coupled nodes
 	for (int i = 0; i < nextToProcess.Num(); i++)
 	{
-			// If we're not tightly coupled, ensure that we have all our required parents generated
-			if (ProcessedNodes.Intersect(nextToProcess[i]->ParentNodes).Num() != nextToProcess[i]->ParentNodes.Num())
-			{
-				// Defer processing a bit
-				deferredNodes.Add(nextToProcess[i]);
-				continue;
-			}
-			bool bSuccesfullyPairedChild = PairNodesToRooms(nextToProcess[i], AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
-			if (!bSuccesfullyPairedChild)
-			{
-				// Failed to find a child leaf; back out
-				ProcessedNodes.Remove(Node);
-				// Restart -- next time, we'll select a different leaf
-				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
-			}
+		// If we're not tightly coupled, ensure that we have all our required parents generated
+		if (ProcessedNodes.Intersect(nextToProcess[i]->ParentNodes).Num() != nextToProcess[i]->ParentNodes.Num())
+		{
+			// Defer processing a bit
+			deferredNodes.Add(nextToProcess[i]);
+			continue;
+		}
+		bool bSuccesfullyPairedChild = PairNodesToRooms(nextToProcess[i], AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
+		if (!bSuccesfullyPairedChild)
+		{
+			// Failed to find a child leaf; back out
+			ProcessedNodes.Remove(Node);
+			// Restart -- next time, we'll select a different leaf
+			UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
+			return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
+		}
 	}
 
 
@@ -332,21 +351,21 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 	roomName.AppendInt(leaf->RoomSymbol->Symbol.SymbolID);
 	roomName.AppendChar(')');
 	ADungeonRoom* room = (ADungeonRoom*)GetWorld()->SpawnActor(((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng));
-#if WITH_EDITOR
+	#if WITH_EDITOR
 	room->SetFolderPath("Rooms");
-#endif
+	#endif
 	room->Rename(*roomName);
 	UE_LOG(LogSpaceGen, Log, TEXT("Created room for %s."), *roomName);
-	room->InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, 
-		(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(), 
-		leaf->XPosition, leaf->YPosition, 0,
-		(UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
+	room->InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile,
+	(float)Node->Symbol.SymbolID / TotalSymbolCount, leaf->LeafSize.XSize(), leaf->LeafSize.YSize(),
+	leaf->XPosition, leaf->YPosition, 0,
+	(UDungeonMissionSymbol*)Node->Symbol.Symbol, Rng);
 
 	leaf->SetRoom(room);
 
 	if (room->IsChangedAtRuntime())
 	{
-		UnresolvedHooks.Add(room);
+	UnresolvedHooks.Add(room);
 	}
 	MissionRooms.Add(room);
 	MissionLeaves.Add(leaf);*/
@@ -420,253 +439,26 @@ bool UDungeonFloorManager::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FInt
 	// Make the actual room
 	FFloorRoom room = MakeFloorRoom(Node, roomLocation.Key, Rng, TotalSymbolCount);
 	SetRoom(room);
-	UDungeonFloorManager* ourManager = FindFloorManagerForLocation(roomLocation.Key);
-	UDungeonFloorManager* otherManager = FindFloorManagerForLocation(roomLocation.Value);
 	// Don't bother setting neighbors if one of the neighbors would be invalid
-	if (ourManager != NULL && otherManager != NULL)
+	if (IsLocationValid(roomLocation.Key) && IsLocationValid(roomLocation.Value))
 	{
 		// Link the children
 		if (bIsTightCoupling)
 		{
-			ourManager->DungeonFloor.DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
-			otherManager->DungeonFloor.DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
+			DungeonSpace[roomLocation.Key.Z].DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
+			DungeonSpace[roomLocation.Value.Z].DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
 		}
 		else
 		{
-			ourManager->DungeonFloor.DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
-			otherManager->DungeonFloor.DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
+			DungeonSpace[roomLocation.Key.Z].DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
+			DungeonSpace[roomLocation.Value.Z].DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
 		}
 	}
 
 	return true;
 }
 
-void UDungeonFloorManager::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
-	int32 SymbolCount, FRandomStream& Rng)
-{
-	bool bPathIsValid = false;
-	//do
-	//{
-		// Create space for each room on the DungeonFloor
-		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
-		bPathIsValid = VerifyPathIsValid(StartLocation);
-		/*if (!bPathIsValid)
-		{
-			// Invalid path; restart
-			UDungeonFloorManager* next = this;
-			do
-			{
-				next->InitializeDungeonFloor();
-				next = next->TopNeighbor;
-			} while (next != NULL);
-		}
-	} while (!bPathIsValid);*/
-	if (!bPathIsValid)
-	{
-		UE_LOG(LogSpaceGen, Error, TEXT("Invalid path!"));
-	}
-}
-
-void UDungeonFloorManager::InitializeDungeonFloor()
-{
-	// Initialize the dungeon floor to be the appropriate size
-	int32 floorSideSize = FMath::CeilToInt(FMath::Sqrt((float)FloorSize / (float)RoomSize));
-	DungeonFloor = FDungeonFloor(floorSideSize, floorSideSize);
-}
-
-const UDungeonTile* UDungeonFloorManager::GetTileFromTileSpace(FIntVector TileSpaceLocation)
-{
-	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
-	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
-	if (room.SpawnedRoom == NULL)
-	{
-		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
-		return NULL;
-	}
-	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
-	return room.SpawnedRoom->GetTile(localTileOffset.X, localTileOffset.Y);
-}
-
-void UDungeonFloorManager::UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile)
-{
-	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
-	FFloorRoom room = GetRoomFromFloorCoordinates(floorSpaceLocation);
-	if (room.SpawnedRoom == NULL)
-	{
-		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
-		return;
-	}
-	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
-	room.SpawnedRoom->SetTileGridCoordinates(localTileOffset, NewTile);
-}
-
-int UDungeonFloorManager::XSize() const
-{
-	return DungeonFloor.XSize();
-}
-
-int UDungeonFloorManager::YSize() const
-{
-	return DungeonFloor.YSize();
-}
-
-TSet<FIntVector> UDungeonFloorManager::GetAvailableLocations(FIntVector Location, 
-	TSet<FIntVector> IgnoredLocations /*= TSet<FIntVector>()*/)
-{
-	TSet<FIntVector> availableLocations;
-
-	UDungeonFloorManager* ourManager = FindFloorManagerForLocation(Location);
-	if (ourManager != NULL && ourManager->DungeonFloor[Location.Y][Location.X].DungeonSymbol.Symbol != NULL)
-	{
-		UDungeonMissionSymbol* symbol = (UDungeonMissionSymbol*)ourManager->DungeonFloor[Location.Y][Location.X].DungeonSymbol.Symbol;
-		if (!symbol->bAllowedToHaveChildren)
-		{
-			// Not allowed to have children; return empty set
-			return availableLocations;
-		}
-	}
-
-	for (int x = -1; x <= 1; x++)
-	{
-		for (int y = -1; y <= 1; y++)
-		{
-			for (int z = -1; z <= 1; z++)
-			{
-				// Don't count ourselves
-				if (x == 0 && y == 0 && z == 0)
-				{
-					continue;
-				}
-				// Don't count diagonals
-				if ((x == 1 || x == -1) && (y == 1 || y == -1))
-				{
-					continue;
-				}
-				// Z only counts directly above or directly below
-				if ((z == 1 || z == -1) && x != 0 && y != 0)
-				{
-					continue;
-				}
-				// We only want to include Z if we have a valid Z neighboring us
-				if (z == 1 && TopNeighbor == NULL || z == -1 && BottomNeighbor == NULL)
-				{
-					continue;
-				}
-
-				FIntVector possibleLocation = Location + FIntVector(x, y, z);
-				if (IgnoredLocations.Contains(possibleLocation))
-				{
-					// Ignoring this location
-					continue;
-				}
-
-				UDungeonFloorManager* manager = FindFloorManagerForLocation(possibleLocation);
-				if (manager == NULL)
-				{
-					// Out of range
-					continue;
-				}
-				if (manager->DungeonFloor[possibleLocation.Y][possibleLocation.X].RoomClass != NULL)
-				{
-					// Already placed
-					continue;
-				}
-
-				availableLocations.Add(possibleLocation);
-			}
-		}
-	}
-	return availableLocations;
-}
-
-FFloorRoom UDungeonFloorManager::MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location, 
-	FRandomStream& Rng, int32 TotalSymbolCount)
-{
-	FFloorRoom room = FFloorRoom();
-	room.RoomClass = ((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng);
-	room.Location = Location;
-	room.Difficulty = Node->Symbol.SymbolID / (float)TotalSymbolCount;
-	room.DungeonSymbol = Node->Symbol;
-	room.RoomNode = Node;
-	return room;
-}
-
-void UDungeonFloorManager::SetRoom(FFloorRoom Room)
-{
-	// Verify that the location is valid
-	UDungeonFloorManager* manager = FindFloorManagerForLocation(Room.Location);
-	if (manager == NULL)
-	{
-		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room because floor manager was invalid!"));
-		return;
-	}
-	
-	manager->DungeonFloor.Set(Room);
-}
-
-UDungeonFloorManager* UDungeonFloorManager::FindFloorManagerForLocation(FIntVector Location)
-{
-	if (Location.X < 0 || Location.Y < 0 || Location.Z < 0)
-	{
-		// Always false
-		return NULL;
-	}
-
-	// Check to see if this is on another level
-	uint8 zLocation = (uint8)Location.Z;
-	if (zLocation != DungeonLevel)
-	{
-		if (zLocation > DungeonLevel)
-		{
-			if (TopNeighbor == NULL)
-			{
-				return NULL;
-			}
-			else
-			{
-				check(TopNeighbor->DungeonLevel > DungeonLevel);
-				return TopNeighbor->FindFloorManagerForLocation(Location);
-			}
-		}
-		if (zLocation < DungeonLevel)
-		{
-			if (BottomNeighbor == NULL)
-			{
-				return NULL;
-			}
-			else
-			{
-				check(BottomNeighbor->DungeonLevel < DungeonLevel);
-				return BottomNeighbor->FindFloorManagerForLocation(Location);
-			}
-		}
-	}
-	// DungeonFloor sizes can vary from level to level
-	if (Location.X >= DungeonFloor.XSize())
-	{
-		return NULL;
-	}
-	if (Location.Y >= DungeonFloor.YSize())
-	{
-		return NULL;
-	}
-	return this;
-}
-
-void UDungeonFloorManager::GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount)
-{
-	TMap<FIntVector, FIntVector> availableRooms;
-	TSet<UDungeonMissionNode*> processedNodes;
-	TSet<FIntVector> processedRooms;
-	TMap<FIntVector, FIntVector> openRooms;
-
-	availableRooms.Add(StartLocation, FIntVector(-1, -1, -1));
-	openRooms.Add(StartLocation, FIntVector(-1, -1, -1));
-
-	PairNodesToRooms(Head, availableRooms, Rng, processedNodes, processedRooms, StartLocation, openRooms, false, SymbolCount);
-}
-
-FIntVector UDungeonFloorManager::ConvertToFloorSpace(FIntVector TileSpaceVector) const
+FIntVector UDungeonMissionSpaceHandler::ConvertToFloorSpace(FIntVector TileSpaceVector) const
 {
 	// Floor space is found by dividing by how big each room is, then rounding down
 	// As an example, if the room is 24 tiles long and the location is 22x22, it
@@ -677,7 +469,7 @@ FIntVector UDungeonFloorManager::ConvertToFloorSpace(FIntVector TileSpaceVector)
 	return TileSpaceVector;
 }
 
-TKeyValuePair<FIntVector, FIntVector> UDungeonFloorManager::GetOpenRoom(UDungeonMissionNode* Node, 
+TKeyValuePair<FIntVector, FIntVector> UDungeonMissionSpaceHandler::GetOpenRoom(UDungeonMissionNode* Node, 
 	TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms)
 {
 	TSet<UDungeonMissionNode*> nodesToCheck;
@@ -726,13 +518,18 @@ TKeyValuePair<FIntVector, FIntVector> UDungeonFloorManager::GetOpenRoom(UDungeon
 	return TKeyValuePair<FIntVector, FIntVector>(roomLocation, parentLocation);
 }
 
-bool UDungeonFloorManager::VerifyPathIsValid(FIntVector StartLocation)
+bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 {
 	TSet<UDungeonMissionNode*> seen;
 	TArray<FFloorRoom> nextToProcess;
 
-	UDungeonFloorManager* manager = FindFloorManagerForLocation(StartLocation);
-	nextToProcess.Add(manager->DungeonFloor[StartLocation.Y][StartLocation.X]);
+	// Make sure the entrance location is valid
+	if (!IsLocationValid(StartLocation))
+	{
+		return false;
+	}
+
+	nextToProcess.Add(DungeonSpace[StartLocation.Z][StartLocation.Y][StartLocation.X]);
 
 	TSet<UDungeonMissionNode*> deferred;
 	while (nextToProcess.Num() > 0)

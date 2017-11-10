@@ -146,7 +146,7 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
 	FFloorRoom RoomMetadata;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
-	UDungeonFloorManager* DungeonFloor;
+	UDungeonMissionSpaceHandler* DungeonFloor;
 
 	// Debug
 

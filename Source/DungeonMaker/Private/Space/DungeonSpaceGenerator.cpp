@@ -18,34 +18,22 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	// Create floors
 	int32 floorSideSize = FMath::CeilToInt(FMath::Sqrt((float)DungeonSize / (float)RoomSize));
 	int32 symbolsPerFloor = floorSideSize * floorSideSize;
-	do 
+	int32 floorCount = FMath::CeilToInt(SymbolCount / (float)symbolsPerFloor);
+
+	// By default, all levels will have the same number of rooms
+	// We can probably get fancy with this by making like spherical dungeons and such if wanted
+	TArray<int32> dungeonLevelSizes;
+	dungeonLevelSizes.SetNum(floorCount);
+	for (int i = 0; i < dungeonLevelSizes.Num(); i++)
 	{
-		FString floorName = "Floor ";
-		floorName.AppendInt(DungeonSpace.Num());
-
-		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), FName(*floorName));
-		floor->RoomSize = RoomSize;
-		floor->FloorSize = DungeonSize;
-		floor->DungeonLevel = (uint8)DungeonSpace.Num();
-
-		UE_LOG(LogSpaceGen, Log, TEXT("Created floor at %d"), floor->DungeonLevel);
-
-		if (DungeonSpace.Num() > 0)
-		{
-			floor->BottomNeighbor = DungeonSpace[DungeonSpace.Num() - 1];
-			DungeonSpace[DungeonSpace.Num() - 1]->TopNeighbor = floor;
-		}
-
-		DungeonSpace.Add(floor);
-
-		floor->InitializeDungeonFloor();
-		SymbolCount -= symbolsPerFloor;
-	} 
-	while (SymbolCount > 0);
-
+		dungeonLevelSizes[i] = floorSideSize;
+	}
+	
+	MissionSpaceHandler = NewObject<UDungeonMissionSpaceHandler>(GetOuter(), TEXT("Mission Space Manager"));
+	MissionSpaceHandler->RoomSize = RoomSize;
+	MissionSpaceHandler->InitializeDungeonFloor(dungeonLevelSizes);
 	// Initialize floors
-	// The bottom floor initializes all other floors as well
-	DungeonSpace[0]->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
+	DungeonSpace = MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
 
 	DrawDebugSpace();
 
@@ -180,10 +168,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 
 void UDungeonSpaceGenerator::DrawDebugSpace()
 {
-	for (int i = 0; i < DungeonSpace.Num(); i++)
-	{
-		DungeonSpace[i]->DrawDebugSpace(i);
-	}
+	MissionSpaceHandler->DrawDebugSpace();
 }
 
 /*void UDungeonSpaceGenerator::DrawDebugSpace()

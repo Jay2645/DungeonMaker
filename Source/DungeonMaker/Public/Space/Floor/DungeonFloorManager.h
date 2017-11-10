@@ -17,7 +17,7 @@
 * the space in the level.
 */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class DUNGEONMAKER_API UDungeonFloorManager : public UActorComponent
+class DUNGEONMAKER_API UDungeonMissionSpaceHandler : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -26,9 +26,9 @@ public:
 	//UDungeonFloorManager();
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FDungeonFloor DungeonFloor;
+	TArray<FDungeonFloor> DungeonSpace;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	/*UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultFloorTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultWallTile;
@@ -38,13 +38,13 @@ public:
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	//TArray<FRoomReplacements> PreGenerationRoomReplacementPhases;
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;
+	//TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;*/
 
 	// This size of this floor, in tile space.
 	// The total number of rooms this floor will have is determined by
 	// ceil(sqrt(FloorSize / RoomSize))^2.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 FloorSize = 128;
+	/*UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 FloorSize = 128;*/
 
 	// The size of any room on this floor, in tile space.
 	// The total number of rooms this floor will have is determined by
@@ -52,19 +52,19 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 RoomSize = 32;
 
-	// Any rooms on this floor which require further processing
+	/*// Any rooms on this floor which require further processing
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	TSet<ADungeonRoom*> UnresolvedHooks;
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	UDungeonFloorManager* TopNeighbor = NULL;
+	UDungeonMissionSpaceHandler* TopNeighbor = NULL;
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	UDungeonFloorManager* BottomNeighbor = NULL;
+	UDungeonMissionSpaceHandler* BottomNeighbor = NULL;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	uint8 DungeonLevel = 0;
+	uint8 DungeonLevel = 0;*/
 
 public:
-	void DrawDebugSpace(int32 ZOffset);
+	void DrawDebugSpace();
 	// Gets a room based on floor-space coordinates.
 	// This is different than world space (where things are physically placed
 	// as well as different from tile space (where tiles get placed).
@@ -72,19 +72,21 @@ public:
 	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceCoordinates);
 	// Gets a room based on tile space coordinates.
 	FFloorRoom GetRoomFromTileSpace(FIntVector TileSpaceLocation);
+	// Given a vector in floor space, returns whether that location can potentially contain a room.
+	bool IsLocationValid(FIntVector FloorSpaceCoordinates) const;
 
 	TArray<FFloorRoom> GetAllNeighbors(FFloorRoom Room);
 
-	void CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
+	// Creates a blank DungeonFloor array, with the specified size.
+	void InitializeDungeonFloor(TArray<int32> LevelSizes);
+
+	TArray<FDungeonFloor>& CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 		int32 SymbolCount, FRandomStream& Rng);
 
-
-	void InitializeDungeonFloor();
-
-	const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
+	/*const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
 	void UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile);
 	int XSize() const;
-	int YSize() const;
+	int YSize() const;*/
 private:
 	bool PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms, 
 		FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms, 
@@ -95,7 +97,6 @@ private:
 	FFloorRoom MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location,
 		FRandomStream& Rng, int32 TotalSymbolCount);
 	void SetRoom(FFloorRoom Room);
-	UDungeonFloorManager* FindFloorManagerForLocation(FIntVector Location);
 	void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
 
 	FIntVector ConvertToFloorSpace(FIntVector TileSpaceVector) const;
