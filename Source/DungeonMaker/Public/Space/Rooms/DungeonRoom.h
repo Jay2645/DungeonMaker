@@ -128,7 +128,7 @@ public:
 	// Sets default values for this component's properties
 	ADungeonRoom();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tiles")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	FDungeonRoomMetadata RoomTiles;
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Room")
 	const UDungeonMissionSymbol* Symbol;
@@ -145,6 +145,10 @@ public:
 	TMap<const UDungeonTile*, FGroundScatterSet> GroundScatter;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
 	uint8 RoomLevel;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
+	TSet<ADungeonRoom*> AllNeighbors;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
+	TSet<ADungeonRoom*> TightlyCoupledNeighbors;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
 	UDungeonFloorManager* DungeonFloor;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Space")
@@ -197,43 +201,28 @@ public:
 			UDungeonFloorManager* FloorManager, int32 MaxXSize, int32 MaxYSize,
 			int32 XPosition, int32 YPosition, int32 ZPosition, FFloorRoom Room,
 			FRandomStream &Rng, bool bUseRandomDimensions = true, bool bIsDeterminedFromPoints = false);
-	
-	/*void InitializeRoomFromPoints(const UDungeonTile* DefaultFloorTile,
-		const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
-		const UDungeonMissionSymbol* RoomSymbol, FIntVector StartLocation, FIntVector EndLocation,
-		int32 Width, bool bIsJoinedToHallway = false);*/
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FRandomStream &Rng);
 
-	/*UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	void UpdateDungeonFloor(FDungeonFloor& DungeonFloor);
-	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-	TSet<ADungeonRoom*> MakeHallways(FRandomStream& Rng, const UDungeonTile* DefaultFloorTile, 
-		const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
-		const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor);*/
-	// Places this room's tile meshes in the game world.
-	//UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
 		FRandomStream& Rng);
 	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, 
 		FRandomStream& Rng);
+	
 	// Gets the transform for a tile from that tile's position in local space ((0,0,0) to Room Bounds).
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	FTransform GetTileTransform(const FIntVector& LocalLocation) const;
+	
 	// Gets the transform for a tile from that tile's position in world space.
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	FTransform GetTileTransformFromTileSpace(const FIntVector& WorldLocation) const;
+	
 	// Returns the set of all DungeonTiles used by this room.
-	//UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	TSet<const UDungeonTile*> FindAllTiles();
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	TArray<FIntVector> GetTileLocations(const UDungeonTile* Tile);
-
-	//UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	//static bool PathIsClear(FIntVector StartLocation, FIntVector EndLocation, 
-	//	int32 SweepWidth, FDungeonFloor& DungeonFloor);
 
 	// Change the tile at the given coordinates to a specified tile.
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
@@ -263,17 +252,13 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnRoomGenerationComplete();
 
-	/*UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
-		static TSet<ADungeonRoom*> ConnectRooms(ADungeonRoom* A, ADungeonRoom* B, FRandomStream& Rng,
-			const UDungeonMissionSymbol* HallwaySymbol, FDungeonFloor& DungeonFloor,
-			const UDungeonTile* DefaultFloorTile, const UDungeonTile* DefaultWallTile, 
-			const UDungeonTile* DefaultEntranceTile);*/
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	float GetRoomDifficulty() const;
 	void TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng);
+
 protected:
-	/*static FIntVector FindClosestVertex(const FIntVector& Source1, const FIntVector& Source2, 
-		const FIntVector& Destination);*/
+	ADungeonRoom* AddNeighborEntrances(const FIntVector& Neighbor, FRandomStream& Rng,
+		const UDungeonTile* EntranceTile);
 };

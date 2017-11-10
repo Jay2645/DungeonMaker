@@ -29,11 +29,6 @@ ADungeonRoom::ADungeonRoom()
 	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
 
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);
-
-	/*MinimumRoomSize.WallSize = 4;
-	MinimumRoomSize.CeilingHeight = 1;
-	MaximumRoomSize.WallSize = 16;
-	MaximumRoomSize.CeilingHeight = 1;*/
 }
 
 
@@ -57,72 +52,6 @@ TArray<FIntVector> ADungeonRoom::GetTileLocations(const UDungeonTile* Tile)
 void ADungeonRoom::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (!bIsStandaloneRoomForDebug)
-	{
-		// We only care about this if we're a standalone room and we're trying to be debugged
-		return;
-	}
-	/*FRandomStream rng(DebugSeed);
-	FIntVector position = GetRoomTileSpacePosition();
-	int32 xPosition = position.X;
-	int32 yPosition = position.Y;
-	int32 zPosition = position.Z;
-
-	// Initialize this room
-	InitializeRoom(DebugDefaultFloorTile, DebugDefaultWallTile, DebugDefaultEntranceTile, 
-		RoomDifficulty, DebugRoomMaxExtents.X, DebugRoomMaxExtents.Y,
-		xPosition, yPosition, zPosition, Symbol, rng, false);
-	// Create hallways
-	TSet<ADungeonRoom*> newRooms;// = MakeHallways(rng, DebugDefaultTile, DebugHallwaySymbol);
-	FDungeonFloor newFloor;
-
-	// Add us to the list of hallways
-	// This ensures we all get processed together
-	newRooms.Add(this);
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> componentLookup;
-	for (ADungeonRoom* room : newRooms)
-	{
-		// Replace the tile symbols
-		// This doesn't place meshes, but states which mesh goes where
-		room->DoTileReplacement(newFloor, rng);
-
-		// Find our final tile set
-		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
-		for (const UDungeonTile* tile : roomTiles)
-		{
-			if (componentLookup.Contains(tile) || tile->TileMesh == NULL)
-			{
-				continue;
-			}
-			// Otherwise, create a new InstancedStaticMeshComponent
-			UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, tile->TileID);
-			tileMesh->RegisterComponent();
-			tileMesh->SetStaticMesh(tile->TileMesh);
-			componentLookup.Add(tile, tileMesh);
-		}
-	}
-
-	// Done with pre-processing the tiles; time to place the actual meshes!
-	if (!bDrawDebugTiles)
-	{
-		for (ADungeonRoom* room : newRooms)
-		{
-			room->PlaceRoomTiles(componentLookup, rng, newFloor);
-		}
-	}
-	else
-	{
-		for (ADungeonRoom* room : newRooms)
-		{
-			room->DrawDebugRoom();
-		}
-	}
-
-	for (ADungeonRoom* room : newRooms)
-	{
-		room->OnRoomGenerationComplete();
-	}*/
 }
 
 void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -136,100 +65,14 @@ void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponen
 			{
 				// This controller belongs to the player
 				OnPlayerEnterRoom();
-				/*for (ADungeonRoom* neighbor : MissionNeighbors)
+				for (ADungeonRoom* neighbor : AllNeighbors)
 				{
 					neighbor->OnPlayerEnterNeighborRoom();
-				}*/
+				}
 			}
 		}
 	}
 }
-
-/*bool ADungeonRoom::PathIsClear(FIntVector StartLocation, FIntVector EndLocation, int32 SweepWidth, FDungeonFloor& DungeonFloor)
-{
-	int32 xSize;
-	int32 ySize;
-	if (StartLocation.X == EndLocation.X)
-	{
-		xSize = FMath::Abs(EndLocation.Y - StartLocation.Y);
-		ySize = SweepWidth;
-	}
-	else if (StartLocation.Y == EndLocation.Y)
-	{
-		xSize = SweepWidth;
-		ySize = FMath::Abs(EndLocation.X - StartLocation.X);
-
-	}
-	else
-	{
-		checkNoEntry();
-		xSize = 0;
-		ySize = 0;
-	}
-
-	for (int y = StartLocation.Y; y < StartLocation.Y + ySize; y++)
-	{
-		for (int x = StartLocation.X; x < StartLocation.X + xSize; x++)
-		{
-			const UDungeonTile* tile = DungeonFloor.GetTileAt(FIntVector(x, y, 0));
-			if (tile != NULL)
-			{
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
-void ADungeonRoom::InitializeRoomFromPoints(const UDungeonTile* DefaultFloorTile,
-	const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile, 
-	const UDungeonMissionSymbol* RoomSymbol, FIntVector StartLocation, FIntVector EndLocation, 
-	int32 Width, bool bIsJoinedToHallway)
-{
-	FRandomStream rng;
-	int32 width;
-	int32 height;
-	FIntVector startingLocation = StartLocation;
-	if (StartLocation.X == EndLocation.X)
-	{
-		width = Width;
-		height = EndLocation.Y - StartLocation.Y;
-
-		if (height < 0)
-		{
-			startingLocation = EndLocation;
-		}
-
-		height = FMath::Abs(height);
-		if (bIsJoinedToHallway)
-		{
-			height += Width;
-		}
-	}
-	else if (StartLocation.Y == EndLocation.Y)
-	{
-		width = EndLocation.X - StartLocation.X;
-		height = Width;
-
-		if (width < 0)
-		{
-			startingLocation = EndLocation;
-		}
-
-		width = FMath::Abs(width);
-	}
-	else
-	{
-		checkNoEntry();
-		return;
-	}
-
-	InitializeRoom(DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, 
-		RoomDifficulty, width, height,
-		startingLocation.X, startingLocation.Y, 0,
-		RoomSymbol, rng, false, true);
-
-}*/
 
 void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const UDungeonTile* DefaultFloorTile, 
 	const UDungeonTile* DefaultWallTile, const UDungeonTile* DefaultEntranceTile,
@@ -253,46 +96,10 @@ void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const 
 	DebugSeed = Rng.GetCurrentSeed();
 	Symbol = (const UDungeonMissionSymbol*)Room.DungeonSymbol.Symbol;
 	
-	int32 xSize;
-	int32 ySize;
-	/*if (bIsDeterminedFromPoints)
-	{*/
-		xSize = MaxXSize;
-		ySize = MaxYSize;
-	/*}
-	else
-	{
-		check(MaxXSize > ROOM_BORDER_SIZE * 2);
-		check(MaxYSize > ROOM_BORDER_SIZE * 2);
-
-		xSize = FMath::Min(MaxXSize - (ROOM_BORDER_SIZE * 2), MaximumRoomSize.WallSize);
-		ySize = FMath::Min(MaxYSize - (ROOM_BORDER_SIZE * 2), MaximumRoomSize.WallSize);
-	}*/
-
-	int32 xOffset;
-	int32 yOffset;
-	/*if (bUseRandomDimensions)
-	{
-		xSize = Rng.RandRange(MinimumRoomSize.WallSize, xSize);
-		ySize = Rng.RandRange(MinimumRoomSize.WallSize, ySize);
-		// X Offset can be anywhere from our current X position to the start of the room
-		// That way we have enough space to place the room
-		xOffset = Rng.RandRange(XPosition + ROOM_BORDER_SIZE, MaxXSize - xSize - ROOM_BORDER_SIZE);
-		yOffset = Rng.RandRange(YPosition + ROOM_BORDER_SIZE, MaxYSize - ySize - ROOM_BORDER_SIZE);
-	}
-	else
-	{*/
-		xOffset = XPosition;
-		yOffset = YPosition;
-	/*}*/
-
-	if (XPosition == 0 && YPosition == 0)
-	{
-		// First room; place the room under the spawn point
-		xOffset = 0;
-		yOffset = 0;
-	}
-
+	int32 xSize = MaxXSize;
+	int32 ySize = MaxYSize;
+	int32 xOffset = XPosition;
+	int32 yOffset = YPosition;
 
 	// Initialize the room with the default tiles
 	RoomTiles = FDungeonRoomMetadata(xSize, ySize);
@@ -867,24 +674,59 @@ float ADungeonRoom::GetRoomDifficulty() const
 
 void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng)
 {
-	TSet<FIntVector> neighbors = RoomMetadata.NeighboringRooms.Union(RoomMetadata.NeighboringTightlyCoupledRooms);
+	TSet<FIntVector> neighbors = RoomMetadata.NeighboringRooms;
 	for (FIntVector neighbor : neighbors)
 	{
-		// We handle spawning the entrance to the room above or to the right of us
-		// The other room will spawn any other entrances
-		if (neighbor.X > RoomMetadata.Location.X)
+		AddNeighborEntrances(neighbor, Rng, EntranceTile);
+	}
+	// Now process any tightly-coupled neighbors
+	neighbors = RoomMetadata.NeighboringTightlyCoupledRooms;
+	for (FIntVector neighbor : neighbors)
+	{
+		ADungeonRoom* roomNeighbor = AddNeighborEntrances(neighbor, Rng, EntranceTile);
+		if (roomNeighbor != NULL)
 		{
-			int entranceLocation = Rng.RandRange(1, YSize() - 2);
-			Set(XSize() - 1, entranceLocation, EntranceTile);
-			ADungeonRoom* roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(neighbor).SpawnedRoom;
-			roomNeighbor->Set(0, entranceLocation, EntranceTile);
-		}
-		if (neighbor.Y > RoomMetadata.Location.Y)
-		{
-			int entranceLocation = Rng.RandRange(1, XSize() - 2);
-			Set(entranceLocation, YSize() - 1, EntranceTile);
-			ADungeonRoom* roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(neighbor).SpawnedRoom;
-			roomNeighbor->Set(entranceLocation, 0, EntranceTile);
+			TightlyCoupledNeighbors.Add(roomNeighbor);
+			roomNeighbor->TightlyCoupledNeighbors.Add(this);
 		}
 	}
+}
+
+ADungeonRoom* ADungeonRoom::AddNeighborEntrances(const FIntVector& Neighbor, FRandomStream& Rng, 
+	const UDungeonTile* EntranceTile)
+{
+	// We handle spawning the entrance to the room above or to the right of us
+	// The other room will spawn any other entrances
+	ADungeonRoom* roomNeighbor = NULL;
+	FIntVector ourLocation = FIntVector::ZeroValue;
+	FIntVector neighborLocation = FIntVector::ZeroValue;
+	if (Neighbor.X > RoomMetadata.Location.X)
+	{
+		int entranceLocation = Rng.RandRange(1, YSize() - 2);
+		ourLocation.X = XSize() - 1;
+		ourLocation.Y = entranceLocation;
+		
+		roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(Neighbor).SpawnedRoom;
+		neighborLocation.X = 0;
+		neighborLocation.Y = entranceLocation;
+	}
+	else if (Neighbor.Y > RoomMetadata.Location.Y)
+	{
+		int entranceLocation = Rng.RandRange(1, XSize() - 2);
+		ourLocation.X = entranceLocation;
+		ourLocation.Y = YSize() - 1;
+
+		roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(Neighbor).SpawnedRoom;
+		neighborLocation.X = entranceLocation;
+		neighborLocation.Y = 0;
+	}
+
+	if (roomNeighbor != NULL)
+	{
+		Set(ourLocation.X, ourLocation.Y, EntranceTile);
+		roomNeighbor->Set(neighborLocation.X, neighborLocation.Y, EntranceTile);
+		AllNeighbors.Add(roomNeighbor);
+		roomNeighbor->AllNeighbors.Add(this);
+	}
+	return roomNeighbor;
 }
