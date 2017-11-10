@@ -163,7 +163,7 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 		this, RoomSize, RoomSize, roomLocation.X, roomLocation.Y, roomLocation.Z,
 		Room, Rng);
 
-	// Exploit the fact that our for loop runs from 0 upward to check to see if we can delete a wall
+	/*// Exploit the fact that our for loop runs from 0 upward to check to see if we can delete a wall
 	// These rooms are guaranteed to have been spawned before us
 	// We avoid the corners, however
 	for (int x = roomLocation.X + 1; x < roomLocation.X + RoomSize - 1; x++)
@@ -181,7 +181,7 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 		{
 			room->SetTileGridCoordinates(FIntVector(roomLocation.X, y, roomLocation.Z), DefaultFloorTile);
 		}
-	}
+	}*/
 
 	if (room->IsChangedAtRuntime())
 	{

@@ -876,11 +876,15 @@ void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandom
 		{
 			int entranceLocation = Rng.RandRange(1, YSize() - 2);
 			Set(XSize() - 1, entranceLocation, EntranceTile);
+			ADungeonRoom* roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(neighbor).SpawnedRoom;
+			roomNeighbor->Set(0, entranceLocation, EntranceTile);
 		}
 		if (neighbor.Y > RoomMetadata.Location.Y)
 		{
 			int entranceLocation = Rng.RandRange(1, XSize() - 2);
 			Set(entranceLocation, YSize() - 1, EntranceTile);
+			ADungeonRoom* roomNeighbor = DungeonSpace->GetRoomFromFloorCoordinates(neighbor).SpawnedRoom;
+			roomNeighbor->Set(entranceLocation, 0, EntranceTile);
 		}
 	}
 }
