@@ -248,42 +248,94 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 			uint8 targetScatterCount = (uint8)Rng.RandRange(scatter.MinCount, scatter.MaxCount);
 			uint8 currentScatterCount = scatter.SkipTiles;
 			uint8 currentSkipCount = 0;
+			TSubclassOf<AActor> selectedActor = NULL;
+			FScatterTransform selectedObject;
 
+			// Iterate over the locations array until we run out of locations
+			// or we hit the maximum count
 			while ((!scatter.bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
 			{
-				FIntVector location;
+				FIntVector localPosition;
 				if (scatter.bUseRandomLocation)
 				{
 					int32 locationIndex = Rng.RandRange(0, locations.Num() - 1);
-					location = locations[locationIndex];
+					localPosition = locations[locationIndex];
 					locations.RemoveAt(locationIndex);
 				}
 				else
 				{
-					location = locations[0];
+					localPosition = locations[0];
 					locations.RemoveAt(0);
 				}
-				FIntVector maxOffset = location + scatter.EdgeOffset;
-				FIntVector minOffset = location - scatter.EdgeOffset;
-				if (minOffset.X < 0 || minOffset.Y < 0)
-				{
-					// Too close to the edge of the room
-					continue;
-				}
-				if (maxOffset.X >= XSize() || maxOffset.Y >= YSize())
-				{
-					// Too close to the positive edge of the room
-					continue;
-				}
 
-				location += GetRoomTileSpacePosition();
-
-
+				FIntVector location = localPosition + GetRoomTileSpacePosition();
 				ETileDirection direction = GetTileDirection(location);
 
-				if (!scatter.AllowedDirections.Contains(direction))
+				// Choose the actual mesh we want to spawn
+				if (selectedActor == NULL || !scatter.bAlwaysUseSameObjectForThisInstance || 
+					selectedActor != NULL && !selectedObject.DirectionOffsets.Contains(direction))
 				{
-					// Direction not allowed
+					TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(scatter.ScatterObjects);
+					selectedActor = NULL;
+					do
+					{
+						if (scatterTransforms.Num() == 0)
+						{
+							break;
+						}
+						int32 randomObjectIndex = Rng.RandRange(0, scatterTransforms.Num() - 1);
+						selectedObject = scatter.ScatterObjects[randomObjectIndex];
+						scatterTransforms.RemoveAt(randomObjectIndex);
+						
+						// Verify we actually have meshes to place here
+						if (selectedObject.ScatterMeshes.Num() == 0)
+						{
+							UE_LOG(LogSpaceGen, Warning, TEXT("Ground scatter for room %s has an invalid mesh at tile %s."), *GetName(), *tile->TileID.ToString());
+							continue;
+						}
+
+						// Verify this mesh can work at this location
+						FIntVector maxOffset = localPosition + selectedObject.EdgeOffset;
+						FIntVector minOffset = localPosition - selectedObject.EdgeOffset;
+						if (minOffset.X < 0 || minOffset.Y < 0)
+						{
+							// Too close to the edge of the room
+							continue;
+						}
+						if (maxOffset.X >= XSize() || maxOffset.Y >= YSize())
+						{
+							// Too close to the positive edge of the room
+							continue;
+						};
+
+						if (!selectedObject.DirectionOffsets.Contains(direction))
+						{
+							// Direction not allowed
+							continue;
+						}
+
+						int32 actorMeshIndex = Rng.RandRange(0, selectedObject.ScatterMeshes.Num() - 1);
+						FScatterObject selectedMesh = selectedObject.ScatterMeshes[actorMeshIndex];
+						if (Rng.GetFraction() <= selectedMesh.SelectionChance + (selectedMesh.DifficultyModifier * GetRoomDifficulty()))
+						{
+							selectedActor = selectedMesh.ScatterObject;
+							if (selectedActor == NULL)
+							{
+								UE_LOG(LogSpaceGen, Warning, TEXT("Ground scatter for room %s has an null actor mesh at tile %s."), *GetName(), *tile->TileID.ToString());
+								selectedObject.ScatterMeshes.RemoveAt(actorMeshIndex);
+								if (selectedObject.ScatterMeshes.Num() == 0)
+								{
+									// Out of meshes; try another scatter object
+									UE_LOG(LogSpaceGen, Error, TEXT("A ground scatter object ran out of scatter meshes for room %s, processing tile %s."), *GetName(), *tile->TileID.ToString());
+									scatter.ScatterObjects.RemoveAt(actorMeshIndex);
+								}
+							}
+						}
+					} while (selectedActor == NULL);
+				}
+				if (selectedActor == NULL)
+				{
+					// Could not find relevant actor for whatever reason
 					continue;
 				}
 
@@ -369,7 +421,7 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 					offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
 					tileTransform.AddToTranslation(offset);
 				}
-				FTransform scatterTransform = scatter.ObjectOffset;
+				FTransform scatterTransform = selectedObject.DirectionOffsets[direction];
 				FVector tilePosition = tileTransform.GetLocation();
 				FVector scatterPosition = scatterTransform.GetLocation();
 				FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
@@ -382,19 +434,8 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 					float rotationAmount = randomRotation * 90.0f;
 					objectRotation.Add(0.0f, rotationAmount, 0.0f);
 				}
+
 				FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
-
-				// Spawn the ground scatter object
-				TSubclassOf<AActor> selectedActor = NULL;
-				do
-				{
-					FScatterObject selectedObject = scatter.ScatterObjects[Rng.RandRange(0, scatter.ScatterObjects.Num() - 1)];
-					if (Rng.GetFraction() <= selectedObject.SelectionChance)
-					{
-						selectedActor = selectedObject.ScatterObject;
-					}
-				} while (selectedActor == NULL);
-
 				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(selectedActor, objectTransform);
 #if WITH_EDITOR
 				FString folderPath = "Rooms/Scatter Actors/";

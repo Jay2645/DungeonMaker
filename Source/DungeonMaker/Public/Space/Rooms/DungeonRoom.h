@@ -37,13 +37,43 @@ struct FScatterObject
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSubclassOf<AActor> ScatterObject;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SelectionChance;
+	// An additive difficulty modifier which gets added to the selection chance
+	// based on the difficulty of the room.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "-1.0", ClampMax = "1.0"))
+	float DifficultyModifier;
 
 	FScatterObject()
 	{
 		ScatterObject = NULL;
 		SelectionChance = 1.0f;
+		DifficultyModifier = 0.0f;
+	}
+
+};
+
+USTRUCT(BlueprintType)
+struct FScatterTransform
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FScatterObject> ScatterMeshes;
+
+	// Which edges of the room this ground scatter is valid at.
+	// Center means anywhere which is not an edge.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<ETileDirection, FTransform> DirectionOffsets;
+
+	// How far away this should be from the edge of any room.
+	// Bear in mind that this doesn't make sense with any allowed directions other than Center.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FIntVector EdgeOffset;
+
+	FScatterTransform()
+	{
+		EdgeOffset = FIntVector::ZeroValue;
 	}
 };
 
@@ -54,17 +84,13 @@ struct FGroundScatter
 public:
 	// A list of all objects we should scatter on this tile.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TArray<FScatterObject> ScatterObjects;
+	TArray<FScatterTransform> ScatterObjects;
+	// Whether we should use a different object each time we want to place
+	// some ground scatter from the ScatterObject list, or if we should keep
+	// using the same object over and over. Useful for placing the same type
+	// of trim around the room.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FTransform ObjectOffset;
-	// Which edges of the room this ground scatter is valid at.
-	// Center means anywhere which is not an edge.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSet<ETileDirection> AllowedDirections;
-	// How far away this should be from the edge of any room.
-	// Bear in mind that this doesn't make sense with any allowed directions other than Center.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FIntVector EdgeOffset;
+	bool bAlwaysUseSameObjectForThisInstance;
 
 	// Whether we should be able to place this adjacent to next rooms.
 	// Next rooms are determined by our current mission.
@@ -97,7 +123,6 @@ public:
 	
 	FGroundScatter()
 	{
-		AllowedDirections.Add(ETileDirection::Center);
 		bUseRandomCount = false;
 		bUseRandomLocation = true;
 		bConformToGrid = true;
@@ -106,7 +131,6 @@ public:
 		MinCount = 0;
 		MaxCount = 255;
 		SkipTiles = 0;
-		EdgeOffset = FIntVector(0, 0, 0);
 	}
 };
 
