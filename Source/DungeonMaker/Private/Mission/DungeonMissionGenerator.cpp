@@ -19,6 +19,7 @@ UDungeonMissionGenerator::UDungeonMissionGenerator()
 void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 {
 	Head = NewObject<UDungeonMissionNode>();
+	Head->ParentNodes = TSet<UDungeonMissionNode*>();
 	Head->Symbol.Symbol = HeadSymbol.Symbol;
 	Head->bTightlyCoupledToParent = false;
 	DungeonSize = 1;
@@ -409,6 +410,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 			{
 				// Create a new node
 				toNode = NewObject<UDungeonMissionNode>();
+				toNode->ParentNodes = TSet<UDungeonMissionNode*>();
 				if (child.Symbol.SymbolID == 2)
 				{
 					// This is what would be the "last" node in our shape.

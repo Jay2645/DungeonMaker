@@ -55,7 +55,10 @@ public:
 	TSet<ADungeonRoom*> UnresolvedHooks;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> ComponentLookup;
+	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> FloorComponentLookup;
+
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> CeilingComponentLookup;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
 	UDungeonMissionSpaceHandler* MissionSpaceHandler;

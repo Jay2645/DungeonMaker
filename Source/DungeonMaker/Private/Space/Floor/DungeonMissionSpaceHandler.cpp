@@ -182,7 +182,8 @@ FFloorRoom UDungeonMissionSpaceHandler::MakeFloorRoom(UDungeonMissionNode* Node,
 	FRandomStream& Rng, int32 TotalSymbolCount)
 {
 	FFloorRoom room = FFloorRoom();
-	room.RoomClass = ((UDungeonMissionSymbol*)Node->Symbol.Symbol)->GetRoomType(Rng);
+	UDungeonMissionSymbol* symbol = ((UDungeonMissionSymbol*)Node->Symbol.Symbol);
+	room.RoomClass = symbol->GetRoomType(Rng);
 	room.Location = Location;
 	room.Difficulty = Node->Symbol.SymbolID / (float)TotalSymbolCount;
 	room.DungeonSymbol = Node->Symbol;

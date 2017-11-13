@@ -113,7 +113,8 @@ void UDungeonFloorManager::UpdateTileFromTileSpace(FIntVector TileSpaceLocation,
 	room.SpawnedRoom->SetTileGridCoordinates(localTileOffset, NewTile);
 }
 
-void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup,
+void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
+	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
 	FDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
@@ -126,7 +127,7 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchic
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->PlaceRoomTiles(ComponentLookup, Rng);
+			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
 			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->OnRoomGenerationComplete();
 		}
 	}

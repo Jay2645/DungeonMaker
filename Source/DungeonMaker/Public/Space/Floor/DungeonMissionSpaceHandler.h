@@ -23,46 +23,14 @@ class DUNGEONMAKER_API UDungeonMissionSpaceHandler : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
-	//UDungeonFloorManager();
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDungeonSpaceGenerator* DungeonSpaceGenerator;
-	
-	/*UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	const UDungeonTile* DefaultFloorTile;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	const UDungeonTile* DefaultWallTile;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	const UDungeonTile* DefaultEntranceTile;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//TArray<FRoomReplacements> PreGenerationRoomReplacementPhases;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;*/
-
-	// This size of this floor, in tile space.
-	// The total number of rooms this floor will have is determined by
-	// ceil(sqrt(FloorSize / RoomSize))^2.
-	/*UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 FloorSize = 128;*/
 
 	// The size of any room on this floor, in tile space.
 	// The total number of rooms this floor will have is determined by
 	// ceil(sqrt(FloorSize / RoomSize))^2.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 RoomSize = 32;
-
-	/*// Any rooms on this floor which require further processing
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TSet<ADungeonRoom*> UnresolvedHooks;
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	UDungeonMissionSpaceHandler* TopNeighbor = NULL;
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	UDungeonMissionSpaceHandler* BottomNeighbor = NULL;
-
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	uint8 DungeonLevel = 0;*/
 
 public:
 	void DrawDebugSpace();
@@ -85,10 +53,6 @@ public:
 	void CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 		int32 SymbolCount, FRandomStream& Rng);
 
-	/*const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
-	void UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile);
-	int XSize() const;
-	int YSize() const;*/
 private:
 	bool PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms, 
 		FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms, 

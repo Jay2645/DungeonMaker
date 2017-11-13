@@ -17,6 +17,17 @@ enum class ETileType : uint8
 	Wall
 };
 
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FDungeonTileMesh
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UStaticMesh* Mesh;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FTransform Transform;
+};
+
 /**
 *
 */
@@ -31,7 +42,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName TileID;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	UStaticMesh* TileMesh;
+	FDungeonTileMesh GroundMesh;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FDungeonTileMesh CeilingMesh;
 
 	static const float TILE_SIZE;
 };

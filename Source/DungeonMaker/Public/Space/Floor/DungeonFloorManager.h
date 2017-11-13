@@ -65,7 +65,8 @@ public:
 
 	const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
 	void UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile);
-	void SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup,
+	void SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
+		TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
 		FRandomStream& Rng);
 	int XSize() const;
 	int YSize() const;

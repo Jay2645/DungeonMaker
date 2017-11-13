@@ -164,6 +164,8 @@ public:
 	FFloorRoom RoomMetadata;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	TArray<FRoomReplacements> RoomReplacementPhases;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	TSet<FIntVector> EntranceLocations;
 	// A list of actors that get scattered throughout the room
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Props")
 	TMap<const UDungeonTile*, FGroundScatterSet> GroundScatter;
@@ -213,9 +215,15 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnPlayerEnterNeighborRoom();
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
-	void OnRoomTilesReplaced();
+	void OnPreRoomTilesReplaced();
 	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	void OnRoomTilesReplaced();
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
 	void OnRoomInitialized();
+
+public:
+	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
+	void OnRoomGenerationComplete();
 
 public:
 	// Creates a room of X by Y tiles long, populated with the specified default tile.
@@ -229,7 +237,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FRandomStream &Rng);
 
-	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
+	void PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
+		TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
 		FRandomStream& Rng);
 	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, 
 		FRandomStream& Rng);
@@ -273,8 +282,6 @@ public:
 	ETileDirection GetTileDirection(FIntVector Location) const;
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	FIntVector GetRoomTileSpacePosition() const;
-	UFUNCTION(BlueprintImplementableEvent, Category = "World Generation|Dungeon Generation|Rooms")
-	void OnRoomGenerationComplete();
 
 	void SetTileGridCoordinates(FIntVector currentLocation, const UDungeonTile* Tile);
 
@@ -283,6 +290,9 @@ public:
 	void TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng);
 
 protected:
+	virtual void DoTileReplacementPreprocessing();
 	ADungeonRoom* AddNeighborEntrances(const FIntVector& Neighbor, FRandomStream& Rng,
 		const UDungeonTile* EntranceTile);
+	void PlaceTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
+		const UDungeonTile* Tile, const FTransform& TileTransform, const FIntVector& Location);
 };

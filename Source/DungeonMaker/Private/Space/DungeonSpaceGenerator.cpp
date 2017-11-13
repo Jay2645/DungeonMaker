@@ -44,22 +44,7 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		Floors.Add(floor);
 		floor->SpawnRooms(Rng);
 	}
-	for (ADungeonRoom* room : MissionRooms)
-	{
-		TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
-		for (const UDungeonTile* tile : roomTiles)
-		{
-			if (ComponentLookup.Contains(tile) || tile->TileMesh == NULL)
-			{
-				continue;
-			}
-			// Otherwise, create a new InstancedStaticMeshComponent
-			UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), tile->TileID);
-			tileMesh->RegisterComponent();
-			tileMesh->SetStaticMesh(tile->TileMesh);
-			ComponentLookup.Add(tile, tileMesh);
-		}
-	}
+
 
 	if (bDebugDungeon)
 	{
@@ -67,9 +52,34 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	}
 	else
 	{
+		for (ADungeonRoom* room : MissionRooms)
+		{
+			TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
+			for (const UDungeonTile* tile : roomTiles)
+			{
+				if (!FloorComponentLookup.Contains(tile) && tile->GroundMesh.Mesh != NULL)
+				{
+					// Otherwise, create a new InstancedStaticMeshComponent
+					FString componentName = tile->TileID.ToString() + " Floor";
+					UHierarchicalInstancedStaticMeshComponent* floorMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), FName(*componentName));
+					floorMeshComponent->RegisterComponent();
+					floorMeshComponent->SetStaticMesh(tile->GroundMesh.Mesh);
+					FloorComponentLookup.Add(tile, floorMeshComponent);
+				}
+				if (!CeilingComponentLookup.Contains(tile) && tile->CeilingMesh.Mesh != NULL)
+				{
+					// Otherwise, create a new InstancedStaticMeshComponent
+					FString componentName = tile->TileID.ToString() + " Ceiling";
+					UHierarchicalInstancedStaticMeshComponent* ceilingMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOuter(), FName(*componentName));
+					ceilingMeshComponent->RegisterComponent();
+					ceilingMeshComponent->SetStaticMesh(tile->CeilingMesh.Mesh);
+					CeilingComponentLookup.Add(tile, ceilingMeshComponent);
+				}
+			}
+		}
 		for (UDungeonFloorManager* floor : Floors)
 		{
-			floor->SpawnRoomMeshes(ComponentLookup, Rng);
+			floor->SpawnRoomMeshes(FloorComponentLookup, CeilingComponentLookup, Rng);
 		}
 	}
 }

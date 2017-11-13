@@ -59,6 +59,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<FMissionNodeData> NextNodes;
 
+public:
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeons|Missions")
 	UDungeonMissionNode* FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const;
 

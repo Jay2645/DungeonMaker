@@ -136,6 +136,9 @@ void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const 
 
 void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 {
+	OnPreRoomTilesReplaced();
+	DoTileReplacementPreprocessing();
+
 	// Replace them based on our replacement rules
 	TArray<FRoomReplacements> replacementPhases = RoomReplacementPhases;
 	TMap<int32, uint8> replacementCounts;
@@ -177,7 +180,8 @@ void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 	OnRoomTilesReplaced();
 }
 
-void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup,
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
+	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
 	TMap<const UDungeonTile*, TArray<FIntVector>> tileLocations;
@@ -194,22 +198,14 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 			}
 			tileLocations[tile].Add(location);
 
-			if (tile->TileMesh == NULL)
+			if (tile->GroundMesh.Mesh != NULL)
 			{
-				continue;
+				PlaceTiles(FloorComponentLookup, tile, tile->GroundMesh.Transform, location);
 			}
-			if (!ComponentLookup.Contains(tile))
+			if (tile->CeilingMesh.Mesh != NULL)
 			{
-				UHierarchicalInstancedStaticMeshComponent* tileMesh = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, tile->TileID);
-				tileMesh->RegisterComponent();
-				tileMesh->SetStaticMesh(tile->TileMesh);
-				ComponentLookup.Add(tile, tileMesh);
+				PlaceTiles(CeilingComponentLookup, tile, tile->CeilingMesh.Transform, location);
 			}
-			FTransform tileTfm = GetActorTransform();
-			FVector offset = FVector(x * UDungeonTile::TILE_SIZE, y * UDungeonTile::TILE_SIZE, 0.0f);
-			tileTfm.AddToTranslation(offset);
-			UHierarchicalInstancedStaticMeshComponent* meshComponent = ComponentLookup[tile];
-			meshComponent->AddInstance(tileTfm);
 		}
 	}
 
@@ -522,6 +518,10 @@ void ADungeonRoom::Set(int32 X, int32 Y, const UDungeonTile* Tile)
 
 const UDungeonTile* ADungeonRoom::GetTile(int32 X, int32 Y) const
 {
+	if (!RoomTiles.DungeonRows.IsValidIndex(Y) || !RoomTiles.DungeonRows[Y].DungeonTiles.IsValidIndex(X))
+	{
+		return NULL;
+	}
 	return RoomTiles.DungeonRows[Y].DungeonTiles[X];
 }
 
@@ -733,6 +733,11 @@ void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandom
 	}
 }
 
+void ADungeonRoom::DoTileReplacementPreprocessing()
+{
+	/* Empty */
+}
+
 ADungeonRoom* ADungeonRoom::AddNeighborEntrances(const FIntVector& Neighbor, FRandomStream& Rng, 
 	const UDungeonTile* EntranceTile)
 {
@@ -767,7 +772,34 @@ ADungeonRoom* ADungeonRoom::AddNeighborEntrances(const FIntVector& Neighbor, FRa
 		Set(ourLocation.X, ourLocation.Y, EntranceTile);
 		roomNeighbor->Set(neighborLocation.X, neighborLocation.Y, EntranceTile);
 		AllNeighbors.Add(roomNeighbor);
+		EntranceLocations.Add(ourLocation);
 		roomNeighbor->AllNeighbors.Add(this);
+		roomNeighbor->EntranceLocations.Add(neighborLocation);
 	}
 	return roomNeighbor;
+}
+
+void ADungeonRoom::PlaceTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
+	const UDungeonTile* Tile, const FTransform& TileTransform, const FIntVector& Location)
+{
+	if (!ComponentLookup.Contains(Tile))
+	{
+		UE_LOG(LogSpaceGen, Warning, TEXT("Missing Instanced Static Mesh Component for tile %s!"), *Tile->TileID.ToString());
+		return;
+	}
+	// Fetch Dungeon transform
+	FTransform actorTransform = GetActorTransform();
+	FVector actorPosition = actorTransform.GetLocation();
+	// Add the local tile position, rotation, and the dungeon offset
+	FVector tilePosition = TileTransform.GetLocation();
+	FVector offset = FVector(Location.X * UDungeonTile::TILE_SIZE, Location.Y * UDungeonTile::TILE_SIZE, Location.Z * UDungeonTile::TILE_SIZE);
+	FVector finalPosition = actorPosition + tilePosition + offset;
+	// Add the rotations
+	FRotator tileRotation = FRotator(TileTransform.GetRotation());
+	FRotator finalRotation = FRotator(actorTransform.GetRotation());
+	finalRotation.Add(tileRotation.Pitch, tileRotation.Yaw, tileRotation.Roll);
+
+	// Create the tile
+	FTransform objectTransform = FTransform(finalRotation, finalPosition, TileTransform.GetScale3D());
+	ComponentLookup[Tile]->AddInstance(objectTransform);
 }
