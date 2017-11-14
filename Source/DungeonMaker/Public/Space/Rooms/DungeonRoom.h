@@ -290,7 +290,7 @@ public:
 	void TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng);
 
 protected:
-	virtual void DoTileReplacementPreprocessing();
+	virtual void DoTileReplacementPreprocessing(FRandomStream& Rng);
 	ADungeonRoom* AddNeighborEntrances(const FIntVector& Neighbor, FRandomStream& Rng,
 		const UDungeonTile* EntranceTile);
 	void PlaceTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 

@@ -137,7 +137,7 @@ void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const 
 void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 {
 	OnPreRoomTilesReplaced();
-	DoTileReplacementPreprocessing();
+	DoTileReplacementPreprocessing(Rng);
 
 	// Replace them based on our replacement rules
 	TArray<FRoomReplacements> replacementPhases = RoomReplacementPhases;
@@ -733,7 +733,7 @@ void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandom
 	}
 }
 
-void ADungeonRoom::DoTileReplacementPreprocessing()
+void ADungeonRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 {
 	/* Empty */
 }

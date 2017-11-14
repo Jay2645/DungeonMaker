@@ -18,15 +18,20 @@ public:
 	const UDungeonTile* MazeGroundTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* MazeWallTile;
-	
-	virtual void DoTileReplacementPreprocessing() override;
+
+protected:
+	UPROPERTY()
+	TSet<FIntVector> FloorPositions;
+
+public:
+	virtual void DoTileReplacementPreprocessing(FRandomStream& Rng) override;
 
 	bool PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount = true) const;
 	void MakeSection(FIntVector Location, const UDungeonTile* DefaultTile);
 protected:
 	void RecursiveBacktracker(const FIntVector& Start, const UDungeonTile* DefaultTile);
-	UPROPERTY()
-	TSet<FIntVector> FloorPositions;
+	bool RecursiveBacktrackerSearch(const FIntVector& Start, const FIntVector& Goal, TSet<FIntVector>& Visited);
+
 private:
 	bool ConnectToMainMaze(FIntVector ConnectLocation, const UDungeonTile* DefaultTile,
 		TSet<FIntVector>& NewlyPlaced);

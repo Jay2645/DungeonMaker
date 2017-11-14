@@ -1,6 +1,6 @@
 #include "TrialLabyrinthRoom.h"
 
-void ATrialLabyrinthRoom::DoTileReplacementPreprocessing()
+void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 {
 	if (EntranceLocations.Num() == 0)
 	{
@@ -196,6 +196,40 @@ void ATrialLabyrinthRoom::RecursiveBacktracker(const FIntVector& Start, const UD
 			// Pop the stack back to the last position
 			stack.RemoveAt(nextIndex);
 		}
+	}
+}
+
+bool ATrialLabyrinthRoom::RecursiveBacktrackerSearch(const FIntVector& Start, const FIntVector& Goal,
+	TSet<FIntVector>& Visited)
+{
+	if (Start == Goal)
+	{
+		return true;
+	}
+
+	if (Visited.Contains(Start))
+	{
+		return false;
+	}
+
+	const UDungeonTile* tile = GetTile(Start.X, Start.Y);
+	if (tile == NULL || tile == MazeWallTile)
+	{
+		// Wall tile
+		return false;
+	}
+
+	Visited.Add(Start);
+	if (Start.X < XSize() - 1 && RecursiveBacktrackerSearch(Start + FIntVector(1, 0, 0), Goal, Visited) ||
+		Start.Y < YSize() - 1 && RecursiveBacktrackerSearch(Start + FIntVector(0, 1, 0), Goal, Visited) ||
+		Start.X > 0 && RecursiveBacktrackerSearch(Start + FIntVector(-1, 0, 0), Goal, Visited) ||
+		Start.Y > 0 && RecursiveBacktrackerSearch(Start + FIntVector(0, -1, 0), Goal, Visited))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 
