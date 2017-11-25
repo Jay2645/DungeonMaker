@@ -28,6 +28,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	bool bChooseRandomSeedAtRuntime = false;
 
+public:
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	TSet<FIntVector> GetAllTilesOfType(ETileType Type) const;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

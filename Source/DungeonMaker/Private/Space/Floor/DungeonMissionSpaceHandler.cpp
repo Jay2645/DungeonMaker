@@ -469,7 +469,7 @@ TKeyValuePair<FIntVector, FIntVector> UDungeonMissionSpaceHandler::GetOpenRoom(U
 
 bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 {
-	TSet<UDungeonMissionNode*> seen;
+	TSet<UDungeonMissionNode*> seen = TSet<UDungeonMissionNode*>();
 	TArray<FFloorRoom> nextToProcess;
 
 	// Make sure the entrance location is valid
@@ -503,26 +503,13 @@ bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 		FFloorRoom next = nextToProcess[0];
 		nextToProcess.RemoveAt(0);
 		UDungeonMissionNode* node = next.RoomNode;
-		if (seen.Contains(node))
+		if (node == NULL || seen.Contains(node))
 		{
 			// Already seen this node
 			continue;
 		}
 
-		// Get a list of all parents not yet processed
-		TSet<UDungeonMissionNode*> unprocessedParents = node->ParentNodes.Difference(seen);
-		if (unprocessedParents.Num() > 0)
-		{
-			UE_LOG(LogSpaceGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());
-			for (UDungeonMissionNode* parent : unprocessedParents)
-			{
-				UE_LOG(LogSpaceGen, Log, TEXT("Missing: %s (%d)"), *parent->GetSymbolDescription(), parent->Symbol.SymbolID);
-			}
-			// Defer this node
-			nextToProcess.Add(next);
-			deferred.Add(node);
-		}
-		else
+		if (node->ParentNodes.Num() == 0)
 		{
 			// All parents have been processed!
 			// Since we've made some progress, empty the deferred array (only used to tell if we get stuck)
@@ -531,6 +518,31 @@ bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 			seen.Add(node);
 			// Append all our children to our next to process array
 			nextToProcess.Append(GetAllNeighbors(next));
+		}
+		else
+		{
+			TSet<UDungeonMissionNode*> unprocessedParents = node->ParentNodes.Difference(seen);
+			if (unprocessedParents.Num() > 0)
+			{
+				UE_LOG(LogSpaceGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());
+				for (UDungeonMissionNode* parent : unprocessedParents)
+				{
+					UE_LOG(LogSpaceGen, Log, TEXT("Missing: %s (%d)"), *parent->GetSymbolDescription(), parent->Symbol.SymbolID);
+				}
+				// Defer this node
+				nextToProcess.Add(next);
+				deferred.Add(node);
+			}
+			else
+			{
+				// All parents have been processed!
+				// Since we've made some progress, empty the deferred array (only used to tell if we get stuck)
+				deferred.Empty();
+				// Mark this node as processed
+				seen.Add(node);
+				// Append all our children to our next to process array
+				nextToProcess.Append(GetAllNeighbors(next));
+			}
 		}
 	}
 	return true;

@@ -12,6 +12,16 @@ ADungeon::ADungeon()
 	Space = CreateDefaultSubobject<UDungeonSpaceGenerator>(TEXT("Dungeon Space"));
 }
 
+TSet<FIntVector> ADungeon::GetAllTilesOfType(ETileType Type) const
+{
+	TSet<FIntVector> tileTypes;
+	for (int i = 0; i < Space->Floors.Num(); i++)
+	{
+		tileTypes.Append(Space->Floors[i]->GetAllTilesOfType(Type));
+	}
+	return tileTypes;
+}
+
 // Called when the game starts or when spawned
 void ADungeon::BeginPlay()
 {

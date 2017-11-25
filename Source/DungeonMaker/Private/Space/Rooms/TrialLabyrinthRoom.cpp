@@ -56,19 +56,27 @@ void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 		}
 	}
 
-	// Carve out this entrance
-	MakeSection(entranceTileLocations[0], defaultTile);
-	// Run the maze generator for this entrance
-	RecursiveBacktracker(entranceTileLocations[0], defaultTile);
-
-	if (entranceTileLocations.Num() > 1)
+	if (entranceTileLocations.Num() == 0)
 	{
-		for (int i = 1; i < entranceTileLocations.Num(); i++)
+		UE_LOG(LogSpaceGen, Error, TEXT("%s had no entrances! Something funky is happening."), *GetName());
+		return;
+	}
+
+	// Run the maze generator
+	MakeSection(entranceTileLocations[0], defaultTile, true);
+	RecursiveBacktracker(entranceTileLocations[0], defaultTile, Rng);
+
+	for (FIntVector location : EntranceLocations)
+	{
+		for (int x = -1; x <= 1; x++)
 		{
-			if (!FloorPositions.Contains(entranceTileLocations[i]))
+			for (int y = -1; y <= 1; y++)
 			{
-				TSet<FIntVector> newlyPlaced;
-				ConnectToMainMaze(entranceTileLocations[i], defaultTile, newlyPlaced);
+				const UDungeonTile* tile = GetTile(location.X + x, location.Y + y);
+				if (tile == defaultTile)
+				{
+					Set(location.X + x, location.Y + y, MazeGroundTile);
+				}
 			}
 		}
 	}
@@ -77,126 +85,87 @@ void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 bool ATrialLabyrinthRoom::PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount) const
 {
 	// Check to see if a position touches exactly one existing passage
+	if (FloorPositions.Contains(Position))
+	{
+		return false;
+	}
+	if (Position.X < 0 || Position.Y < 0 ||
+		Position.X >= XSize() || Position.Y >= YSize())
+	{
+		return false;
+	}
+
 	const UDungeonTile* tile = GetTile(Position.X, Position.Y);
-	if (tile != DefaultTile && tile != MazeWallTile)
+	if (tile != DefaultTile)
 	{
 		// Not available for carving
 		return false;
 	}
-	const int MAX_TILE_TOUCH_COUNT = 2;
-	int currentTouchCount = 0;
-	for (int x = Position.X - 1; x <= Position.X + 1; x++)
+
+	TArray<FIntVector> neighborLocations;
+	neighborLocations.Add(FIntVector(-1, 0, 0));
+	neighborLocations.Add(FIntVector(1, 0, 0));
+	neighborLocations.Add(FIntVector(0, -1, 0));
+	neighborLocations.Add(FIntVector(0, 1, 0));
+
+	int adjacentCount = 0;
+	for (int i = 0; i < neighborLocations.Num(); i++)
 	{
-		for (int y = Position.Y - 1; y <= Position.Y + 1; y++)
+		if (FloorPositions.Contains(Position + neighborLocations[i]))
 		{
-			// Skip checking us
-			if (x == Position.X && y == Position.Y)
-			{
-				continue;
-			}
-			// Skip diagonals
-			const UDungeonTile* neighbor = GetTile(x, y);
-
-			// Abort if placing this would make us neighbor open air
-			if (neighbor == NULL)
-			{
-				// (Except on diagonals)
-				if (x == Position.X - 1 && y == Position.Y - 1 ||
-					x == Position.X + 1 && y == Position.Y - 1 ||
-					x == Position.X - 1 && y == Position.Y + 1 ||
-					x == Position.X + 1 && y == Position.Y + 1)
-				{
-					// Pass
-					continue;
-				}
-				else
-				{
-					// Directly neighbor open air
-					return false;
-				}
-			}
-
-			if (neighbor == MazeGroundTile)
-			{
-				currentTouchCount++;
-				if (bCheckNeighborCount && currentTouchCount > MAX_TILE_TOUCH_COUNT)
-				{
-					// Touches more than the maximum number of floor tiles!
-					return false;
-				}
-
-			}
+			adjacentCount++;
 		}
 	}
-	// We only care if we touched at least one ground tile
-	return currentTouchCount > 0;
+	return adjacentCount <= 1;
 }
 
-void ATrialLabyrinthRoom::MakeSection(FIntVector Location, const UDungeonTile* DefaultTile)
+bool ATrialLabyrinthRoom::MakeSection(FIntVector Location, const UDungeonTile* DefaultTile, bool bForceGenerate)
 {
-	for (int x = Location.X - 1; x <= Location.X + 1; x++)
+	if (!bForceGenerate && !PositionIsValid(Location, DefaultTile))
 	{
-		for (int y = Location.Y - 1; y <= Location.Y + 1; y++)
-		{
-			// Skip diagonals
-			if (x == Location.X - 1 && y == Location.Y - 1 ||
-				x == Location.X + 1 && y == Location.Y - 1 ||
-				x == Location.X - 1 && y == Location.Y + 1 ||
-				x == Location.X + 1 && y == Location.Y + 1)
-			{
-				continue;
-			}
-
-			// Set the ground tile
-			if (x == Location.X && y == Location.Y)
-			{
-				Set(x, y, MazeGroundTile);
-				FloorPositions.Add(Location);
-			}
-			else
-			{
-				// Set the wall tiles
-				const UDungeonTile* neighbor = GetTile(x, y);
-				if (neighbor == DefaultTile)
-				{
-					Set(x, y, MazeWallTile);
-				}
-			}
-		}
+		return false;
 	}
+	FloorPositions.Add(Location);
+	Set(Location.X, Location.Y, MazeGroundTile);
+	return true;
 }
 
-void ATrialLabyrinthRoom::RecursiveBacktracker(const FIntVector& Start, const UDungeonTile* DefaultTile)
+bool ATrialLabyrinthRoom::RecursiveBacktracker(const FIntVector& Start, const UDungeonTile* DefaultTile,
+	FRandomStream& Rng)
 {
-	TArray<FIntVector> stack;
-	stack.Add(Start);
-	// Iterate over the stack
-	while (stack.Num() > 0)
+	// Add array of neighbor locations
+	TArray<FIntVector> neighborLocations;
+	neighborLocations.Add(FIntVector(-1, 0, 0));
+	neighborLocations.Add(FIntVector(1, 0, 0));
+	neighborLocations.Add(FIntVector(0, -1, 0));
+	neighborLocations.Add(FIntVector(0, 1, 0));
+	
+	// Shuffle
+	neighborLocations.Swap(Rng.RandRange(0, neighborLocations.Num() - 1), Rng.RandRange(0, neighborLocations.Num() - 1));
+	neighborLocations.Swap(Rng.RandRange(0, neighborLocations.Num() - 1), Rng.RandRange(0, neighborLocations.Num() - 1));
+	neighborLocations.Swap(Rng.RandRange(0, neighborLocations.Num() - 1), Rng.RandRange(0, neighborLocations.Num() - 1));
+	neighborLocations.Swap(Rng.RandRange(0, neighborLocations.Num() - 1), Rng.RandRange(0, neighborLocations.Num() - 1));
+
+	// Place neighbors randomly
+	for (int i = 0; i < neighborLocations.Num(); i++)
 	{
-		int nextIndex = stack.Num() - 1;
-		FIntVector next = stack[nextIndex];
-		bool bFoundPositions = false;
-		for (int x = next.X - 1; x <= next.X + 1; x++)
+		if (!MakeSection(Start + neighborLocations[i], DefaultTile))
 		{
-			for (int y = next.Y - 1; y < next.Y + 1; y++)
-			{
-				FIntVector position = FIntVector(x, y, next.Z);
-				// Always carve into an unmade section
-				if (PositionIsValid(position, DefaultTile))
-				{
-					MakeSection(position, DefaultTile);
-					stack.Add(position);
-					bFoundPositions = true;
-				}
-			}
+			continue;
 		}
-		if (!bFoundPositions)
+/*		FIntVector next = Start + neighborLocations[i] + neighborLocations[i];
+		if (next.X >= 0 && next.X < XSize() && next.Y >= 0 && next.Y < YSize())
 		{
-			// No unmade cells next to the current position
-			// Pop the stack back to the last position
-			stack.RemoveAt(nextIndex);
+			MakeSection(Start + neighborLocations[i] + neighborLocations[i], DefaultTile, true);
+			RecursiveBacktracker(Start + neighborLocations[i] + neighborLocations[i], DefaultTile, Rng);
 		}
+		else
+		{*/
+			RecursiveBacktracker(Start + neighborLocations[i], DefaultTile, Rng);
+		//}
 	}
+
+	return true;
 }
 
 bool ATrialLabyrinthRoom::RecursiveBacktrackerSearch(const FIntVector& Start, const FIntVector& Goal,
@@ -213,7 +182,7 @@ bool ATrialLabyrinthRoom::RecursiveBacktrackerSearch(const FIntVector& Start, co
 	}
 
 	const UDungeonTile* tile = GetTile(Start.X, Start.Y);
-	if (tile == NULL || tile == MazeWallTile)
+	if (tile == NULL)
 	{
 		// Wall tile
 		return false;
@@ -230,88 +199,5 @@ bool ATrialLabyrinthRoom::RecursiveBacktrackerSearch(const FIntVector& Start, co
 	else
 	{
 		return false;
-	}
-}
-
-bool ATrialLabyrinthRoom::ConnectToMainMaze(FIntVector ConnectLocation, const UDungeonTile* DefaultTile, 
-	TSet<FIntVector>& NewlyPlaced)
-{
-	// Make the current section
-	MakeSection(ConnectLocation, DefaultTile);
-	// Mark it as a new connection -- don't get our hopes up that we found
-	// a connection when it was really just our neighbor
-	NewlyPlaced.Add(ConnectLocation);
-
-	for (int x = ConnectLocation.X - 1; x <= ConnectLocation.X + 1; x++)
-	{
-		for (int y = ConnectLocation.Y - 1; y <= ConnectLocation.Y + 1; y++)
-		{
-			FIntVector neighborPosition = FIntVector(x, y, ConnectLocation.Z);
-			// Skip anything already processed
-			if (NewlyPlaced.Contains(neighborPosition))
-			{
-				continue;
-			}
-
-			// Skip diagonals
-			if (x == ConnectLocation.X - 1 && y == ConnectLocation.Y - 1 ||
-				x == ConnectLocation.X + 1 && y == ConnectLocation.Y - 1 ||
-				x == ConnectLocation.X - 1 && y == ConnectLocation.Y + 1 ||
-				x == ConnectLocation.X + 1 && y == ConnectLocation.Y + 1)
-			{
-				continue;
-			}
-
-			if (FloorPositions.Contains(neighborPosition))
-			{
-				// All done!
-				return true;
-			}
-
-			// Skip if the neighbor is an invalid tile
-			if (!PositionIsValid(neighborPosition, DefaultTile, false))
-			{
-				continue;
-			}
-
-			// Go recursive
-			if (ConnectToMainMaze(neighborPosition, DefaultTile, NewlyPlaced))
-			{
-				// Our neighbor connects!
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-void ATrialLabyrinthRoom::GetTileNeighbors(FIntVector Source, TSet<FIntVector>& OutNeighbors)
-{
-	OutNeighbors.Add(Source);
-	for (int x = Source.X - 1; x <= Source.X + 1; x++)
-	{
-		for (int y = Source.Y - 1; y <= Source.Y + 1; y++)
-		{
-			FIntVector neighborPosition = FIntVector(x, y, Source.Z);
-			// Skip anything already processed
-			if (OutNeighbors.Contains(neighborPosition))
-			{
-				continue;
-			}
-
-			// Skip diagonals
-			if (x == Source.X - 1 && y == Source.Y - 1 ||
-				x == Source.X + 1 && y == Source.Y - 1 ||
-				x == Source.X - 1 && y == Source.Y + 1 ||
-				x == Source.X + 1 && y == Source.Y + 1)
-			{
-				continue;
-			}
-
-			if (FloorPositions.Contains(neighborPosition))
-			{
-				GetTileNeighbors(neighborPosition, OutNeighbors);
-			}
-		}
 	}
 }

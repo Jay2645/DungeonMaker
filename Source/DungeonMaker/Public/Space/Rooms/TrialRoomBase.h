@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Space/Rooms/DungeonRoom.h"
+#include "Space/Rooms/Trials/TrialRoom.h"
 #include "TrialRoomBase.generated.h"
 
 /**
@@ -11,7 +12,7 @@
  * These trials are puzzles forcing the player to test their skill.
  */
 UCLASS(Abstract)
-class DUNGEONMAKER_API ATrialRoomBase : public ADungeonRoom
+class DUNGEONMAKER_API ATrialRoomBase : public ADungeonRoom, public ITrialRoom
 {
 	GENERATED_BODY()	
 };

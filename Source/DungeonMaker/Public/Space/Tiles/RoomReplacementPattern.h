@@ -38,6 +38,10 @@ public:
 	// A series of tiles that serve as output (the replacement).
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FDungeonRoomMetadata Output;
+	// Whether this replacement is placed randomly, or if it'll be the first potential replacement we
+	// come across. Random replacement is MUCH slower.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bRandomlyPlaced;
 	// How many replacements to place, or 0 if we can place as many as we want.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
 	uint8 MaxReplacementCount;
@@ -54,12 +58,18 @@ public:
 
 	URoomReplacementPattern();
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
-	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom);
+	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom, FRandomStream& Rng);
+
+
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
-	bool FindAndReplaceFloor(UDungeonFloorManager* ReplaceFloor);
+	bool FindAndReplaceFloor(UDungeonFloorManager* ReplaceFloor, FRandomStream& Rng);
+
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
 	float GetActualSelectionChance(ADungeonRoom* InputRoom) const;
 
-protected:
+private:
+	void UpdateFloorTiles(int ReplacementXSize, int ReplacementYSize,
+		int XOffset, int YOffset, int Width, int Height, uint8 ReplacementOutput,
+		UDungeonFloorManager* ReplaceFloor, FDungeonRoomMetadata &ReplaceRoom);
 	uint8 MatchesReplacement(FDungeonRoomMetadata& InputToCheck);
 };

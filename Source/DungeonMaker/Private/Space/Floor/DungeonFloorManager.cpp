@@ -20,7 +20,7 @@ void UDungeonFloorManager::InitializeFloorManager(UDungeonSpaceGenerator* SpaceG
 	UnresolvedHooks.Empty();
 }
 
-void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng)
+void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter)
 {
 	FDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
 	for (int x = 0; x < floor.XSize(); x++)
@@ -32,7 +32,7 @@ void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng)
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom = CreateRoom(floor[y][x], Rng);
+			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom = CreateRoom(floor[y][x], Rng, GlobalGroundScatter);
 		}
 	}
 
@@ -113,8 +113,8 @@ void UDungeonFloorManager::UpdateTileFromTileSpace(FIntVector TileSpaceLocation,
 	room.SpawnedRoom->SetTileGridCoordinates(localTileOffset, NewTile);
 }
 
-void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
+void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
+	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
 	FDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
@@ -143,7 +143,25 @@ int UDungeonFloorManager::YSize() const
 	return GetDungeonFloor().YSize() * RoomSize;
 }
 
-ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomStream& Rng)
+TSet<FIntVector> UDungeonFloorManager::GetAllTilesOfType(ETileType Type)
+{
+	TSet<FIntVector> tileTypes;
+	for (int x = 0; x < XSize(); x++)
+	{
+		for (int y = 0; y < YSize(); y++)
+		{
+			FFloorRoom room = GetRoomFromTileSpace(FIntVector(x, y, DungeonLevel));
+			if (room.SpawnedRoom != NULL)
+			{
+				tileTypes.Append(room.SpawnedRoom->GetAllTilesOfType(Type));
+			}
+		}
+	}
+	return tileTypes;
+}
+
+ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 
+	const FGroundScatterPairing& GlobalGroundScatter)
 {
 	FString roomName = Room.DungeonSymbol.GetSymbolDescription();
 	roomName.Append(" (");
@@ -155,6 +173,8 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 	room->SetFolderPath("Rooms");
 #endif
 	room->Rename(*roomName);
+
+	room->GroundScatter->GroundScatter.CombinePairings(GlobalGroundScatter);
 
 	FIntVector roomLocation = Room.Location * RoomSize;
 	roomLocation.Z = Room.Location.Z;
@@ -216,7 +236,7 @@ void UDungeonFloorManager::DoFloorWideTileReplacement(TArray<FRoomReplacements> 
 		while (replacementPatterns.Num() > 0)
 		{
 			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
-			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(this))
+			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(this, Rng))
 			{
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);

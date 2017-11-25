@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "SpaceMeshActor.h"
 #include "Tiles/RoomReplacementPattern.h"
 #include "Tiles/DungeonTile.h"
 #include "Rooms/DungeonRoom.h"
 #include "Floor/DungeonMissionSpaceHandler.h"
 #include "Floor/DungeonFloorManager.h"
 #include "../Mission/DungeonMissionNode.h"
+#include "GroundScatterManager.h"
 #include "DungeonSpaceGenerator.generated.h"
 
 
@@ -23,52 +24,55 @@ public:
 	// Sets default values for this component's properties
 	UDungeonSpaceGenerator();
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	const UDungeonTile* DefaultFloorTile;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	const UDungeonTile* DefaultWallTile;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	const UDungeonTile* DefaultEntranceTile;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 MaxGeneratedRooms;
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
 	bool bDebugDungeon;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Replacement")
 	TArray<FRoomReplacements> PreGenerationRoomReplacementPhases;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Replacement")
 	TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Props")
+	FGroundScatterPairing GlobalGroundScatter;
+
 	// The size (in tiles) of this dungeon.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 DungeonSize = 128;
 
 	// The size of a room in this dungeon, in tiles.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 RoomSize = 24;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TSet<ADungeonRoom*> MissionRooms;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TSet<ADungeonRoom*> UnresolvedHooks;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> FloorComponentLookup;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Tiles")
+	TMap<const UDungeonTile*, ASpaceMeshActor*> FloorComponentLookup;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*> CeilingComponentLookup;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Tiles")
+	TMap<const UDungeonTile*, ASpaceMeshActor*> CeilingComponentLookup;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	UDungeonMissionSpaceHandler* MissionSpaceHandler;
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	int32 TotalSymbolCount;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TArray<FDungeonFloor> DungeonSpace;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TArray<UDungeonFloorManager*> Floors;
 public:	
 	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);

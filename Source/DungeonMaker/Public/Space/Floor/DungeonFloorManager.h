@@ -9,6 +9,7 @@
 #include "../Tiles/RoomReplacementPattern.h"
 #include "DungeonMissionNode.h"
 #include "DungeonFloor.h"
+#include "GroundScatterManager.h"
 #include "DungeonFloorManager.generated.h"
 
 class UDungeonSpaceGenerator;
@@ -58,20 +59,27 @@ public:
 
 public:
 	void InitializeFloorManager(UDungeonSpaceGenerator* SpaceGenerator, int32 Level);
-	void SpawnRooms(FRandomStream& Rng);
+	void SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter);
 	void DrawDebugSpace();
 	// Gets a room based on tile space coordinates.
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	FFloorRoom GetRoomFromTileSpace(FIntVector TileSpaceLocation);
 
 	const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
 	void UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile);
-	void SpawnRoomMeshes(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
-		TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
+	void SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
+		TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 		FRandomStream& Rng);
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	int XSize() const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	int YSize() const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
+	TSet<FIntVector> GetAllTilesOfType(ETileType Type);
+
 private:
-	ADungeonRoom* CreateRoom(const FFloorRoom& Room, FRandomStream& Rng);
+	ADungeonRoom* CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 
+		const FGroundScatterPairing& GlobalGroundScatter);
 	// Returns a COPY of the DungeonFloor we represent.
 	FDungeonFloor GetDungeonFloor() const;
 	void CreateEntrances(ADungeonRoom* Room, FRandomStream& Rng);

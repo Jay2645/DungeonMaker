@@ -3,8 +3,12 @@
 #include "DungeonRoom.h"
 #include "DungeonSpaceGenerator.h"
 #include "DungeonFloorManager.h"
+#include "GroundScatterManager.h"
 #include <DrawDebugHelpers.h>
 #include "GameFramework/Character.h"
+#include "Trials/TrialRoom.h"
+#include "LockedRoom.h"
+#include "KeyRoom.h"
 
 DEFINE_LOG_CATEGORY(LogSpaceGen);
 
@@ -18,15 +22,51 @@ ADungeonRoom::ADungeonRoom()
 	Symbol = NULL;
 	DummyRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(DummyRoot);
+	GroundScatter = CreateDefaultSubobject<UGroundScatterManager>(TEXT("Ground Scatter"));
+	
 	RoomTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("Room Trigger"));
 	RoomTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	
+	NorthEntranceTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("North Entrance Trigger"));
+	NorthEntranceTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	
+	SouthEntranceTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("South Entrance Trigger"));
+	SouthEntranceTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	
+	WestEntranceTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("West Entrance Trigger"));
+	WestEntranceTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	
+	EastEntranceTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("East Entrance Trigger"));
+	EastEntranceTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	FCollisionResponseContainer collisonChannels;
 	collisonChannels.SetAllChannels(ECR_Ignore);
 	collisonChannels.SetResponse(ECollisionChannel::ECC_Pawn, ECR_Overlap);
+
 	RoomTrigger->SetCollisionResponseToChannels(collisonChannels);
 	RoomTrigger->SetupAttachment(DummyRoot);
 	RoomTrigger->bGenerateOverlapEvents = true;
 	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
+	RoomTrigger->OnComponentEndOverlap.AddDynamic(this, &ADungeonRoom::OnEndTriggerOverlap);
+
+	NorthEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
+	NorthEntranceTrigger->SetupAttachment(DummyRoot);
+	NorthEntranceTrigger->bGenerateOverlapEvents = true;
+	NorthEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
+
+	SouthEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
+	SouthEntranceTrigger->SetupAttachment(DummyRoot);
+	SouthEntranceTrigger->bGenerateOverlapEvents = true;
+	SouthEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
+
+	WestEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
+	WestEntranceTrigger->SetupAttachment(DummyRoot);
+	WestEntranceTrigger->bGenerateOverlapEvents = true;
+	WestEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
+
+	EastEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
+	EastEntranceTrigger->SetupAttachment(DummyRoot);
+	EastEntranceTrigger->bGenerateOverlapEvents = true;
+	EastEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);
 }
@@ -48,12 +88,6 @@ TArray<FIntVector> ADungeonRoom::GetTileLocations(const UDungeonTile* Tile)
 	return locations;
 }
 
-
-void ADungeonRoom::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
 void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor->IsA(ACharacter::StaticClass()))
@@ -69,6 +103,39 @@ void ADungeonRoom::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponen
 				{
 					neighbor->OnPlayerEnterNeighborRoom();
 				}
+			}
+		}
+	}
+}
+
+void ADungeonRoom::OnEndTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor->IsA(ACharacter::StaticClass()))
+	{
+		ACharacter* otherCharacter = (ACharacter*)OtherActor;
+		if (otherCharacter->GetController() != NULL)
+		{
+			if (otherCharacter->GetController()->IsA(APlayerController::StaticClass()))
+			{
+				// This controller belongs to the player
+				OnPlayerLeaveRoom();
+			}
+		}
+	}
+}
+
+void ADungeonRoom::OnBeginEntranceOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor->IsA(ACharacter::StaticClass()))
+	{
+		ACharacter* otherCharacter = (ACharacter*)OtherActor;
+		if (otherCharacter->GetController() != NULL)
+		{
+			if (otherCharacter->GetController()->IsA(APlayerController::StaticClass()))
+			{
+				// This controller belongs to the player
+				OnPlayerEnterRoomEntrance();
 			}
 		}
 	}
@@ -124,10 +191,26 @@ void ADungeonRoom::InitializeRoom(UDungeonSpaceGenerator* SpaceGenerator, const 
 		yOffset * UDungeonTile::TILE_SIZE, 
 		ZPosition * UDungeonTile::TILE_SIZE);
 
-	FVector halfExtents = FVector((xSize * 250.0f), (ySize * 250.0f), 500.0f);
 	SetActorLocation(worldPosition);
-	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, 500.0f, 500.0f));
-	RoomTrigger->SetBoxExtent(halfExtents);
+
+	float tileSize = UDungeonTile::TILE_SIZE;
+	float halfTileSize = tileSize * 0.5f;
+
+	FVector halfExtents = FVector((xSize * halfTileSize), (ySize * halfTileSize), tileSize);
+	RoomTrigger->SetRelativeLocation(halfExtents - FVector(0.0f, tileSize, tileSize));
+	RoomTrigger->SetBoxExtent(halfExtents - FVector(tileSize, tileSize, 0.0f));
+
+	NorthEntranceTrigger->SetRelativeLocation(FVector(xSize * halfTileSize, (ySize - 1) * tileSize - halfTileSize, tileSize));
+	NorthEntranceTrigger->SetBoxExtent(FVector(xSize * halfTileSize, halfTileSize, tileSize));
+
+	SouthEntranceTrigger->SetRelativeLocation(FVector(xSize * halfTileSize, -halfTileSize, tileSize));
+	SouthEntranceTrigger->SetBoxExtent(FVector(xSize * halfTileSize, halfTileSize, tileSize));
+
+	EastEntranceTrigger->SetRelativeLocation(FVector(halfTileSize, (ySize - 1) * halfTileSize - halfTileSize, tileSize));
+	EastEntranceTrigger->SetBoxExtent(FVector(halfTileSize, ySize * halfTileSize, tileSize));
+
+	WestEntranceTrigger->SetRelativeLocation(FVector(xSize * tileSize - halfTileSize, (ySize - 1) * halfTileSize - halfTileSize, tileSize));
+	WestEntranceTrigger->SetBoxExtent(FVector(halfTileSize, ySize * halfTileSize, tileSize));
 
 	OnRoomInitialized();
 
@@ -159,7 +242,7 @@ void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 				continue;
 			}
 
-			if (!replacementPatterns[rngIndex]->FindAndReplace(RoomTiles))
+			if (!replacementPatterns[rngIndex]->FindAndReplace(RoomTiles, Rng))
 			{
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);
@@ -180,8 +263,8 @@ void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 	OnRoomTilesReplaced();
 }
 
-void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& FloorComponentLookup,
-	TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& CeilingComponentLookup,
+void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
+	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
 	TMap<const UDungeonTile*, TArray<FIntVector>> tileLocations;
@@ -197,251 +280,50 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, UHierarchicalInstanc
 				tileLocations.Add(tile, TArray<FIntVector>());
 			}
 			tileLocations[tile].Add(location);
+			
+			if (tile->bGroundMeshShouldAlwaysBeTheSame)
+			{
+				// Determine what we should spawn on this tile later
+				if (tile->GroundMesh.Num() > 0 && !FloorTileMeshSelections.Contains(tile))
+				{
+					int32 randomIndex;
+					do 
+					{
+						randomIndex = Rng.RandRange(0, tile->GroundMesh.Num() - 1);
+					} while (tile->GroundMesh[randomIndex].SelectionChance < Rng.GetFraction());
 
-			if (tile->GroundMesh.Mesh != NULL)
-			{
-				PlaceTiles(FloorComponentLookup, tile, tile->GroundMesh.Transform, location);
+					FloorTileMeshSelections.Add(tile, randomIndex);
+				}
 			}
-			if (tile->CeilingMesh.Mesh != NULL)
+			
+			if (tile->bCeilingMeshShouldAlwaysBeTheSame)
 			{
-				PlaceTiles(CeilingComponentLookup, tile, tile->CeilingMesh.Transform, location);
+				if (tile->CeilingMesh.Num() > 0 && !CeilingTileMeshSelections.Contains(tile))
+				{
+					int32 randomIndex;
+					do
+					{
+						randomIndex = Rng.RandRange(0, tile->CeilingMesh.Num() - 1);
+					} while (tile->CeilingMesh[randomIndex].SelectionChance < Rng.GetFraction());
+
+					CeilingTileMeshSelections.Add(tile, randomIndex);
+				}
+			}
+
+			if (tile->Interactions.Num() > 0 && !InteractionOptions.Contains(tile))
+			{
+				int32 randomIndex = Rng.RandRange(0, tile->Interactions.Num() - 1);
+				InteractionOptions.Add(tile, tile->Interactions[randomIndex]);
 			}
 		}
 	}
 
-/*#if !UE_BUILD_SHIPPING
-	FVector tileStringLocation = GetActorLocation();
-	FVector tileStringOffset = FVector(XSize() * UDungeonTile::TILE_SIZE * 0.5f, YSize() * UDungeonTile::TILE_SIZE * 0.5f, 250.0f);
-	DrawDebugString(GetWorld(), tileStringLocation + tileStringOffset, *GetName());
-#endif*/
-
-	DetermineGroundScatter(tileLocations, Rng);
+	CreateAllRoomTiles(tileLocations, FloorComponentLookup, CeilingComponentLookup, Rng);
 }
 
 void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations, FRandomStream& Rng)
 {
-	UE_LOG(LogSpaceGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *GetName(), TileLocations.Num());
-	for (auto& kvp : TileLocations)
-	{
-		const UDungeonTile* tile = kvp.Key;
-		if (!GroundScatter.Contains(tile))
-		{
-			UE_LOG(LogSpaceGen, Log, TEXT("%s had no ground scatter defined for %s."), *GetName(), *tile->TileID.ToString());
-			continue;
-		}
-		FGroundScatterSet scatterSet = GroundScatter[tile];
-
-		for (FGroundScatter scatter : scatterSet.GroundScatter)
-		{
-			if (scatter.ScatterObjects.Num() == 0)
-			{
-				UE_LOG(LogSpaceGen, Warning, TEXT("Null scatter object in room %s!"), *GetName());
-				continue;
-			}
-			TArray<FIntVector> locations;
-			locations.Append(kvp.Value);
-
-			uint8 targetScatterCount = (uint8)Rng.RandRange(scatter.MinCount, scatter.MaxCount);
-			uint8 currentScatterCount = scatter.SkipTiles;
-			uint8 currentSkipCount = 0;
-			TSubclassOf<AActor> selectedActor = NULL;
-			FScatterTransform selectedObject;
-
-			// Iterate over the locations array until we run out of locations
-			// or we hit the maximum count
-			while ((!scatter.bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
-			{
-				FIntVector localPosition;
-				if (scatter.bUseRandomLocation)
-				{
-					int32 locationIndex = Rng.RandRange(0, locations.Num() - 1);
-					localPosition = locations[locationIndex];
-					locations.RemoveAt(locationIndex);
-				}
-				else
-				{
-					localPosition = locations[0];
-					locations.RemoveAt(0);
-				}
-
-				FIntVector location = localPosition + GetRoomTileSpacePosition();
-				ETileDirection direction = GetTileDirection(location);
-
-				// Choose the actual mesh we want to spawn
-				if (selectedActor == NULL || !scatter.bAlwaysUseSameObjectForThisInstance || 
-					selectedActor != NULL && !selectedObject.DirectionOffsets.Contains(direction))
-				{
-					TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(scatter.ScatterObjects);
-					selectedActor = NULL;
-					do
-					{
-						if (scatterTransforms.Num() == 0)
-						{
-							break;
-						}
-						int32 randomObjectIndex = Rng.RandRange(0, scatterTransforms.Num() - 1);
-						selectedObject = scatter.ScatterObjects[randomObjectIndex];
-						scatterTransforms.RemoveAt(randomObjectIndex);
-						
-						// Verify we actually have meshes to place here
-						if (selectedObject.ScatterMeshes.Num() == 0)
-						{
-							UE_LOG(LogSpaceGen, Warning, TEXT("Ground scatter for room %s has an invalid mesh at tile %s."), *GetName(), *tile->TileID.ToString());
-							continue;
-						}
-
-						// Verify this mesh can work at this location
-						FIntVector maxOffset = localPosition + selectedObject.EdgeOffset;
-						FIntVector minOffset = localPosition - selectedObject.EdgeOffset;
-						if (minOffset.X < 0 || minOffset.Y < 0)
-						{
-							// Too close to the edge of the room
-							continue;
-						}
-						if (maxOffset.X >= XSize() || maxOffset.Y >= YSize())
-						{
-							// Too close to the positive edge of the room
-							continue;
-						};
-
-						if (!selectedObject.DirectionOffsets.Contains(direction))
-						{
-							// Direction not allowed
-							continue;
-						}
-
-						int32 actorMeshIndex = Rng.RandRange(0, selectedObject.ScatterMeshes.Num() - 1);
-						FScatterObject selectedMesh = selectedObject.ScatterMeshes[actorMeshIndex];
-						if (Rng.GetFraction() <= selectedMesh.SelectionChance + (selectedMesh.DifficultyModifier * GetRoomDifficulty()))
-						{
-							selectedActor = selectedMesh.ScatterObject;
-							if (selectedActor == NULL)
-							{
-								UE_LOG(LogSpaceGen, Warning, TEXT("Ground scatter for room %s has an null actor mesh at tile %s."), *GetName(), *tile->TileID.ToString());
-								selectedObject.ScatterMeshes.RemoveAt(actorMeshIndex);
-								if (selectedObject.ScatterMeshes.Num() == 0)
-								{
-									// Out of meshes; try another scatter object
-									UE_LOG(LogSpaceGen, Error, TEXT("A ground scatter object ran out of scatter meshes for room %s, processing tile %s."), *GetName(), *tile->TileID.ToString());
-									scatter.ScatterObjects.RemoveAt(actorMeshIndex);
-								}
-							}
-						}
-					} while (selectedActor == NULL);
-				}
-				if (selectedActor == NULL)
-				{
-					// Could not find relevant actor for whatever reason
-					continue;
-				}
-
-				if (direction != ETileDirection::Center)
-				{
-					if (!scatter.bPlaceAdjacentToNextRooms)
-					{
-						bool bIsAdjacent = false;
-						for (int x = -1; x <= 1; x++)
-						{
-							for (int y = -1; y <= 1; y++)
-							{
-								FFloorRoom nextRoom = DungeonFloor->GetRoomFromTileSpace(location + FIntVector(x, y, location.Z));
-								if (nextRoom.SpawnedRoom == NULL || nextRoom.SpawnedRoom == this)
-								{
-									continue;
-								}
-								if (RoomMetadata.GetOutgoingRooms().Contains(nextRoom.Location))
-								{
-									bIsAdjacent = true;
-									break;
-								}
-							}
-							if (bIsAdjacent)
-							{
-								break;
-							}
-						}
-						if (bIsAdjacent)
-						{
-							continue;
-						}
-					}
-
-					if (!scatter.bPlaceAdjacentToPriorRooms)
-					{
-						bool bIsAdjacent = false;
-						for (int x = -1; x <= 1; x++)
-						{
-							for (int y = -1; y <= 1; y++)
-							{
-								FFloorRoom nextRoom = DungeonFloor->GetRoomFromTileSpace(location + FIntVector(x, y, location.Z));
-								if (nextRoom.SpawnedRoom == NULL || nextRoom.SpawnedRoom == this)
-								{
-									continue;
-								}
-								if (RoomMetadata.IncomingRoom == nextRoom.Location)
-								{
-									bIsAdjacent = true;
-									break;
-								}
-							}
-							if (bIsAdjacent)
-							{
-								break;
-							}
-						}
-						if (bIsAdjacent)
-						{
-							continue;
-						}
-					}
-				}
-
-				// Last check -- should we skip this tile?
-				if (currentSkipCount < scatter.SkipTiles)
-				{
-					// We need to skip this tile
-					currentSkipCount++;
-					continue;
-				}
-				else
-				{
-					// Reset skip count
-					currentSkipCount = 0;
-				}
-
-				FTransform tileTransform = GetTileTransformFromTileSpace(location);
-				if (!scatter.bConformToGrid)
-				{
-					FVector offset = FVector::ZeroVector;
-					offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-					offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-					tileTransform.AddToTranslation(offset);
-				}
-				FTransform scatterTransform = selectedObject.DirectionOffsets[direction];
-				FVector tilePosition = tileTransform.GetLocation();
-				FVector scatterPosition = scatterTransform.GetLocation();
-				FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
-				FVector objectPosition = tilePosition + scatterPosition;
-				FRotator objectRotation = FRotator(tileTransform.GetRotation());
-				objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
-				if (scatter.bUseRandomLocation)
-				{
-					int32 randomRotation = Rng.RandRange(0, 3);
-					float rotationAmount = randomRotation * 90.0f;
-					objectRotation.Add(0.0f, rotationAmount, 0.0f);
-				}
-
-				FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
-				AActor* scatterActor = GetWorld()->SpawnActorAbsolute(selectedActor, objectTransform);
-#if WITH_EDITOR
-				FString folderPath = "Rooms/Scatter Actors/";
-				folderPath.Append(selectedActor->GetName());
-				scatterActor->SetFolderPath(FName(*folderPath));
-#endif
-				currentScatterCount++;
-			}
-		}
-	}
+	GroundScatter->DetermineGroundScatter(TileLocations, Rng, this);
 }
 
 FTransform ADungeonRoom::GetTileTransform(const FIntVector& LocalLocation) const
@@ -453,7 +335,10 @@ FTransform ADungeonRoom::GetTileTransform(const FIntVector& LocalLocation) const
 
 FTransform ADungeonRoom::GetTileTransformFromTileSpace(const FIntVector& WorldLocation) const
 {
-	FVector location = FVector(WorldLocation.X * 500.0f, WorldLocation.Y * 500.0f, WorldLocation.Z * 500.0f);
+	float tileSize = UDungeonTile::TILE_SIZE;
+	float halfTileSize = tileSize * 0.5f;
+
+	FVector location = FVector(WorldLocation.X * tileSize, WorldLocation.Y * tileSize, WorldLocation.Z * tileSize);
 	FRotator rotation = GetActorRotation();
 	FVector scale = GetActorScale();
 
@@ -461,37 +346,37 @@ FTransform ADungeonRoom::GetTileTransformFromTileSpace(const FIntVector& WorldLo
 	switch (direction)
 	{
 	case ETileDirection::Center:
-		location.X -= 250.0f;
-		location.Y -= 250.0f;
+		location.X -= halfTileSize;
+		location.Y -= halfTileSize;
 		break;
 	case ETileDirection::North:
 		// Pass
 		break;
 	case ETileDirection::South:
-		location.Y -= 500.0f;
+		location.Y -= tileSize;
 		rotation.Yaw += 180.0f;
 		break;
 	case ETileDirection::East:
 		rotation.Yaw += 90.0f;
 		break;
 	case ETileDirection::West:
-		location.X += 500.0f;
+		location.X += tileSize;
 		rotation.Yaw += 270.0f;
 		break;
 	case ETileDirection::Northeast:
 		rotation.Yaw += 45.0f;
 		break;
 	case ETileDirection::Northwest:
-		location.X += 500.0f;
+		location.X += tileSize;
 		rotation.Yaw += 315.0f;
 		break;
 	case ETileDirection::Southeast:
-		location.Y -= 500.0f;
+		location.Y -= tileSize;
 		rotation.Yaw += 135.0f;
 		break;
 	case ETileDirection::Southwest:
-		location.X += 500.0f;
-		location.Y -= 500.0f;
+		location.X += tileSize;
+		location.Y -= tileSize;
 		rotation.Yaw += 225.0f;
 		break;
 	default:
@@ -504,6 +389,23 @@ FTransform ADungeonRoom::GetTileTransformFromTileSpace(const FIntVector& WorldLo
 TSet<const UDungeonTile*> ADungeonRoom::FindAllTiles()
 {
 	return RoomTiles.FindAllTiles();
+}
+
+TSet<FIntVector> ADungeonRoom::GetAllTilesOfType(ETileType Type) const
+{
+	TSet<FIntVector> locations;
+	for (int x = 0; x < XSize(); x++)
+	{
+		for (int y = 0; y < YSize(); y++)
+		{
+			const UDungeonTile* tile = GetTile(x, y);
+			if (tile != NULL && tile->TileType == Type)
+			{
+				locations.Add(FIntVector(x, y, RoomLevel));
+			}
+		}
+	}
+	return locations;
 }
 
 void ADungeonRoom::Set(int32 X, int32 Y, const UDungeonTile* Tile)
@@ -689,6 +591,21 @@ ETileDirection ADungeonRoom::GetTileDirection(FIntVector Location) const
 	}
 }
 
+void ADungeonRoom::CreateNewTileMesh(const UDungeonTile* Tile, const FTransform& Location)
+{
+	if (DungeonSpace->FloorComponentLookup.Contains(Tile))
+	{
+		DungeonSpace->FloorComponentLookup[Tile]->AddInstance(FloorTileMeshSelections[Tile], Location);
+	}
+	else if (DungeonSpace->CeilingComponentLookup.Contains(Tile))
+	{
+		DungeonSpace->CeilingComponentLookup[Tile]->AddInstance(CeilingTileMeshSelections[Tile], Location);
+	}
+	else
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not create new mesh at location!"));
+	}
+}
 
 FIntVector ADungeonRoom::GetRoomTileSpacePosition() const
 {
@@ -779,27 +696,183 @@ ADungeonRoom* ADungeonRoom::AddNeighborEntrances(const FIntVector& Neighbor, FRa
 	return roomNeighbor;
 }
 
-void ADungeonRoom::PlaceTiles(TMap<const UDungeonTile*, UHierarchicalInstancedStaticMeshComponent*>& ComponentLookup, 
-	const UDungeonTile* Tile, const FTransform& TileTransform, const FIntVector& Location)
+void ADungeonRoom::PlaceTile(TMap<const UDungeonTile*, ASpaceMeshActor*>& ComponentLookup,
+	const UDungeonTile* Tile, int32 MeshID, const FTransform& MeshTransformOffset, const FIntVector& Location)
 {
 	if (!ComponentLookup.Contains(Tile))
 	{
 		UE_LOG(LogSpaceGen, Warning, TEXT("Missing Instanced Static Mesh Component for tile %s!"), *Tile->TileID.ToString());
 		return;
 	}
+
+	FTransform objectTransform = CreateMeshTransform(MeshTransformOffset, Location);
+	ComponentLookup[Tile]->AddInstance(MeshID, objectTransform);
+}
+
+FTransform ADungeonRoom::CreateMeshTransform(const FTransform &MeshTransformOffset, const FIntVector &Location) const
+{
 	// Fetch Dungeon transform
 	FTransform actorTransform = GetActorTransform();
 	FVector actorPosition = actorTransform.GetLocation();
 	// Add the local tile position, rotation, and the dungeon offset
-	FVector tilePosition = TileTransform.GetLocation();
+	FVector meshPosition = MeshTransformOffset.GetLocation();
 	FVector offset = FVector(Location.X * UDungeonTile::TILE_SIZE, Location.Y * UDungeonTile::TILE_SIZE, Location.Z * UDungeonTile::TILE_SIZE);
-	FVector finalPosition = actorPosition + tilePosition + offset;
+	FVector finalPosition = actorPosition + meshPosition + offset;
 	// Add the rotations
-	FRotator tileRotation = FRotator(TileTransform.GetRotation());
+	FRotator meshRotation = FRotator(MeshTransformOffset.GetRotation());
 	FRotator finalRotation = FRotator(actorTransform.GetRotation());
-	finalRotation.Add(tileRotation.Pitch, tileRotation.Yaw, tileRotation.Roll);
+	finalRotation.Add(meshRotation.Pitch, meshRotation.Yaw, meshRotation.Roll);
 
 	// Create the tile
-	FTransform objectTransform = FTransform(finalRotation, finalPosition, TileTransform.GetScale3D());
-	ComponentLookup[Tile]->AddInstance(objectTransform);
+	return FTransform(finalRotation, finalPosition, MeshTransformOffset.GetScale3D());
+}
+
+AActor* ADungeonRoom::SpawnInteraction(const UDungeonTile* Tile, FDungeonTileInteractionOptions InteractionOptions, 
+	const FIntVector& Location, FRandomStream& Rng)
+{
+	if (InteractionOptions.Options.Num() == 0)
+	{
+		// No interactions possible
+		return NULL;
+	}
+	TSubclassOf<AActor> interactionActor = NULL;
+	FDungeonTileInteraction interaction;
+	TArray<FDungeonTileInteraction> allInteractions = InteractionOptions.Options;
+
+	// Select an interaction actor
+	do 
+	{
+		int32 randomIndex = Rng.RandRange(0, InteractionOptions.Options.Num() - 1);
+		interaction = InteractionOptions.Options[randomIndex];
+		if (interaction.InteractionActor == NULL || interaction.SelectionChance == 0.000f)
+		{
+			// Remove the offending actor
+			allInteractions.RemoveAt(randomIndex);
+			continue;
+		}
+
+		if (interaction.SelectionChance < Rng.GetFraction())
+		{
+			// Selection chance too low, try again
+			continue;
+		}
+		interactionActor = interaction.InteractionActor;
+	} while (interactionActor == NULL && allInteractions.Num() > 0);
+
+	if (interactionActor == NULL)
+	{
+		return NULL;
+	}
+
+	// Create transform
+	FTransform transform = interaction.BaseTransform;
+	ETileDirection direction = GetTileDirection(Location);
+	if (InteractionOptions.DirectionOffsets.Contains(direction))
+	{
+		FTransform offset = InteractionOptions.DirectionOffsets[direction];
+		transform.SetLocation(transform.GetLocation() + offset.GetLocation());
+		transform.SetRotation(transform.GetRotation() + offset.GetRotation());
+		transform.SetScale3D(transform.GetScale3D() * offset.GetScale3D());
+	}
+
+	// Spawn actor
+	return GetWorld()->SpawnActorAbsolute(interactionActor, CreateMeshTransform(transform, Location));
+}
+
+void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVector>>& TileLocations,
+	TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
+	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
+	FRandomStream& Rng)
+{
+	// Place tiles
+	for (auto& kvp : TileLocations)
+	{
+		if (FloorComponentLookup.Contains(kvp.Key))
+		{
+			for (int i = 0; i < kvp.Value.Num(); i++)
+			{
+				int32 meshSelection;
+				if (FloorTileMeshSelections.Contains(kvp.Key))
+				{
+					meshSelection = FloorTileMeshSelections[kvp.Key];
+				}
+				else
+				{
+					do
+					{
+						meshSelection = Rng.RandRange(0, kvp.Key->GroundMesh.Num() - 1);
+					} while (kvp.Key->GroundMesh[meshSelection].SelectionChance < Rng.GetFraction());
+				}
+				PlaceTile(FloorComponentLookup, kvp.Key, meshSelection, kvp.Key->GroundMesh[meshSelection].Transform, TileLocations[kvp.Key][i]);
+			}
+		}
+		if (CeilingComponentLookup.Contains(kvp.Key))
+		{
+			for (int i = 0; i < kvp.Value.Num(); i++)
+			{
+				int32 meshSelection;
+				if (CeilingTileMeshSelections.Contains(kvp.Key))
+				{
+					meshSelection = CeilingTileMeshSelections[kvp.Key];
+				}
+				else
+				{
+					do
+					{
+						meshSelection = Rng.RandRange(0, kvp.Key->CeilingMesh.Num() - 1);
+					} while (kvp.Key->CeilingMesh[meshSelection].SelectionChance < Rng.GetFraction());
+				}
+				PlaceTile(CeilingComponentLookup, kvp.Key, meshSelection, kvp.Key->CeilingMesh[meshSelection].Transform, TileLocations[kvp.Key][i]);
+			}
+		}
+	}
+
+	// Place tile interactions
+	for (auto& kvp : InteractionOptions)
+	{
+		for (int i = 0; i < TileLocations[kvp.Key].Num(); i++)
+		{
+			SpawnInteraction(kvp.Key, kvp.Value, TileLocations[kvp.Key][i], Rng);
+		}
+	}
+
+	// Place traps
+	if (GetClass()->ImplementsInterface(UTrialRoom::StaticClass()))
+	{
+		TArray<AActor*> spawnedTraps = ITrialRoom::Execute_CreateTraps(this);
+#if WITH_EDITOR
+		for (AActor* trap : spawnedTraps)
+		{
+			FString folderPath = "Rooms/Traps/";
+			folderPath.Append(trap->GetClass()->GetName());
+			trap->SetFolderPath(FName(*folderPath));
+		}
+#endif
+	}
+
+	if (GetClass()->ImplementsInterface(ULockedRoom::StaticClass()))
+	{
+		AActor* lock = ILockedRoom::Execute_SpawnLock(this, Rng);
+		// Generate the next seed, since the RNG has to be passed via copy
+		Rng.GenerateNewSeed();
+#if WITH_EDITOR
+		FString folderPath = "Rooms/Locks/";
+		folderPath.Append(lock->GetClass()->GetName());
+		lock->SetFolderPath(FName(*folderPath));
+#endif
+	}
+
+	if (GetClass()->ImplementsInterface(UKeyRoom::StaticClass()))
+	{
+		AActor* key = IKeyRoom::Execute_SpawnKey(this, Rng);
+		Rng.GenerateNewSeed();
+#if WITH_EDITOR
+		FString folderPath = "Rooms/Keys/";
+		folderPath.Append(key->GetClass()->GetName());
+		key->SetFolderPath(FName(*folderPath));
+#endif
+	}
+
+	// Determine ground scatter
+	DetermineGroundScatter(TileLocations, Rng);
 }
