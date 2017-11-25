@@ -591,6 +591,62 @@ ETileDirection ADungeonRoom::GetTileDirection(FIntVector Location) const
 	}
 }
 
+ETileDirection ADungeonRoom::GetTileDirectionLocalSpace(FIntVector Location) const
+{
+	// Top-left is northwest corner
+	// Bottom-right is southeast corner
+	bool bIsOnLeft = Location.X <= 0;
+	bool bIsOnRight = Location.X >= XSize() - 1;
+	bool bIsOnTop = Location.Y <= 0;
+	bool bIsOnBottom = Location.Y >= YSize() - 1;
+
+	if (bIsOnLeft && bIsOnTop)
+	{
+		// Top-Left corner
+		return ETileDirection::Northwest;
+	}
+	else if (bIsOnRight && bIsOnTop)
+	{
+		// Top-right corner
+		return ETileDirection::Northeast;
+	}
+	else if (bIsOnLeft && bIsOnBottom)
+	{
+		// Bottom-left corner
+		return ETileDirection::Southwest;
+	}
+	else if (bIsOnRight && bIsOnBottom)
+	{
+		// Bottom-right corner
+		return ETileDirection::Southeast;
+	}
+	else if (bIsOnTop)
+	{
+		// Top edge
+		return ETileDirection::North;
+	}
+	else if (bIsOnBottom)
+	{
+		// Bottom edge
+		return ETileDirection::South;
+	}
+	else if (bIsOnLeft)
+	{
+		// Left edge
+		return ETileDirection::West;
+	}
+	else if (bIsOnRight)
+	{
+		// Right edge
+		return ETileDirection::East;
+	}
+	else
+	{
+		// Not on edge at all
+		return ETileDirection::Center;
+	}
+}
+
 void ADungeonRoom::CreateNewTileMesh(const UDungeonTile* Tile, const FTransform& Location)
 {
 	if (DungeonSpace->FloorComponentLookup.Contains(Tile))

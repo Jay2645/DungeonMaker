@@ -521,7 +521,17 @@ bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 		}
 		else
 		{
-			TSet<UDungeonMissionNode*> unprocessedParents = node->ParentNodes.Difference(seen);
+			TSet<UDungeonMissionNode*> unprocessedParents;
+			// There's a strange crash bug right here that happens every once in a while
+			// when this Difference function is called
+			if (seen.Num() > 0)
+			{
+				unprocessedParents = node->ParentNodes.Difference(seen);
+			}
+			else
+			{
+				unprocessedParents = node->ParentNodes;
+			}
 			if (unprocessedParents.Num() > 0)
 			{
 				UE_LOG(LogSpaceGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());

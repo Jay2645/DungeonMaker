@@ -189,7 +189,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	bool IsChangedAtRuntime() const;
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	ETileDirection GetTileDirection(FIntVector Location) const;
+		ETileDirection GetTileDirection(FIntVector Location) const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	ETileDirection GetTileDirectionLocalSpace(FIntVector Location) const;
 	
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	void CreateNewTileMesh(const UDungeonTile* Tile, const FTransform& Location);

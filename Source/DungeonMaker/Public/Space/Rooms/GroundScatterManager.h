@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "GroundScatterManager.generated.h"
 
 class ADungeonRoom;
@@ -13,8 +14,16 @@ struct FScatterObject
 {
 	GENERATED_BODY()
 public:
+	// An actor that will be scattered in the level.
+	// You can choose an actor OR a mesh -- if both are chosen,
+	// there is a 50/50 shot of choosing either one.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TSubclassOf<AActor> ScatterObject;
+	TSubclassOf<AActor> ScatterObject;
+	// A mesh that will be scattered in the level.
+	// You can choose an actor OR a mesh -- if both are chosen,
+	// there is a 50/50 shot of choosing either one.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UStaticMesh* ScatterMesh;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
 		float SelectionChance;
 	// An additive difficulty modifier which gets added to the selection chance
@@ -165,6 +174,9 @@ public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Props")
 	TArray<AActor*> SpawnedGroundScatter;
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Props")
+	TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> StaticMeshes;
+
 public:
 	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations,
 		FRandomStream& Rng, ADungeonRoom* Room);
@@ -176,10 +188,14 @@ private:
 		FRandomStream& Rng, FScatterTransform& SelectedObject, ETileDirection Direction, 
 		TSubclassOf<AActor> SelectedActor);
 
+	int32 CreateScatterObject(ADungeonRoom* Room, FIntVector location, FGroundScatter &Scatter,
+		FRandomStream& Rng, FScatterTransform& SelectedObject, ETileDirection Direction,
+		UStaticMesh* SelectedMesh);
+
 	bool IsAdjacencyOkay(ETileDirection Direction, FGroundScatter& Scatter,
 		ADungeonRoom* Room, FIntVector& Location);
 
-	TSubclassOf<AActor> FindScatterActor(FGroundScatter& Scatter, FRandomStream& Rng,
+	FScatterObject FindScatterObject(FGroundScatter& Scatter, FRandomStream& Rng,
 		FScatterTransform& SelectedObject, ADungeonRoom* Room, const UDungeonTile* Tile,
 		FIntVector LocalPosition, ETileDirection Direction);
 };

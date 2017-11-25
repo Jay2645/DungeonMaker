@@ -1,5 +1,6 @@
 #include "GroundScatterManager.h"
 #include "DungeonRoom.h"
+#include "Engine/CollisionProfile.h"
 
 
 // Sets default values for this component's properties
@@ -48,6 +49,7 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 	uint8 currentScatterCount = Scatter.SkipTiles;
 	uint8 currentSkipCount = 0;
 	TSubclassOf<AActor> selectedActor = NULL;
+	UStaticMesh* selectedMesh = NULL;
 	FScatterTransform selectedObject;
 
 	// Iterate over the locations array until we run out of locations
@@ -70,18 +72,32 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 		}
 
 		FIntVector location = localPosition + Room->GetRoomTileSpacePosition();
-		ETileDirection direction = Room->GetTileDirection(location);
+		ETileDirection direction = Room->GetTileDirectionLocalSpace(localPosition);
+		FScatterObject scatterObject;
 
 		// Choose the actual mesh we want to spawn
-		if (selectedActor == NULL || !Scatter.bAlwaysUseSameObjectForThisInstance ||
-			selectedActor != NULL && !selectedObject.DirectionOffsets.Contains(direction))
+		if (selectedActor == NULL && selectedMesh == NULL || !Scatter.bAlwaysUseSameObjectForThisInstance ||
+			(selectedMesh != NULL || selectedActor != NULL) && !selectedObject.DirectionOffsets.Contains(direction))
 		{
-			selectedActor = FindScatterActor(Scatter, Rng, selectedObject, Room, Tile, localPosition, direction);
+			scatterObject = FindScatterObject(Scatter, Rng, selectedObject, Room, Tile, localPosition, direction);
+			selectedActor = scatterObject.ScatterObject;
+			selectedMesh = scatterObject.ScatterMesh;
 		}
-		if (selectedActor == NULL)
+		if (selectedActor == NULL && selectedMesh == NULL || !selectedObject.DirectionOffsets.Contains(direction))
 		{
 			// Could not find relevant actor for whatever reason
 			continue;
+		}
+		if (selectedActor != NULL && selectedMesh != NULL)
+		{
+			if (Rng.GetFraction() > 0.5f)
+			{
+				selectedMesh = NULL;
+			}
+			else
+			{
+				selectedActor = NULL;
+			}
 		}
 
 		// Check adjacency
@@ -89,7 +105,6 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 		{
 			continue;
 		}
-
 
 		// Last check -- should we skip this Tile?
 		if (currentSkipCount < Scatter.SkipTiles)
@@ -104,10 +119,18 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 			currentSkipCount = 0;
 		}
 
-		// Spawn the actor
-		AActor* spawnedActor = CreateScatterObject(Room, location, Scatter, Rng, selectedObject, direction, selectedActor);
-		if (spawnedActor != NULL)
+		if (selectedActor != NULL)
 		{
+			// Spawn the actor
+			AActor* spawnedActor = CreateScatterObject(Room, location, Scatter, Rng, selectedObject, direction, selectedActor);
+			if (spawnedActor != NULL)
+			{
+				currentScatterCount++;
+			}
+		}
+		else
+		{
+			CreateScatterObject(Room, location, Scatter, Rng, selectedObject, direction, selectedMesh);
 			currentScatterCount++;
 		}
 	}
@@ -150,6 +173,54 @@ AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVecto
 
 	SpawnedGroundScatter.Add(scatterActor);
 	return scatterActor;
+}
+
+int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector location, 
+	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
+	ETileDirection Direction, UStaticMesh* SelectedMesh)
+{
+	FTransform tileTransform = Room->GetTileTransformFromTileSpace(location);
+	if (!Scatter.bConformToGrid)
+	{
+		FVector offset = FVector::ZeroVector;
+		offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+		offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+		tileTransform.AddToTranslation(offset);
+	}
+	FTransform scatterTransform = SelectedObject.DirectionOffsets[Direction];
+	FVector tilePosition = tileTransform.GetLocation();
+	FVector scatterPosition = scatterTransform.GetLocation();
+	FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
+	FVector objectPosition = tilePosition + scatterPosition;
+	FRotator objectRotation = FRotator(tileTransform.GetRotation());
+	objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
+	if (Scatter.bUseRandomLocation)
+	{
+		int32 randomRotation = Rng.RandRange(0, 3);
+		float rotationAmount = randomRotation * 90.0f;
+		objectRotation.Add(0.0f, rotationAmount, 0.0f);
+	}
+
+	FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
+	if (StaticMeshes.Contains(SelectedMesh))
+	{
+		return StaticMeshes[SelectedMesh]->AddInstanceWorldSpace(objectTransform);
+	}
+	else
+	{
+		UHierarchicalInstancedStaticMeshComponent* meshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, FName(*SelectedMesh->GetName()));
+
+		meshComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+		meshComponent->Mobility = EComponentMobility::Movable;
+		meshComponent->bGenerateOverlapEvents = false;
+		meshComponent->bUseDefaultCollision = true;
+
+		meshComponent->SetStaticMesh(SelectedMesh);
+		meshComponent->RegisterComponent();
+
+		StaticMeshes.Add(SelectedMesh, meshComponent);
+		return meshComponent->AddInstanceWorldSpace(objectTransform);
+	}
 }
 
 bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundScatter& Scatter, 
@@ -198,10 +269,14 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundSca
 	return true;
 }
 
-TSubclassOf<AActor> UGroundScatterManager::FindScatterActor(FGroundScatter& Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, ADungeonRoom* Room, const UDungeonTile* Tile, FIntVector LocalPosition, ETileDirection Direction)
+FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter, FRandomStream& Rng, 
+	FScatterTransform& SelectedObject, ADungeonRoom* Room, const UDungeonTile* Tile, FIntVector LocalPosition, 
+	ETileDirection Direction)
 {
 	TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(Scatter.ScatterObjects);
 	TSubclassOf<AActor> selectedActor = NULL;
+	UStaticMesh* selectedStaticMesh = NULL;
+	FScatterObject selectedMesh;
 	do
 	{
 		if (scatterTransforms.Num() == 0)
@@ -240,22 +315,31 @@ TSubclassOf<AActor> UGroundScatterManager::FindScatterActor(FGroundScatter& Scat
 		}
 
 		int32 actorMeshIndex = Rng.RandRange(0, SelectedObject.ScatterMeshes.Num() - 1);
-		FScatterObject selectedMesh = SelectedObject.ScatterMeshes[actorMeshIndex];
+		selectedMesh = SelectedObject.ScatterMeshes[actorMeshIndex];
+		
 		if (Rng.GetFraction() <= selectedMesh.SelectionChance + (selectedMesh.DifficultyModifier * Room->GetRoomDifficulty()))
 		{
 			selectedActor = selectedMesh.ScatterObject;
-			if (selectedActor == NULL)
+			selectedStaticMesh = selectedMesh.ScatterMesh;
+			if (selectedActor == NULL && selectedStaticMesh == NULL)
 			{
 				UE_LOG(LogSpaceGen, Warning, TEXT("Ground Scatter for room %s has an null actor mesh at Tile %s."), *Room->GetName(), *Tile->TileID.ToString());
 				SelectedObject.ScatterMeshes.RemoveAt(actorMeshIndex);
 				if (SelectedObject.ScatterMeshes.Num() == 0)
 				{
 					// Out of meshes; try another Scatter object
-					UE_LOG(LogSpaceGen, Error, TEXT("A ground Scatter object ran out of Scatter meshes for room %s, processing Tile %s."), *Room->GetName(), *Tile->TileID.ToString());
 					Scatter.ScatterObjects.RemoveAt(actorMeshIndex);
 				}
 			}
 		}
-	} while (selectedActor == NULL);
-	return selectedActor;
+	} while (selectedActor == NULL && selectedStaticMesh == NULL);
+	if (selectedActor == NULL && selectedStaticMesh == NULL || !SelectedObject.DirectionOffsets.Contains(Direction))
+	{
+		SelectedObject = FScatterTransform();
+		return FScatterObject();
+	}
+	else
+	{
+		return selectedMesh;
+	}
 }
