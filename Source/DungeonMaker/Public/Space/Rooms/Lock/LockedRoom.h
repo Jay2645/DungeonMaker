@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Items/LockedDoor.h"
 #include "LockedRoom.generated.h"
 
 // This class does not need to be modified.
@@ -23,5 +22,5 @@ public:
 
 	// Things to do when the locked door in this room becomes unlocked.
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Items")
-	bool OnDoorUnlocked();
+	bool OnDoorUnlocked(AActor* Door);
 };

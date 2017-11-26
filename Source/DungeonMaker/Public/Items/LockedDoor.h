@@ -21,5 +21,6 @@ class DUNGEONMAKER_API ILockedDoor
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Items")
+	bool OnSpawned(AActor* Room);
 };

@@ -53,6 +53,11 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		TMap<ETileDirection, FTransform> DirectionOffsets;
 
+	// If this is false, we will be placed on the ground.
+	// If this is true, we will be placed on the ceiling.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bOffsetFromTop;
+
 	// How far away this should be from the edge of any room.
 	// Bear in mind that this doesn't make sense with any allowed directions other than Center.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)

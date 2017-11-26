@@ -48,6 +48,12 @@ public:
 	// as an icon on a minimap or some such.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	UTexture2D* RoomIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	FIntVector MinRoomSize;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	uint8 MaxRoomHeight;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
+	uint8 ActualRoomHeight;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
 	FFloorRoom RoomMetadata;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")

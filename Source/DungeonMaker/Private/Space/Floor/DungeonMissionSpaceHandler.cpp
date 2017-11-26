@@ -503,11 +503,13 @@ bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 		FFloorRoom next = nextToProcess[0];
 		nextToProcess.RemoveAt(0);
 		UDungeonMissionNode* node = next.RoomNode;
-		if (node == NULL || seen.Contains(node))
+		if (!IsValid(node) || seen.Contains(node))
 		{
 			// Already seen this node
 			continue;
 		}
+
+		UE_LOG(LogSpaceGen, Log, TEXT("Processing %s, with %d parents. We've seen %d nodes so far."), *node->GetSymbolDescription(), node->ParentNodes.Num(), seen.Num());
 
 		if (node->ParentNodes.Num() == 0)
 		{
@@ -532,6 +534,7 @@ bool UDungeonMissionSpaceHandler::VerifyPathIsValid(FIntVector StartLocation)
 			{
 				unprocessedParents = node->ParentNodes;
 			}
+
 			if (unprocessedParents.Num() > 0)
 			{
 				UE_LOG(LogSpaceGen, Log, TEXT("%s (%d) has %d more parents to process."), *node->GetSymbolDescription(), node->Symbol.SymbolID, unprocessedParents.Num());

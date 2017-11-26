@@ -179,7 +179,9 @@ int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector 
 	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
 	ETileDirection Direction, UStaticMesh* SelectedMesh)
 {
+	// Get the transform of this tile
 	FTransform tileTransform = Room->GetTileTransformFromTileSpace(location);
+	// Add a random value to it if we're not supposed to be on the grid
 	if (!Scatter.bConformToGrid)
 	{
 		FVector offset = FVector::ZeroVector;
@@ -187,13 +189,28 @@ int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector 
 		offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
 		tileTransform.AddToTranslation(offset);
 	}
+	// Grab the transform associated with this direction
+	// This ensures that we always have the "correct" orientation when being
+	// placed against a wall, for example
 	FTransform scatterTransform = SelectedObject.DirectionOffsets[Direction];
+
+	// Determine position of the tile
 	FVector tilePosition = tileTransform.GetLocation();
+	// Check to see if we should be on the ceiling
+	if (SelectedObject.bOffsetFromTop)
+	{
+		tilePosition += FVector(0.0f, 0.0f, Room->ZSize() * 500.0f);
+	}
+	// Grab local position and rotation of the actual scatter object
 	FVector scatterPosition = scatterTransform.GetLocation();
 	FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
+	
+	// Combine them to get the world-space location for this object
 	FVector objectPosition = tilePosition + scatterPosition;
 	FRotator objectRotation = FRotator(tileTransform.GetRotation());
 	objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
+
+	// If we're using a random location, add some random rotations as well
 	if (Scatter.bUseRandomLocation)
 	{
 		int32 randomRotation = Rng.RandRange(0, 3);
@@ -201,13 +218,16 @@ int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector 
 		objectRotation.Add(0.0f, rotationAmount, 0.0f);
 	}
 
+	// Create the transform
 	FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
+	// Spawn the item
 	if (StaticMeshes.Contains(SelectedMesh))
 	{
 		return StaticMeshes[SelectedMesh]->AddInstanceWorldSpace(objectTransform);
 	}
 	else
 	{
+		// Create the mesh component first, then spawn the item
 		UHierarchicalInstancedStaticMeshComponent* meshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, FName(*SelectedMesh->GetName()));
 
 		meshComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);

@@ -69,6 +69,8 @@ ADungeonRoom::ADungeonRoom()
 	EastEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);
+	MaxRoomHeight = 1;
+	MinRoomSize = FIntVector(7, 7, 1);
 }
 
 
@@ -437,11 +439,9 @@ int32 ADungeonRoom::YSize() const
 	return RoomTiles.YSize();
 }
 
-
 int32 ADungeonRoom::ZSize() const
 {
-	// TODO: Support multiple levels
-	return 1;
+	return (int32)ActualRoomHeight;
 }
 
 FString ADungeonRoom::ToString() const
@@ -840,6 +840,9 @@ void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVecto
 	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
+	// Determine how high the ceiling is
+	ActualRoomHeight = Rng.RandRange(MinRoomSize.Z, MaxRoomHeight);
+
 	// Place tiles
 	for (auto& kvp : TileLocations)
 	{
@@ -867,6 +870,7 @@ void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVecto
 			for (int i = 0; i < kvp.Value.Num(); i++)
 			{
 				int32 meshSelection;
+				FIntVector currentLocation = TileLocations[kvp.Key][i];
 				if (CeilingTileMeshSelections.Contains(kvp.Key))
 				{
 					meshSelection = CeilingTileMeshSelections[kvp.Key];
@@ -878,7 +882,37 @@ void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVecto
 						meshSelection = Rng.RandRange(0, kvp.Key->CeilingMesh.Num() - 1);
 					} while (kvp.Key->CeilingMesh[meshSelection].SelectionChance < Rng.GetFraction());
 				}
-				PlaceTile(CeilingComponentLookup, kvp.Key, meshSelection, kvp.Key->CeilingMesh[meshSelection].Transform, TileLocations[kvp.Key][i]);
+				FTransform meshTransform = kvp.Key->CeilingMesh[meshSelection].Transform;
+				
+				// On any tile that's not part of the entrance, set the ceiling up high
+				// Entrances should have their ceiling match the door
+				if (!EntranceLocations.Contains(currentLocation))
+				{
+					meshTransform.AddToTranslation(FVector(0.0f, 0.0f, (ActualRoomHeight - 1) * 500.0f));
+				}
+				PlaceTile(CeilingComponentLookup, kvp.Key, meshSelection, meshTransform, currentLocation);
+			}
+		}
+	}
+
+	// Spawn walls up to the ceiling height
+	if (ActualRoomHeight > 1)
+	{
+		const UDungeonTile* wallTile = GetTile(0, 0);
+		if (FloorComponentLookup.Contains(wallTile))
+		{
+			int32 meshSelection = FloorTileMeshSelections[wallTile];
+			TArray<FIntVector> wallLocations = GetTileLocations(wallTile);
+			wallLocations.Append(EntranceLocations.Array());
+			for (int i = 1; i < ActualRoomHeight; i++)
+			{
+				for (int j = 0; j < wallLocations.Num(); j++)
+				{
+					FIntVector location = wallLocations[j];
+					location.Z = i;
+					FTransform offset;
+					PlaceTile(FloorComponentLookup, wallTile, FloorTileMeshSelections[wallTile], offset, location);
+				}
 			}
 		}
 	}

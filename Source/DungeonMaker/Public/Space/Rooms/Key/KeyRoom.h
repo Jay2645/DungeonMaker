@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Items/KeyPickup.h"
 #include "KeyRoom.generated.h"
 
 // This class does not need to be modified.
@@ -22,5 +21,5 @@ public:
 	AActor* SpawnKey(FRandomStream Rng);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Items")
-	bool OnKeyTaken();
+	bool OnKeyTaken(AActor* Key);
 };
