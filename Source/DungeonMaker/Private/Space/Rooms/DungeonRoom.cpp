@@ -937,6 +937,16 @@ void ADungeonRoom::SpawnInterfaces(FRandomStream &Rng)
 	// Place traps
 	if (GetClass()->ImplementsInterface(UTrialRoom::StaticClass()))
 	{
+		TArray<AActor*> spawnedTriggers = ITrialRoom::Execute_CreateTriggers(this, Rng);
+#if WITH_EDITOR
+		for (AActor* trigger : spawnedTriggers)
+		{
+			FString folderPath = "Rooms/Triggers/";
+			folderPath.Append(trigger->GetClass()->GetName());
+			trigger->SetFolderPath(FName(*folderPath));
+		}
+#endif
+
 		TArray<AActor*> spawnedTraps = ITrialRoom::Execute_CreateTraps(this, Rng);
 #if WITH_EDITOR
 		for (AActor* trap : spawnedTraps)

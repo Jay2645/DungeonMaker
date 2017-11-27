@@ -43,8 +43,14 @@ public:
 	// A list of all traps we've spawned in this room.
 	// If we're using On Player Enter Room as a trigger, everything in this array will
 	// be triggered.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traps")
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Traps")
 	TArray<AActor*> TrapList;
+
+	// A list of all triggers we've spawned in this room.
+	// By default, any one of these triggers will trigger all the traps -- if you need different
+	// behavior, you should probably make a subclass which handles it.
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Traps")
+	TArray<AActor*> TriggerList;
 
 protected:
 	UFUNCTION()
@@ -53,5 +59,6 @@ protected:
 	
 	virtual void DoTileReplacementPreprocessing(FRandomStream& Rng) override;
 
+	TArray<AActor*> CreateTriggers_Implementation(FRandomStream Rng);
 	TArray<AActor*> CreateTraps_Implementation(FRandomStream Rng);
 };

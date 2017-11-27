@@ -20,6 +20,8 @@ class DUNGEONMAKER_API ITrialRoom
 	GENERATED_BODY()
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
+	TArray<AActor*> CreateTriggers(FRandomStream Rng);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
 	TArray<AActor*> CreateTraps(FRandomStream Rng);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")

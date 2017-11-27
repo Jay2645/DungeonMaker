@@ -46,9 +46,9 @@ void ATrialRoomBase::DoTileReplacementPreprocessing(FRandomStream& Rng)
 	RoomReplacementPhases.Insert(trapTileReplacements, 0);
 }
 
-TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
+TArray<AActor*> ATrialRoomBase::CreateTriggers_Implementation(FRandomStream Rng)
 {
-	TArray<AActor*> traps;
+	TArray<AActor*> triggers;
 	for (auto& kvp : TileTriggerObjects)
 	{
 		TArray<FIntVector> tileLocations = GetTileLocations(kvp.Key);
@@ -64,10 +64,16 @@ TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
 			{
 				ITrapTrigger::Execute_OnTriggerPlaced(triggerActor, this);
 			}
-			traps.Add(triggerActor);
+			triggers.Add(triggerActor);
 		}
 	}
+	TriggerList = triggers;
+	return triggers;
+}
 
+TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
+{
+	TArray<AActor*> traps;
 	for (auto& kvp : TileTrapObjects)
 	{
 		TArray<FIntVector> tileLocations = GetTileLocations(kvp.Key);
@@ -84,6 +90,13 @@ TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
 				ITrap::Execute_InitializeTrap(trapActor, this);
 			}
 			traps.Add(trapActor);
+			for (int j = 0; j < TriggerList.Num(); j++)
+			{
+				if (TriggerList[j]->GetClass()->ImplementsInterface(UTrapTrigger::StaticClass()))
+				{
+					ITrapTrigger::Execute_AddAssociatedTrap(TriggerList[j], trapActor);
+				}
+			}
 		}
 	}
 	TrapList = traps;
