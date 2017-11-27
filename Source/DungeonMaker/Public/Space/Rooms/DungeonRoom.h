@@ -225,4 +225,6 @@ protected:
 		TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
 		TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 		FRandomStream& Rng);
+
+	virtual void SpawnInterfaces(FRandomStream &Rng);
 };

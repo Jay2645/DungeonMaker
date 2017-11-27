@@ -926,10 +926,18 @@ void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVecto
 		}
 	}
 
+	SpawnInterfaces(Rng);
+
+	// Determine ground scatter
+	DetermineGroundScatter(TileLocations, Rng);
+}
+
+void ADungeonRoom::SpawnInterfaces(FRandomStream &Rng)
+{
 	// Place traps
 	if (GetClass()->ImplementsInterface(UTrialRoom::StaticClass()))
 	{
-		TArray<AActor*> spawnedTraps = ITrialRoom::Execute_CreateTraps(this);
+		TArray<AActor*> spawnedTraps = ITrialRoom::Execute_CreateTraps(this, Rng);
 #if WITH_EDITOR
 		for (AActor* trap : spawnedTraps)
 		{
@@ -962,7 +970,4 @@ void ADungeonRoom::CreateAllRoomTiles(TMap<const UDungeonTile*, TArray<FIntVecto
 		key->SetFolderPath(FName(*folderPath));
 #endif
 	}
-
-	// Determine ground scatter
-	DetermineGroundScatter(TileLocations, Rng);
 }

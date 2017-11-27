@@ -19,11 +19,11 @@ class DUNGEONMAKER_API ITrialRoom
 {
 	GENERATED_BODY()
 public:
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
-	TArray<AActor*> CreateTraps();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
+	TArray<AActor*> CreateTraps(FRandomStream Rng);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
-	bool OnTrapActivated();
+	bool OnTrapActivated(AActor* ActivatedTrap);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Trials")
 	bool RetractTrap();

@@ -30,12 +30,12 @@ void UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, 
 	int32 SymbolCount, FRandomStream& Rng)
 {
 	bool bPathIsValid = false;
-	do
-	{
+	//do
+	//{
 		// Create space for each room on the DungeonFloor
 		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
 		ProcessRoomNeighbors();
-		bPathIsValid = VerifyPathIsValid(StartLocation);
+		/*bPathIsValid = VerifyPathIsValid(StartLocation);
 		if (!bPathIsValid)
 		{
 			// Invalid path; restart
@@ -46,7 +46,7 @@ void UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, 
 			}
 			InitializeDungeonFloor(DungeonSpaceGenerator, levelSizes);
 		}
-	} while (!bPathIsValid);
+	} while (!bPathIsValid);*/
 }
 
 void UDungeonMissionSpaceHandler::DrawDebugSpace()

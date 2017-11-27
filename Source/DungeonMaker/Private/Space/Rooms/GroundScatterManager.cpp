@@ -29,9 +29,29 @@ void UGroundScatterManager::DetermineGroundScatter(TMap<const UDungeonTile*, TAr
 		for (FGroundScatter scatter : scatterSet.GroundScatter)
 		{
 			ProcessScatterItem(scatter, tileLocations, Rng, tile, Room);
-
 		}
 	}
+}
+
+AActor* UGroundScatterManager::SpawnScatterActor(ADungeonRoom* Room, const FIntVector& LocalLocation,
+	FGroundScatter& Scatter, FRandomStream& Rng)
+{
+	if (Scatter.ScatterObjects.Num() == 0)
+	{
+		return NULL;
+	}
+	TSubclassOf<AActor> selectedActor = NULL;
+	FScatterTransform selectedObject;
+	ETileDirection direction = Room->GetTileDirectionLocalSpace(LocalLocation);
+	FScatterObject scatterObject = FindScatterObject(Scatter, Rng, selectedObject, Room, LocalLocation, direction);
+	selectedActor = scatterObject.ScatterObject;
+	if (selectedActor == NULL)
+	{
+		return NULL;
+	}
+
+	FIntVector location = LocalLocation + Room->GetRoomTileSpacePosition();
+	return CreateScatterObject(Room, location, Scatter, Rng, selectedObject, direction, selectedActor);
 }
 
 void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TArray<FIntVector>& TileLocations,
@@ -79,7 +99,7 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 		if (selectedActor == NULL && selectedMesh == NULL || !Scatter.bAlwaysUseSameObjectForThisInstance ||
 			(selectedMesh != NULL || selectedActor != NULL) && !selectedObject.DirectionOffsets.Contains(direction))
 		{
-			scatterObject = FindScatterObject(Scatter, Rng, selectedObject, Room, Tile, localPosition, direction);
+			scatterObject = FindScatterObject(Scatter, Rng, selectedObject, Room, localPosition, direction);
 			selectedActor = scatterObject.ScatterObject;
 			selectedMesh = scatterObject.ScatterMesh;
 		}
@@ -136,11 +156,11 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 	}
 }
 
-AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector location, FGroundScatter &Scatter,
-	FRandomStream& Rng, FScatterTransform& SelectedObject, ETileDirection Direction,
-	TSubclassOf<AActor> SelectedActor)
+AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location, 
+	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
+	ETileDirection Direction, TSubclassOf<AActor> SelectedActor)
 {
-	FTransform tileTransform = Room->GetTileTransformFromTileSpace(location);
+	FTransform tileTransform = Room->GetTileTransformFromTileSpace(Location);
 	if (!Scatter.bConformToGrid)
 	{
 		FVector offset = FVector::ZeroVector;
@@ -175,12 +195,12 @@ AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVecto
 	return scatterActor;
 }
 
-int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, FIntVector location, 
+int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location, 
 	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
 	ETileDirection Direction, UStaticMesh* SelectedMesh)
 {
 	// Get the transform of this tile
-	FTransform tileTransform = Room->GetTileTransformFromTileSpace(location);
+	FTransform tileTransform = Room->GetTileTransformFromTileSpace(Location);
 	// Add a random value to it if we're not supposed to be on the grid
 	if (!Scatter.bConformToGrid)
 	{
@@ -290,8 +310,7 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundSca
 }
 
 FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter, FRandomStream& Rng, 
-	FScatterTransform& SelectedObject, ADungeonRoom* Room, const UDungeonTile* Tile, FIntVector LocalPosition, 
-	ETileDirection Direction)
+	FScatterTransform& SelectedObject, ADungeonRoom* Room, const FIntVector& LocalPosition, ETileDirection Direction)
 {
 	TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(Scatter.ScatterObjects);
 	TSubclassOf<AActor> selectedActor = NULL;
@@ -310,7 +329,6 @@ FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter,
 		// Verify we actually have meshes to place here
 		if (SelectedObject.ScatterMeshes.Num() == 0)
 		{
-			UE_LOG(LogSpaceGen, Warning, TEXT("Ground Scatter for room %s has an invalid mesh at Tile %s."), *Room->GetName(), *Tile->TileID.ToString());
 			continue;
 		}
 
@@ -343,7 +361,6 @@ FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter,
 			selectedStaticMesh = selectedMesh.ScatterMesh;
 			if (selectedActor == NULL && selectedStaticMesh == NULL)
 			{
-				UE_LOG(LogSpaceGen, Warning, TEXT("Ground Scatter for room %s has an null actor mesh at Tile %s."), *Room->GetName(), *Tile->TileID.ToString());
 				SelectedObject.ScatterMeshes.RemoveAt(actorMeshIndex);
 				if (SelectedObject.ScatterMeshes.Num() == 0)
 				{

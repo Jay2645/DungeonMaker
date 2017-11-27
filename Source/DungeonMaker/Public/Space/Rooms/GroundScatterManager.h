@@ -25,11 +25,11 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UStaticMesh* ScatterMesh;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
-		float SelectionChance;
+	float SelectionChance;
 	// An additive difficulty modifier which gets added to the selection chance
 	// based on the difficulty of the room.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "-1.0", ClampMax = "1.0"))
-		float DifficultyModifier;
+	float DifficultyModifier;
 
 	FScatterObject()
 	{
@@ -76,42 +76,42 @@ struct FGroundScatter
 public:
 	// A list of all objects we should scatter on this tile.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TArray<FScatterTransform> ScatterObjects;
+	TArray<FScatterTransform> ScatterObjects;
 	// Whether we should use a different object each time we want to place
 	// some ground scatter from the ScatterObject list, or if we should keep
 	// using the same object over and over. Useful for placing the same type
 	// of trim around the room.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bAlwaysUseSameObjectForThisInstance;
+	bool bAlwaysUseSameObjectForThisInstance;
 
 	// Whether we should be able to place this adjacent to next rooms.
 	// Next rooms are determined by our current mission.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bPlaceAdjacentToNextRooms;
+	bool bPlaceAdjacentToNextRooms;
 	// Whether we should be able to place this adjacent to previous rooms.
 	// Next rooms are determined by our current mission.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bPlaceAdjacentToPriorRooms;
+	bool bPlaceAdjacentToPriorRooms;
 
 	// Should we keep track of how many objects we place at all, or should we place as many as we want?
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bUseRandomCount;
+	bool bUseRandomCount;
 	// Should we place this object randomly in the room?
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bUseRandomLocation;
+	bool bUseRandomLocation;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bConformToGrid;
+	bool bConformToGrid;
 	// What's the minimum count of objects we should place?
 	// Only used if we're using a random count.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
-		uint8 MinCount;
+	uint8 MinCount;
 	// What's the maximum count of objects we should place?
 	// Only used if we're using a random count.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
-		uint8 MaxCount;
+	uint8 MaxCount;
 	// Skip every n tiles when placing this.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0", ClampMax = "255"))
-		uint8 SkipTiles;
+	uint8 SkipTiles;
 
 	FGroundScatter()
 	{
@@ -185,22 +185,25 @@ public:
 public:
 	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations,
 		FRandomStream& Rng, ADungeonRoom* Room);
+
+	AActor* SpawnScatterActor(ADungeonRoom* Room, const FIntVector& LocalLocation,
+		FGroundScatter& Scatter, FRandomStream& Rng);
 private:
 	void ProcessScatterItem(FGroundScatter& Scatter, const TArray<FIntVector>& TileLocations, 
 		FRandomStream& Rng, const UDungeonTile* Tile, ADungeonRoom* Room);
 
-	AActor* CreateScatterObject(ADungeonRoom* Room, FIntVector location, FGroundScatter &Scatter, 
-		FRandomStream& Rng, FScatterTransform& SelectedObject, ETileDirection Direction, 
-		TSubclassOf<AActor> SelectedActor);
+	AActor* CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location,
+		FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject,
+		ETileDirection Direction, TSubclassOf<AActor> SelectedActor);
 
-	int32 CreateScatterObject(ADungeonRoom* Room, FIntVector location, FGroundScatter &Scatter,
-		FRandomStream& Rng, FScatterTransform& SelectedObject, ETileDirection Direction,
-		UStaticMesh* SelectedMesh);
+	int32 CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location,
+		FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject,
+		ETileDirection Direction, UStaticMesh* SelectedMesh);
 
 	bool IsAdjacencyOkay(ETileDirection Direction, FGroundScatter& Scatter,
 		ADungeonRoom* Room, FIntVector& Location);
 
 	FScatterObject FindScatterObject(FGroundScatter& Scatter, FRandomStream& Rng,
-		FScatterTransform& SelectedObject, ADungeonRoom* Room, const UDungeonTile* Tile,
-		FIntVector LocalPosition, ETileDirection Direction);
+		FScatterTransform& SelectedObject, ADungeonRoom* Room, 
+		const FIntVector& LocalPosition, ETileDirection Direction);
 };
