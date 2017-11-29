@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interface.h"
 #include "KeyRoom.generated.h"
 
 // This class does not need to be modified.

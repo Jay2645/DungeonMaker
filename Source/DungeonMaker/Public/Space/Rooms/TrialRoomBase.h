@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Space/Rooms/DungeonRoom.h"
 #include "Space/Rooms/Trials/TrialRoom.h"
+#include "GroundScatterItem.h"
 #include "TrialRoomBase.generated.h"
 
 /**
@@ -34,11 +35,11 @@ public:
 	// What kind of trigger should be spawned on various tiles. Please ensure you use an
 	// actor and not a static mesh.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traps")
-	TMap<const UDungeonTile*, FGroundScatter> TileTriggerObjects;
+	TMap<const UDungeonTile*, const UGroundScatterItem*> TileTriggerObjects;
 	// What kind of trap should be spawned on various tiles. Please ensure you use an
 	// actor and not a static mesh.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traps")
-	TMap<const UDungeonTile*, FGroundScatter> TileTrapObjects;
+	TMap<const UDungeonTile*, const UGroundScatterItem*> TileTrapObjects;
 
 	// A list of all traps we've spawned in this room.
 	// If we're using On Player Enter Room as a trigger, everything in this array will

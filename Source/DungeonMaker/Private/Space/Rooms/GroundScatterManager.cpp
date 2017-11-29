@@ -26,7 +26,7 @@ void UGroundScatterManager::DetermineGroundScatter(TMap<const UDungeonTile*, TAr
 		FGroundScatterSet scatterSet = GroundScatter.Pairings[tile];
 		TArray<FIntVector> tileLocations = kvp.Value;
 
-		for (FGroundScatter scatter : scatterSet.GroundScatter)
+		for (const UGroundScatterItem* scatter : scatterSet.GroundScatter)
 		{
 			ProcessScatterItem(scatter, tileLocations, Rng, tile, Room);
 		}
@@ -34,9 +34,9 @@ void UGroundScatterManager::DetermineGroundScatter(TMap<const UDungeonTile*, TAr
 }
 
 AActor* UGroundScatterManager::SpawnScatterActor(ADungeonRoom* Room, const FIntVector& LocalLocation,
-	FGroundScatter& Scatter, FRandomStream& Rng)
+	const UGroundScatterItem* Scatter, FRandomStream& Rng)
 {
-	if (Scatter.ScatterObjects.Num() == 0)
+	if (Scatter == NULL || Scatter->ScatterObjects.Num() == 0)
 	{
 		return NULL;
 	}
@@ -54,10 +54,10 @@ AActor* UGroundScatterManager::SpawnScatterActor(ADungeonRoom* Room, const FIntV
 	return CreateScatterObject(Room, location, Scatter, Rng, selectedObject, direction, selectedActor);
 }
 
-void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TArray<FIntVector>& TileLocations,
+void UGroundScatterManager::ProcessScatterItem(const UGroundScatterItem* Scatter, const TArray<FIntVector>& TileLocations,
 	FRandomStream& Rng, const UDungeonTile* Tile, ADungeonRoom* Room)
 {
-	if (Scatter.ScatterObjects.Num() == 0)
+	if (Scatter == NULL || Scatter->ScatterObjects.Num() == 0)
 	{
 		UE_LOG(LogSpaceGen, Warning, TEXT("Null Scatter object in room %s!"), *Room->GetName());
 		return;
@@ -65,8 +65,8 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 	TArray<FIntVector> locations;
 	locations.Append(TileLocations);
 
-	uint8 targetScatterCount = (uint8)Rng.RandRange(Scatter.MinCount, Scatter.MaxCount);
-	uint8 currentScatterCount = Scatter.SkipTiles;
+	uint8 targetScatterCount = (uint8)Rng.RandRange(Scatter->MinCount, Scatter->MaxCount);
+	uint8 currentScatterCount = Scatter->SkipTiles;
 	uint8 currentSkipCount = 0;
 	TSubclassOf<AActor> selectedActor = NULL;
 	UStaticMesh* selectedMesh = NULL;
@@ -74,12 +74,12 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 
 	// Iterate over the locations array until we run out of locations
 	// or we hit the maximum count
-	while ((!Scatter.bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
+	while ((!Scatter->bUseRandomCount || currentScatterCount < targetScatterCount) && locations.Num() > 0)
 	{
 		FIntVector localPosition;
 		// Select the location we're going to work on, then make sure
 		// that it won't be chosen again
-		if (Scatter.bUseRandomLocation)
+		if (Scatter->bUseRandomLocation)
 		{
 			int32 locationIndex = Rng.RandRange(0, locations.Num() - 1);
 			localPosition = locations[locationIndex];
@@ -96,7 +96,7 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 		FScatterObject scatterObject;
 
 		// Choose the actual mesh we want to spawn
-		if (selectedActor == NULL && selectedMesh == NULL || !Scatter.bAlwaysUseSameObjectForThisInstance ||
+		if (selectedActor == NULL && selectedMesh == NULL || !Scatter->bAlwaysUseSameObjectForThisInstance ||
 			(selectedMesh != NULL || selectedActor != NULL) && !selectedObject.DirectionOffsets.Contains(direction))
 		{
 			scatterObject = FindScatterObject(Scatter, Rng, selectedObject, Room, localPosition, direction);
@@ -127,7 +127,7 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 		}
 
 		// Last check -- should we skip this Tile?
-		if (currentSkipCount < Scatter.SkipTiles)
+		if (currentSkipCount < Scatter->SkipTiles)
 		{
 			// We need to skip this Tile
 			currentSkipCount++;
@@ -157,37 +157,15 @@ void UGroundScatterManager::ProcessScatterItem(FGroundScatter& Scatter, const TA
 }
 
 AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location, 
-	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
+	const UGroundScatterItem* Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
 	ETileDirection Direction, TSubclassOf<AActor> SelectedActor)
 {
-	FTransform tileTransform = Room->GetTileTransformFromTileSpace(Location);
-	if (!Scatter.bConformToGrid)
-	{
-		FVector offset = FVector::ZeroVector;
-		offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-		offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-		tileTransform.AddToTranslation(offset);
-	}
-	FTransform scatterTransform = SelectedObject.DirectionOffsets[Direction];
-	FVector tilePosition = tileTransform.GetLocation();
-	FVector scatterPosition = scatterTransform.GetLocation();
-	FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
-	FVector objectPosition = tilePosition + scatterPosition;
-	FRotator objectRotation = FRotator(tileTransform.GetRotation());
-	objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
-	if (Scatter.bUseRandomLocation)
-	{
-		int32 randomRotation = Rng.RandRange(0, 3);
-		float rotationAmount = randomRotation * 90.0f;
-		objectRotation.Add(0.0f, rotationAmount, 0.0f);
-	}
+	FTransform objectTransform = GetObjectTransform(Room, Location, Scatter, Rng, SelectedObject, Direction);
 
-	FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
 	AActor* scatterActor = GetWorld()->SpawnActorAbsolute(SelectedActor, objectTransform);
 
 #if WITH_EDITOR
-	FString folderPath = "Rooms/Scatter Actors/";
-	folderPath.Append(SelectedActor->GetName());
+	FString folderPath = "Rooms/Scatter Actors";
 	scatterActor->SetFolderPath(FName(*folderPath));
 #endif
 
@@ -196,50 +174,11 @@ AActor* UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIn
 }
 
 int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntVector& Location, 
-	FGroundScatter &Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
+	const UGroundScatterItem* Scatter, FRandomStream& Rng, FScatterTransform& SelectedObject, 
 	ETileDirection Direction, UStaticMesh* SelectedMesh)
 {
-	// Get the transform of this tile
-	FTransform tileTransform = Room->GetTileTransformFromTileSpace(Location);
-	// Add a random value to it if we're not supposed to be on the grid
-	if (!Scatter.bConformToGrid)
-	{
-		FVector offset = FVector::ZeroVector;
-		offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-		offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
-		tileTransform.AddToTranslation(offset);
-	}
-	// Grab the transform associated with this direction
-	// This ensures that we always have the "correct" orientation when being
-	// placed against a wall, for example
-	FTransform scatterTransform = SelectedObject.DirectionOffsets[Direction];
+	FTransform objectTransform = GetObjectTransform(Room, Location, Scatter, Rng, SelectedObject, Direction);
 
-	// Determine position of the tile
-	FVector tilePosition = tileTransform.GetLocation();
-	// Check to see if we should be on the ceiling
-	if (SelectedObject.bOffsetFromTop)
-	{
-		tilePosition += FVector(0.0f, 0.0f, Room->ZSize() * 500.0f);
-	}
-	// Grab local position and rotation of the actual scatter object
-	FVector scatterPosition = scatterTransform.GetLocation();
-	FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
-	
-	// Combine them to get the world-space location for this object
-	FVector objectPosition = tilePosition + scatterPosition;
-	FRotator objectRotation = FRotator(tileTransform.GetRotation());
-	objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
-
-	// If we're using a random location, add some random rotations as well
-	if (Scatter.bUseRandomLocation)
-	{
-		int32 randomRotation = Rng.RandRange(0, 3);
-		float rotationAmount = randomRotation * 90.0f;
-		objectRotation.Add(0.0f, rotationAmount, 0.0f);
-	}
-
-	// Create the transform
-	FTransform objectTransform = FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
 	// Spawn the item
 	if (StaticMeshes.Contains(SelectedMesh))
 	{
@@ -262,13 +201,12 @@ int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntV
 		return meshComponent->AddInstanceWorldSpace(objectTransform);
 	}
 }
-
-bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundScatter& Scatter, 
+bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, const UGroundScatterItem* Scatter, 
 	ADungeonRoom* Room, FIntVector& Location)
 {
 	if (Direction != ETileDirection::Center)
 	{
-		if (!Scatter.bPlaceAdjacentToNextRooms)
+		if (!Scatter->bPlaceAdjacentToNextRooms)
 		{
 			for (int x = -1; x <= 1; x++)
 			{
@@ -287,7 +225,7 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundSca
 			}
 		}
 
-		if (!Scatter.bPlaceAdjacentToPriorRooms)
+		if (!Scatter->bPlaceAdjacentToPriorRooms)
 		{
 			for (int x = -1; x <= 1; x++)
 			{
@@ -309,10 +247,10 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, FGroundSca
 	return true;
 }
 
-FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter, FRandomStream& Rng, 
+FScatterObject UGroundScatterManager::FindScatterObject(const UGroundScatterItem* Scatter, FRandomStream& Rng, 
 	FScatterTransform& SelectedObject, ADungeonRoom* Room, const FIntVector& LocalPosition, ETileDirection Direction)
 {
-	TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(Scatter.ScatterObjects);
+	TArray<FScatterTransform> scatterTransforms = TArray<FScatterTransform>(Scatter->ScatterObjects);
 	TSubclassOf<AActor> selectedActor = NULL;
 	UStaticMesh* selectedStaticMesh = NULL;
 	FScatterObject selectedMesh;
@@ -323,7 +261,7 @@ FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter,
 			break;
 		}
 		int32 randomObjectIndex = Rng.RandRange(0, scatterTransforms.Num() - 1);
-		SelectedObject = Scatter.ScatterObjects[randomObjectIndex];
+		SelectedObject = Scatter->ScatterObjects[randomObjectIndex];
 		scatterTransforms.RemoveAt(randomObjectIndex);
 
 		// Verify we actually have meshes to place here
@@ -359,15 +297,7 @@ FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter,
 		{
 			selectedActor = selectedMesh.ScatterObject;
 			selectedStaticMesh = selectedMesh.ScatterMesh;
-			if (selectedActor == NULL && selectedStaticMesh == NULL)
-			{
-				SelectedObject.ScatterMeshes.RemoveAt(actorMeshIndex);
-				if (SelectedObject.ScatterMeshes.Num() == 0)
-				{
-					// Out of meshes; try another Scatter object
-					Scatter.ScatterObjects.RemoveAt(actorMeshIndex);
-				}
-			}
+			check(selectedActor != NULL || selectedStaticMesh != NULL);
 		}
 	} while (selectedActor == NULL && selectedStaticMesh == NULL);
 	if (selectedActor == NULL && selectedStaticMesh == NULL || !SelectedObject.DirectionOffsets.Contains(Direction))
@@ -379,4 +309,52 @@ FScatterObject UGroundScatterManager::FindScatterObject(FGroundScatter& Scatter,
 	{
 		return selectedMesh;
 	}
+}
+
+
+FTransform UGroundScatterManager::GetObjectTransform(ADungeonRoom* Room, const FIntVector& Location, 
+	const UGroundScatterItem* Scatter, FRandomStream& Rng, const FScatterTransform& SelectedObject, 
+	ETileDirection Direction)
+{
+	// Get the transform of this tile
+	FTransform tileTransform = Room->GetTileTransformFromTileSpace(Location);
+	// Add a random value to it if we're not supposed to be on the grid
+	if (!Scatter->bConformToGrid)
+	{
+		FVector offset = FVector::ZeroVector;
+		offset.X += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+		offset.Y += Rng.FRandRange(0.0f, UDungeonTile::TILE_SIZE - (UDungeonTile::TILE_SIZE * 0.25f));
+		tileTransform.AddToTranslation(offset);
+	}
+	// Grab the transform associated with this direction
+	// This ensures that we always have the "correct" orientation when being
+	// placed against a wall, for example
+	FTransform scatterTransform = SelectedObject.DirectionOffsets[Direction];
+
+	// Determine position of the tile
+	FVector tilePosition = tileTransform.GetLocation();
+	// Check to see if we should be on the ceiling
+	if (SelectedObject.bOffsetFromTop)
+	{
+		tilePosition += FVector(0.0f, 0.0f, Room->ZSize() * 500.0f);
+	}
+	// Grab local position and rotation of the actual scatter object
+	FVector scatterPosition = scatterTransform.GetLocation();
+	FRotator scatterRotation = FRotator(scatterTransform.GetRotation());
+
+	// Combine them to get the world-space location for this object
+	FVector objectPosition = tilePosition + scatterPosition;
+	FRotator objectRotation = FRotator(tileTransform.GetRotation());
+	objectRotation.Add(scatterRotation.Pitch, scatterRotation.Yaw, scatterRotation.Roll);
+
+	// If we're using a random location, add some random rotations as well
+	if (Scatter->bUseRandomLocation)
+	{
+		int32 randomRotation = Rng.RandRange(0, 3);
+		float rotationAmount = randomRotation * 90.0f;
+		objectRotation.Add(0.0f, rotationAmount, 0.0f);
+	}
+
+	// Create the transform
+	return FTransform(objectRotation, objectPosition, scatterTransform.GetScale3D());
 }

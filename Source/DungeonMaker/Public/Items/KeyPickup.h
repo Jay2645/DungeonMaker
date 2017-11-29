@@ -1,8 +1,7 @@
-
-
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interface.h"
 #include "KeyPickup.generated.h"
 
 // This class does not need to be modified.

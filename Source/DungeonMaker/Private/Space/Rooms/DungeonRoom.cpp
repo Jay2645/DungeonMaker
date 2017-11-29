@@ -71,6 +71,7 @@ ADungeonRoom::ADungeonRoom()
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);
 	MaxRoomHeight = 1;
 	MinRoomSize = FIntVector(7, 7, 1);
+	RoomDifficultyModifier = 1.0f;
 }
 
 
@@ -683,7 +684,7 @@ void ADungeonRoom::SetTileGridCoordinates(FIntVector CurrentLocation, const UDun
 
 float ADungeonRoom::GetRoomDifficulty() const
 {
-	return RoomMetadata.Difficulty;
+	return RoomMetadata.Difficulty * RoomDifficultyModifier;
 }
 
 void ADungeonRoom::TryToPlaceEntrances(const UDungeonTile* EntranceTile, FRandomStream& Rng)
@@ -783,23 +784,23 @@ FTransform ADungeonRoom::CreateMeshTransform(const FTransform &MeshTransformOffs
 	return FTransform(finalRotation, finalPosition, MeshTransformOffset.GetScale3D());
 }
 
-AActor* ADungeonRoom::SpawnInteraction(const UDungeonTile* Tile, FDungeonTileInteractionOptions InteractionOptions, 
+AActor* ADungeonRoom::SpawnInteraction(const UDungeonTile* Tile, FDungeonTileInteractionOptions TileInteractionOptions, 
 	const FIntVector& Location, FRandomStream& Rng)
 {
-	if (InteractionOptions.Options.Num() == 0)
+	if (TileInteractionOptions.Options.Num() == 0)
 	{
 		// No interactions possible
 		return NULL;
 	}
 	TSubclassOf<AActor> interactionActor = NULL;
 	FDungeonTileInteraction interaction;
-	TArray<FDungeonTileInteraction> allInteractions = InteractionOptions.Options;
+	TArray<FDungeonTileInteraction> allInteractions = TileInteractionOptions.Options;
 
 	// Select an interaction actor
 	do 
 	{
-		int32 randomIndex = Rng.RandRange(0, InteractionOptions.Options.Num() - 1);
-		interaction = InteractionOptions.Options[randomIndex];
+		int32 randomIndex = Rng.RandRange(0, TileInteractionOptions.Options.Num() - 1);
+		interaction = TileInteractionOptions.Options[randomIndex];
 		if (interaction.InteractionActor == NULL || interaction.SelectionChance == 0.000f)
 		{
 			// Remove the offending actor
@@ -823,9 +824,9 @@ AActor* ADungeonRoom::SpawnInteraction(const UDungeonTile* Tile, FDungeonTileInt
 	// Create transform
 	FTransform transform = interaction.BaseTransform;
 	ETileDirection direction = GetTileDirection(Location);
-	if (InteractionOptions.DirectionOffsets.Contains(direction))
+	if (TileInteractionOptions.DirectionOffsets.Contains(direction))
 	{
-		FTransform offset = InteractionOptions.DirectionOffsets[direction];
+		FTransform offset = TileInteractionOptions.DirectionOffsets[direction];
 		transform.SetLocation(transform.GetLocation() + offset.GetLocation());
 		transform.SetRotation(transform.GetRotation() + offset.GetRotation());
 		transform.SetScale3D(transform.GetScale3D() * offset.GetScale3D());

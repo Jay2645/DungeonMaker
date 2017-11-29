@@ -52,6 +52,8 @@ public:
 	FIntVector MinRoomSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	uint8 MaxRoomHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	float RoomDifficultyModifier;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
 	uint8 ActualRoomHeight;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Room")
