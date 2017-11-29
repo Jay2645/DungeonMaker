@@ -278,6 +278,10 @@ void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, ASpaceMeshActor*>& F
 			// Cache this tile location
 			FIntVector location = FIntVector(x, y, 0);
 			const UDungeonTile* tile = GetTile(x, y);
+			if (tile == NULL)
+			{
+				continue;
+			}
 			if (!tileLocations.Contains(tile))
 			{
 				tileLocations.Add(tile, TArray<FIntVector>());

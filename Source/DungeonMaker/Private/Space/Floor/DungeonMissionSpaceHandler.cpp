@@ -225,6 +225,11 @@ bool UDungeonMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node, TM
 		// Already processed this node
 		return true;
 	}
+	if (Node->Symbol.Symbol == NULL || ((UDungeonMissionSymbol*)Node->Symbol.Symbol)->RoomTypes.Num() == 0)
+	{
+		// No rooms to pair
+		return true;
+	}
 	if (ProcessedNodes.Intersect(Node->ParentNodes).Num() != Node->ParentNodes.Num())
 	{
 		// We haven't processed all our parent nodes yet!

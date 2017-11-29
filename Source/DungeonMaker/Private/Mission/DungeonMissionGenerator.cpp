@@ -384,7 +384,7 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 		{
 			continue;
 		}
-		checkf(nodeMap.Contains(fromSymbol.SymbolID), TEXT("Shape did not contain symbol ID %d! Did you set it?"), fromSymbol.SymbolID);
+		checkf(nodeMap.Contains(fromSymbol.SymbolID), TEXT("Shape did not contain symbol ID %d! Did you remember to add it to the output grammar?"), fromSymbol.SymbolID);
 		// It is assumed that the from node is already in the map
 		// It is also assumed that the from node has already replaced its symbol
 		UDungeonMissionNode* fromNode = nodeMap[fromSymbol.SymbolID];

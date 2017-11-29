@@ -1,4 +1,5 @@
 #include "GraphOutputGrammar.h"
+#include "GraphNode.h"
 
 int32 UGraphOutputGrammar::Num() const
 {
@@ -15,8 +16,21 @@ TArray<FNumberedGraphSymbol> UGraphOutputGrammar::GetSymbolArray() const
 TSet<FGraphLink> UGraphOutputGrammar::GetSymbolChildren(const FNumberedGraphSymbol& Symbol) const
 {
 	check(IsValid(Symbol.Symbol));
-	checkf(Links.Contains(Symbol), TEXT("%s does not contain %s! Did you add it to the links map?"), *GetName(), *Symbol.GetSymbolDescription());
-	return Links[Symbol].Children;
+	// For whatever reason, this will crash the editor the first time after you make changes to something
+	//checkf(Links.Contains(Symbol), TEXT("%s does not contain %s! Did you add it to the links map?"), *GetName(), *Symbol.GetSymbolDescription());
+	//return Links[Symbol].Children;
+
+	// We're going to have to do this the slower way
+	for (auto kvp : Links)
+	{
+		FNumberedGraphSymbol thisKey = kvp.Key;
+		if (thisKey.Symbol == Symbol.Symbol && thisKey.SymbolID == Symbol.SymbolID)
+		{
+			return kvp.Value.Children;
+		}
+	}
+	UE_LOG(LogMissionGen, Error, TEXT("%s did not find a key for %s! Is there a graph link for it?"), *GetName(), *Symbol.GetSymbolDescription());
+	return TSet<FGraphLink>();
 }
 
 //TArray<TArray<FGraphLink>> GetAllChildren() const
