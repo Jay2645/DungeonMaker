@@ -2,9 +2,9 @@
 
 namespace UnrealBuildTool.Rules
 {
-	public class GenericGraphEditor : ModuleRules
+	public class DungeonMakerEditor : ModuleRules
 	{
-		public GenericGraphEditor(ReadOnlyTargetRules Target) : base(Target)
+		public DungeonMakerEditor(ReadOnlyTargetRules Target) : base(Target)
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 

@@ -20,7 +20,7 @@
 			"LoadingPhase" : "PreDefault"
 		},
 		{
-			"Name" : "GenericGraphEditor",
+			"Name" : "DungeonMakerEditor",
 			"Type" : "Editor",
 			"LoadingPhase" : "Default"
 		}
