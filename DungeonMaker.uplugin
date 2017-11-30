@@ -2,22 +2,27 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "DungeonMaker",
-	"Description": "A procedural dungeon creator for Unreal Engine 4.",
-	"Category": "Other",
+	"FriendlyName": "Procedural Dungeon Generator",
+	"Description": "A procedural dungeon creator for Unreal Engine 4, using generative grammars.",
+	"Category": "Gameplay",
 	"CreatedBy": "Jay Stevens",
 	"CreatedByURL": "",
-	"DocsURL": "",
+	"DocsURL": "https://github.com/Jay2645/DungeonMaker",
 	"MarketplaceURL": "",
-	"SupportURL": "",
+	"SupportURL": "https://github.com/Jay2645/DungeonMaker/issues",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"Installed": false,
-  "Modules": [
-    {
-      "Name": "DungeonMaker",
-      "Type": "Runtime",
-      "LoadingPhase": "Default"
-    }
-  ]
+	"Modules": [
+		{
+			"Name": "DungeonMaker"
+			"Type" : "Runtime",
+			"LoadingPhase" : "PreDefault"
+		},
+		{
+			"Name" : "GenericGraphEditor",
+			"Type" : "Editor",
+			"LoadingPhase" : "Default"
+		}
+	]
 }
