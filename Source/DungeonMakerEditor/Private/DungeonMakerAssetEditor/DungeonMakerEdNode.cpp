@@ -40,16 +40,12 @@ void UDungeonMakerEdNode::SetDungeonMakerNode(UDungeonMakerNode* InNode)
 
 FText UDungeonMakerEdNode::GetDescription() const
 {
-	UDungeonMakerGraph* Graph = DungeonMakerNode->GetGraph();
-
-	UClass* C = *DungeonMakerNode->NodeType;
-
-	return FText::FromString(C->GetDescription());
+	return FText::FromString(DungeonMakerNode->GetNodeTitle());
 }
 
 FLinearColor UDungeonMakerEdNode::GetBackgroundColor() const
 {
-	return DungeonMakerNode->BackgroundColor;
+	return DungeonMakerNode->GetBackgroundColor();
 }
 
 #undef LOCTEXT_NAMESPACE

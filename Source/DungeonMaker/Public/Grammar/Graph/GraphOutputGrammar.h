@@ -32,28 +32,6 @@ public:
 	}
 };
 
-
-USTRUCT(BlueprintType)
-struct DUNGEONMAKER_API FGraphOutput
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		const UGraphOutputGrammar* Grammar;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Weight;
-
-	UPROPERTY(BlueprintReadOnly)
-		TArray<FGraphLink> MatchedLinks;
-
-	FGraphOutput()
-	{
-		Grammar = NULL;
-		Weight = 0.0f;
-		MatchedLinks = TArray<FGraphLink>();
-	}
-};
-
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FNodeChildren
 {
@@ -65,6 +43,46 @@ public:
 	FNodeChildren()
 	{
 		Children = TSet<FGraphLink>();
+	}
+};
+
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FDungeonMissionGraphOutput
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGraphLink Head;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FNumberedGraphSymbol, FNodeChildren> Links;
+
+	int32 Num() const;
+	TArray<FNumberedGraphSymbol> GetSymbolArray() const;
+	TSet<FGraphLink> GetSymbolChildren(const FNumberedGraphSymbol& Symbol) const;
+	void Add(FNumberedGraphSymbol Parent, FGraphLink& Link);
+	FString ToString() const;
+
+private:
+	TArray<FString> GetChildrenStrings(FGraphLink Current) const;
+};
+
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FGraphOutput
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FDungeonMissionGraphOutput Grammar;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Weight;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FGraphLink> MatchedLinks;
+
+	FGraphOutput()
+	{
+		Weight = 0.0f;
+		MatchedLinks = TArray<FGraphLink>();
 	}
 };
 
@@ -81,14 +99,6 @@ class DUNGEONMAKER_API UGraphOutputGrammar : public UOutputGrammar
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FGraphLink Head;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FNumberedGraphSymbol, FNodeChildren> Links;
-
-	int32 Num() const;
-	TArray<FNumberedGraphSymbol> GetSymbolArray() const;
-	TSet<FGraphLink> GetSymbolChildren(const FNumberedGraphSymbol& Symbol) const;
-	void Add(FNumberedGraphSymbol Parent, FGraphLink& Link);
-	FString ToString() const;
+	FDungeonMissionGraphOutput Graph;
 };
 

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "DungeonMakerNode.h"
+#include "GraphOutputGrammar.h"
 #include "DungeonMakerGraph.generated.h"
 
 #define LOG_WARNING(FMT, ...) UE_LOG(LogMissionGen, Warning, (FMT), ##__VA_ARGS__)
@@ -29,6 +30,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "DungeonMaker")
 	TArray<UDungeonMakerNode*> AllNodes;
 
+	UPROPERTY(BlueprintReadOnly, Category = "DungeonMaker")
+	TMap<int32, UDungeonMakerNode*> NodeIDLookup;
+
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
 	class UEdGraph* EdGraph;
@@ -36,6 +40,12 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////
 	// ufunctions
+	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
+	int32 AddNode(UDungeonMakerNode* NodeToAdd);
+
+	UFUNCTION(BlueprintPure, Category = "DungeonMaker")
+	FDungeonMissionGraphOutput CreateOutputGraph() const;
+
 	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
 	void Print(bool ToConsole = true, bool ToScreen = true);
 

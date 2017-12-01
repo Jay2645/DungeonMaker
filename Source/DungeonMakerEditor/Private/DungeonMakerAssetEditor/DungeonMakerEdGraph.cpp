@@ -28,7 +28,7 @@ void UDungeonMakerEdGraph::RebuildDungeonMaker()
 
 		UDungeonMakerNode* GNode = EdNode->DungeonMakerNode;
 
-		G->AllNodes.Add(GNode);
+		G->AddNode(GNode);
 
 		for (int PinIdx = 0; PinIdx < EdNode->Pins.Num(); ++PinIdx)
 		{

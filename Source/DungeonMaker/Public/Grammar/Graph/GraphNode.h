@@ -23,9 +23,9 @@ struct DUNGEONMAKER_API FNumberedGraphSymbol
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-		UGraphNode* Symbol;
+	UGraphNode* Symbol;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int32 SymbolID;
+	int32 SymbolID;
 
 	FNumberedGraphSymbol()
 	{

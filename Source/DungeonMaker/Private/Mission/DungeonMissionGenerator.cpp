@@ -123,7 +123,27 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 		{
 			// We can replace ourselves with a new symbol!
 			// Grab our output
-			UGraphOutputGrammar* output = (UGraphOutputGrammar*)grammar->RuleOutput;
+			FDungeonMissionGraphOutput output;
+			const UGraphGrammar* graphGrammar = Cast<const UGraphGrammar>(grammar);
+			if (graphGrammar != NULL)
+			{
+				if (graphGrammar->OutputGraph != NULL)
+				{
+					output = graphGrammar->OutputGraph->CreateOutputGraph();
+				}
+				else
+				{
+					output = ((UGraphOutputGrammar*)grammar->RuleOutput)->Graph;
+				}
+			}
+			else if (grammar->RuleOutput == NULL)
+			{
+				continue;
+			}
+			else
+			{
+				output = ((UGraphOutputGrammar*)grammar->RuleOutput)->Graph;
+			}
 #if !UE_BUILD_SHIPPING
 			FString linkString = "";
 			for (int i = 0; i < Links.Num(); i++)
@@ -141,13 +161,13 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 					}
 				}
 			}
-			UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *linkString, *output->ToString());
+			UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *linkString, *output.ToString());
 #endif
 			// Make us less likely to be chosen if we've been chosen a lot before
 			float weightModifier = 1.0f;
-			if (GrammarUsageCount.Contains(output->ToString()))
+			if (GrammarUsageCount.Contains(output.ToString()))
 			{
-				weightModifier /= GrammarUsageCount[output->ToString()];
+				weightModifier /= GrammarUsageCount[output.ToString()];
 			}
 			if (bFoundMatches)
 			{
@@ -319,13 +339,13 @@ void UDungeonMissionGenerator::ReplaceDungeonNodes(UDungeonMissionNode* Starting
 		}
 	}
 
-	if (GrammarUsageCount.Contains(grammarReplaceResult.Grammar->ToString()))
+	if (GrammarUsageCount.Contains(grammarReplaceResult.Grammar.ToString()))
 	{
-		GrammarUsageCount[grammarReplaceResult.Grammar->ToString()] += 1;
+		GrammarUsageCount[grammarReplaceResult.Grammar.ToString()] += 1;
 	}
 	else
 	{
-		GrammarUsageCount.Add(grammarReplaceResult.Grammar->ToString(), 1);
+		GrammarUsageCount.Add(grammarReplaceResult.Grammar.ToString(), 1);
 	}
 
 	ReplaceNodes(StartingLocation, grammarReplaceResult);
@@ -348,6 +368,14 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 	{
 		replaceLocation->Symbol.SymbolID = 2;
 	}
+
+	FString initialShape = startLocation->GetSymbolDescription();
+	if (replaceLocation != NULL)
+	{
+		initialShape.Append("->");
+		initialShape.Append(replaceLocation->GetSymbolDescription());
+	}
+
 	TMap<int32, UDungeonMissionNode*> nodeMap;
 	nodeMap.Add(1, startLocation);
 	if (replaceLocation != NULL)
@@ -357,31 +385,39 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 
 	// Break their parent-child link
 	startLocation->BreakLinkWithNode(replaceLocation);
-
-	FString initialShape = startLocation->GetSymbolDescription();
-	if (replaceLocation != NULL)
+	FDungeonMissionGraphOutput replacement = GrammarReplaceResult.Grammar;
+	if (replacement.Num() == 0)
 	{
-		initialShape.Append("->");
-		initialShape.Append(replaceLocation->GetSymbolDescription());
+		UE_LOG(LogMissionGen, Error, TEXT("Replacement grammar was null! Nodes that were to be replaced: %s"), *initialShape);
+		return;
 	}
-	const UGraphOutputGrammar* shape = GrammarReplaceResult.Grammar;
-	FString grammarChain = shape->ToString();
-	UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *initialShape, *grammarChain);
+
+	FString grammarChain = replacement.ToString();
+	UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s (Total Length: %d)."), *initialShape, *grammarChain, replacement.Num());
 
 	TArray<FGraphLink> toProcess;
-	FGraphLink head = shape->Head;
+	FGraphLink head = replacement.Head;
+	if (head.Symbol.Symbol == NULL)
+	{
+		UE_LOG(LogMissionGen, Error, TEXT("Encounted a null head symbol replacing %s with %s."), *initialShape, *grammarChain);
+		return;
+	}
+
 	if (!startLocation->Symbol.Symbol->bIsTerminalNode)
 	{
 		startLocation->Symbol = head.Symbol;
 	}
 
-	toProcess.Add(shape->Head);
+	toProcess.Add(head);
+
+	// Process the head and all its children
 	while(toProcess.Num() > 0)
 	{
 		FNumberedGraphSymbol fromSymbol = toProcess[0].Symbol;
 		toProcess.RemoveAt(0);
 		if (fromSymbol.Symbol == NULL)
 		{
+			UE_LOG(LogMissionGen, Error, TEXT("Encounted a null symbol when replacing %s with %s."), *initialShape, *grammarChain);
 			continue;
 		}
 		checkf(nodeMap.Contains(fromSymbol.SymbolID), TEXT("Shape did not contain symbol ID %d! Did you remember to add it to the output grammar?"), fromSymbol.SymbolID);
@@ -389,9 +425,15 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 		// It is also assumed that the from node has already replaced its symbol
 		UDungeonMissionNode* fromNode = nodeMap[fromSymbol.SymbolID];
 
-		TSet<FGraphLink> children = shape->GetSymbolChildren(fromSymbol);
+		TSet<FGraphLink> children = replacement.GetSymbolChildren(fromSymbol);
 		for (FGraphLink& child : children)
 		{
+			if (child.Symbol.Symbol == NULL)
+			{
+				UE_LOG(LogMissionGen, Error, TEXT("%s had a null child symbol."), *fromSymbol.GetSymbolDescription());
+				continue;
+			}
+
 			// Create nodes for all children of this node
 			UDungeonMissionNode* toNode;
 			
@@ -441,6 +483,29 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 			toProcess.Add(child);
 		}
 	}
+
+	// Relabel all the nodes with their new IDs
+	/*int32 currentID = 1;
+	TArray<UDungeonMissionNode*> nodes;
+	nodes.Add(Head);
+	TSet<UDungeonMissionNode*> processed;
+	while (nodes.Num() > 0)
+	{
+		UDungeonMissionNode* current = nodes[0];
+		nodes.RemoveAt(0);
+		if (processed.Contains(current))
+		{
+			continue;
+		}
+
+		current->Symbol.SymbolID = currentID;
+		currentID++;
+		for (FMissionNodeData& node : current->NextNodes)
+		{
+			nodes.Add(node.Node);
+		}
+		processed.Add(current);
+	}*/
 
 #if !UE_BUILD_SHIPPING
 	UE_LOG(LogMissionGen, Log, TEXT("Dungeon after replacement:"));

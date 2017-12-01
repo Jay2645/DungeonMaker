@@ -63,7 +63,7 @@ UEdGraphNode* FDungeonMakerAssetSchemaAction_NewNode::PerformAction(class UEdGra
 
 	UDungeonMakerNode* NewNode = NewObject<UDungeonMakerNode>(Graph, Graph->NodeType);
 
-	Graph->AllNodes.Add(NewNode);
+	Graph->AddNode(NewNode);
 
 	FGraphNodeCreator<UDungeonMakerEdNode> NodeCreator(*Graph->EdGraph);
 	UDungeonMakerEdNode* GraphNode = NodeCreator.CreateNode(true);

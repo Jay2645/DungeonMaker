@@ -1,19 +1,19 @@
 #include "GraphOutputGrammar.h"
 #include "GraphNode.h"
 
-int32 UGraphOutputGrammar::Num() const
+int32 FDungeonMissionGraphOutput::Num() const
 {
 	return Links.Num();
 }
 
-TArray<FNumberedGraphSymbol> UGraphOutputGrammar::GetSymbolArray() const
+TArray<FNumberedGraphSymbol> FDungeonMissionGraphOutput::GetSymbolArray() const
 {
 	TArray<FNumberedGraphSymbol> values;
 	Links.GenerateKeyArray(values);
 	return values;
 }
 
-TSet<FGraphLink> UGraphOutputGrammar::GetSymbolChildren(const FNumberedGraphSymbol& Symbol) const
+TSet<FGraphLink> FDungeonMissionGraphOutput::GetSymbolChildren(const FNumberedGraphSymbol& Symbol) const
 {
 	check(IsValid(Symbol.Symbol));
 	// For whatever reason, this will crash the editor the first time after you make changes to something
@@ -29,7 +29,6 @@ TSet<FGraphLink> UGraphOutputGrammar::GetSymbolChildren(const FNumberedGraphSymb
 			return kvp.Value.Children;
 		}
 	}
-	UE_LOG(LogMissionGen, Error, TEXT("%s did not find a key for %s! Is there a graph link for it?"), *GetName(), *Symbol.GetSymbolDescription());
 	return TSet<FGraphLink>();
 }
 
@@ -71,7 +70,7 @@ TSet<FGraphLink> UGraphOutputGrammar::GetSymbolChildren(const FNumberedGraphSymb
 //	}
 //}
 
-void UGraphOutputGrammar::Add(FNumberedGraphSymbol Parent, FGraphLink& Link)
+void FDungeonMissionGraphOutput::Add(FNumberedGraphSymbol Parent, FGraphLink& Link)
 {
 	if (Head.Symbol.Symbol == NULL)
 	{
@@ -84,26 +83,57 @@ void UGraphOutputGrammar::Add(FNumberedGraphSymbol Parent, FGraphLink& Link)
 	}
 };
 
-FString UGraphOutputGrammar::ToString() const
+FString FDungeonMissionGraphOutput::ToString() const
 {
 	FString output = "";
-	for (auto& elem : Links)
+	TArray<FString> allStringCombinations = GetChildrenStrings(Head);
+	for (int i = 0; i < allStringCombinations.Num(); i++)
 	{
-		FNumberedGraphSymbol parent = elem.Key;
-		FString symbolDescription = parent.GetSymbolDescription();
-		TSet<FGraphLink> children = elem.Value.Children;
-		for (FGraphLink& link : children)
+		output.Append(allStringCombinations[i]);
+		if (i + 1 < allStringCombinations.Num())
 		{
-			if (link.bIsTightlyCoupled)
-			{
-				output.Append(symbolDescription + "=>" + link.Symbol.GetSymbolDescription() + "\n");
-			}
-			else
-			{
-				output.Append(symbolDescription + "->" + link.Symbol.GetSymbolDescription() + "\n");
-			}
+			output.Append("\n");
 		}
-		output.Append("\n");
 	}
 	return output;
 };
+
+TArray<FString> FDungeonMissionGraphOutput::GetChildrenStrings(FGraphLink Current) const
+{
+	TArray<FString> childStringList;
+
+	FString linkList = "";
+	for (auto kvp : Links)
+	{
+		linkList.Append(kvp.Key.GetSymbolDescription() + ", ");
+	}
+	checkf(Links.Contains(Current.Symbol), TEXT("Output %s was missing entry for %s! Link length: %d"), *linkList, *Current.Symbol.GetSymbolDescription(), Links.Num());
+
+	for (FGraphLink child : Links[Current.Symbol].Children)
+	{
+		FString linkName = child.Symbol.GetSymbolDescription();
+		TArray<FString> childStrings = GetChildrenStrings(child);
+		if (childStrings.Num() == 0)
+		{
+			childStringList.Add(linkName);
+		}
+		else
+		{
+			for (int i = 0; i < childStrings.Num(); i++)
+			{
+				FString childName = linkName;
+				if (child.bIsTightlyCoupled)
+				{
+					childName.Append("=>");
+				}
+				else
+				{
+					childName.Append("->");
+				}
+				childName.Append(childStrings[i]);
+				childStringList.Add(childName);
+			}
+		}
+	}
+	return childStringList;
+}

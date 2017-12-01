@@ -17,6 +17,88 @@ UDungeonMakerGraph::~UDungeonMakerGraph()
 
 }
 
+int32 UDungeonMakerGraph::AddNode(UDungeonMakerNode* NodeToAdd)
+{
+	int32 index = AllNodes.Add(NodeToAdd);
+	
+	// See if we should change the actual node ID based on our input
+	// This is the ID of the node in the graph segment we're replacing
+	int32 inputID = NodeToAdd->InputNodeID;
+	// This is the ID that we should be assigned next
+	int32 nextID = index + 1;
+	if (inputID > 0)
+	{
+		// If the user has specified that this node should replace another node
+		// in the graph, we need to ensure that they get assigned the proper ID.
+		// This means that if there is already a node with that ID, it should get
+		// the ID we were "supposed" to have.
+		if (NodeIDLookup.Contains(inputID))
+		{
+			NodeIDLookup[inputID]->NodeID = nextID;
+			NodeIDLookup.Add(nextID, NodeIDLookup[inputID]);
+		}
+		nextID = inputID;
+	}
+
+	// Update our ID
+	NodeToAdd->NodeID = nextID;
+	NodeIDLookup.Add(nextID, NodeToAdd);
+
+	return index;
+}
+
+FDungeonMissionGraphOutput UDungeonMakerGraph::CreateOutputGraph() const
+{
+	FDungeonMissionGraphOutput output = FDungeonMissionGraphOutput();
+	if (AllNodes.Num() == 0)
+	{
+		return output;
+	}
+
+	for (int i = 0; i < AllNodes.Num(); i++)
+	{
+		// There is a crash if you try to use TMap.Contains(Item); this much slower version must be used
+		bool bFound = false;
+		UDungeonMakerNode* currentNode = AllNodes[i];
+		for (auto& kvp : output.Links)
+		{
+			if (kvp.Key.SymbolID == currentNode->NodeID)
+			{
+				bFound = true;
+				break;
+			}
+		}
+		if (bFound)
+		{
+			continue;
+		}
+		
+		// Gather up our children
+		FNodeChildren nodeChildren = FNodeChildren();
+		for (int j = 0; j < currentNode->ChildrenNodes.Num(); j++)
+		{
+			UDungeonMakerNode* child = currentNode->ChildrenNodes[j];
+			FGraphLink childLink;
+			childLink.Symbol = child->ToGraphSymbol();
+			childLink.bIsTightlyCoupled = child->bTightlyCoupledToParent;
+			nodeChildren.Children.Add(childLink);
+		}
+		output.Links.Add(currentNode->ToGraphSymbol(), nodeChildren);
+	}
+	if (NodeIDLookup.Contains(1))
+	{
+		output.Head.Symbol = NodeIDLookup[1]->ToGraphSymbol();
+	}
+	else
+	{
+		output.Head.Symbol = AllNodes[0]->ToGraphSymbol();
+	}
+
+	UE_LOG(LogMissionGen, Log, TEXT("Completed package: %s"), *output.ToString());
+
+	return output;
+}
+
 void UDungeonMakerGraph::Print(bool ToConsole /*= true*/, bool ToScreen /*= true*/)
 {
 	int Level = 0;

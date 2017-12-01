@@ -60,7 +60,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	const UStateMachineState* RuleInput;
 	
-	// This contains the output chain for this grammar.
+	// This contains the output chain for this grammar, 
+	// for linear (non-graph based) outputs.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	const UOutputGrammar* RuleOutput;
 
@@ -70,7 +71,7 @@ public:
 	float Weight;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions")
-		virtual EGrammarResultType NodeMatchesGrammar(const UObject* ReferenceObject, UGrammarAlphabet* Node, FGrammarResult& OutGrammar) const;
+	virtual EGrammarResultType NodeMatchesGrammar(const UObject* ReferenceObject, UGrammarAlphabet* Node, FGrammarResult& OutGrammar) const;
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeons|Missions")
-		FString ConvertToString() const;
+	FString ConvertToString() const;
 };
