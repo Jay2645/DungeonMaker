@@ -5,36 +5,8 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GraphNode.h"
+#include "DungeonMakerNode.h"
 #include "DungeonMissionNode.generated.h"
-
-class UDungeonMissionNode;
-
-USTRUCT(BlueprintType)
-struct FMissionNodeData
-{
-	GENERATED_BODY()
-public:
-	FMissionNodeData()
-	{
-		Node = NULL;
-		bTightlyCoupledToParent = false;
-	}
-
-	UPROPERTY(EditAnywhere)
-	UDungeonMissionNode* Node;
-	UPROPERTY(EditAnywhere)
-	bool bTightlyCoupledToParent;
-
-	bool operator==(const FMissionNodeData& Other) const
-	{
-		return Node == Other.Node;
-	}
-
-	friend uint32 GetTypeHash(const FMissionNodeData& Other)
-	{
-		return GetTypeHash(Other.Node);
-	}
-};
 
 /*
 * This is essentially an implementation of a doubly-linked list for Dungeon Mission Symbols.
@@ -43,42 +15,26 @@ public:
 * to a parent, which means they have a significant relationship to their parent node.
 */
 UCLASS(BlueprintType)
-class DUNGEONMAKER_API UDungeonMissionNode : public UObject
+class DUNGEONMAKER_API UDungeonMissionNode : public UDungeonMakerNode
 {
 	GENERATED_BODY()
 public:
-	// The symbol associated with this node.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FNumberedGraphSymbol Symbol;
-	// True if we are tightly coupled to any of our parents
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bTightlyCoupledToParent;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TSet<UDungeonMissionNode*> ParentNodes;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSet<FMissionNodeData> NextNodes;
-
-public:
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeons|Missions")
-	UDungeonMissionNode* FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const;
+	UDungeonMakerNode* FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions")
 	void BreakLinkWithNode(const UDungeonMissionNode* Child);
-
-	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
-	void PrintNode(int32 IndentLevel = 4);
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
 	FString GetSymbolDescription();
 
+	void AddLinkToNode(UDungeonMissionNode* NewChild, bool bTightlyCoupled);
 	int32 GetLevelCount();
-	bool IsChildOf(UDungeonMissionNode* ParentSymbol) const;
 
-	static TArray<UDungeonMissionNode*> GetDepthFirstSortedNodes(UDungeonMissionNode* Head, bool bOnlyTightlyCoupled);
+	/*static TArray<UDungeonMissionNode*> GetDepthFirstSortedNodes(UDungeonMissionNode* Head, bool bOnlyTightlyCoupled);
 	static TArray<UDungeonMissionNode*> GetTopologicalSortedNodes(UDungeonMissionNode* Head);
 
 private:
 	static void TopologicalVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Marked,
 		TSet<UDungeonMissionNode*>& TemporaryMarked, TArray<UDungeonMissionNode*>& SortedList);
-	static TArray<UDungeonMissionNode*> DepthVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Visited, bool bOnlyTightlyCoupled);
+	static TArray<UDungeonMissionNode*> DepthVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Visited, bool bOnlyTightlyCoupled);*/
 };

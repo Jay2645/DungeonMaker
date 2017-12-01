@@ -32,6 +32,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 RoomSize = 32;
 
+private:
+	int32 RoomCount = 0;
+
 public:
 	void DrawDebugSpace();
 	// Gets a room based on floor-space coordinates.
@@ -55,7 +58,7 @@ public:
 	// Creates a blank DungeonFloor array, with the specified size.
 	void InitializeDungeonFloor(UDungeonSpaceGenerator* SpaceGenerator, TArray<int32> LevelSizes);
 
-	void CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
+	bool CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 		int32 SymbolCount, FRandomStream& Rng);
 
 private:
@@ -71,6 +74,5 @@ private:
 	void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
 	TKeyValuePair<FIntVector, FIntVector> GetOpenRoom(UDungeonMissionNode* Node,
 		TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms);
-	bool VerifyPathIsValid(FIntVector StartLocation);
 	void ProcessRoomNeighbors();
 };

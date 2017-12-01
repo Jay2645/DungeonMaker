@@ -47,58 +47,6 @@ int32 UDungeonMakerGraph::AddNode(UDungeonMakerNode* NodeToAdd)
 	return index;
 }
 
-FDungeonMissionGraphOutput UDungeonMakerGraph::CreateOutputGraph() const
-{
-	FDungeonMissionGraphOutput output = FDungeonMissionGraphOutput();
-	if (AllNodes.Num() == 0)
-	{
-		return output;
-	}
-
-	for (int i = 0; i < AllNodes.Num(); i++)
-	{
-		// There is a crash if you try to use TMap.Contains(Item); this much slower version must be used
-		bool bFound = false;
-		UDungeonMakerNode* currentNode = AllNodes[i];
-		for (auto& kvp : output.Links)
-		{
-			if (kvp.Key.SymbolID == currentNode->NodeID)
-			{
-				bFound = true;
-				break;
-			}
-		}
-		if (bFound)
-		{
-			continue;
-		}
-		
-		// Gather up our children
-		FNodeChildren nodeChildren = FNodeChildren();
-		for (int j = 0; j < currentNode->ChildrenNodes.Num(); j++)
-		{
-			UDungeonMakerNode* child = currentNode->ChildrenNodes[j];
-			FGraphLink childLink;
-			childLink.Symbol = child->ToGraphSymbol();
-			childLink.bIsTightlyCoupled = child->bTightlyCoupledToParent;
-			nodeChildren.Children.Add(childLink);
-		}
-		output.Links.Add(currentNode->ToGraphSymbol(), nodeChildren);
-	}
-	if (NodeIDLookup.Contains(1))
-	{
-		output.Head.Symbol = NodeIDLookup[1]->ToGraphSymbol();
-	}
-	else
-	{
-		output.Head.Symbol = AllNodes[0]->ToGraphSymbol();
-	}
-
-	UE_LOG(LogMissionGen, Log, TEXT("Completed package: %s"), *output.ToString());
-
-	return output;
-}
-
 void UDungeonMakerGraph::Print(bool ToConsole /*= true*/, bool ToScreen /*= true*/)
 {
 	int Level = 0;
@@ -204,6 +152,56 @@ void UDungeonMakerGraph::ClearGraph()
 
 	AllNodes.Reset();
 	RootNodes.Reset();
+}
+
+void UDungeonMakerGraph::UpdateIDs()
+{
+	NodeIDLookup.Empty(AllNodes.Num());
+	for (int i = 0; i < AllNodes.Num(); ++i)
+	{
+		UDungeonMakerNode* Node = AllNodes[i];
+
+		NodeIDLookup.Add(Node->NodeID, Node);
+	}
+}
+
+
+FString UDungeonMakerGraph::ToString() const
+{
+	FString output = "";
+	int Level = 0;
+	TArray<UDungeonMakerNode*> CurrLevelNodes = RootNodes;
+	TArray<UDungeonMakerNode*> NextLevelNodes;
+
+	while (CurrLevelNodes.Num() != 0)
+	{
+		for (int i = 0; i < CurrLevelNodes.Num(); ++i)
+		{
+			UDungeonMakerNode* Node = CurrLevelNodes[i];
+			check(Node != nullptr);
+
+			output.Append(Node->GetNodeTitle());
+			if (i + 1 < CurrLevelNodes.Num())
+			{
+				output.Append(", ");
+			}
+
+			for (int j = 0; j < Node->ChildrenNodes.Num(); ++j)
+			{
+				NextLevelNodes.Add(Node->ChildrenNodes[j]);
+			}
+		}
+		output.Append("\n");
+		CurrLevelNodes = NextLevelNodes;
+		NextLevelNodes.Reset();
+		++Level;
+	}
+	return output;
+}
+
+int32 UDungeonMakerGraph::Num() const
+{
+	return AllNodes.Num();
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -37,7 +37,11 @@ void ADungeon::BeginPlay()
 		rng = FRandomStream(Seed);
 	}
 	UE_LOG(LogMissionGen, Log, TEXT("Creating dungeon out of seed %d."), Seed);
-	Mission->TryToCreateDungeon(rng);
+	bool bSuccessfullyMadeDungeon = false;
 
-	Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
+	do 
+	{
+		Mission->TryToCreateDungeon(rng);
+		bSuccessfullyMadeDungeon = Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
+	} while (!bSuccessfullyMadeDungeon);
 }

@@ -1,7 +1,7 @@
 #include "GraphOutputGrammar.h"
 #include "GraphNode.h"
 
-int32 FDungeonMissionGraphOutput::Num() const
+/*int32 FDungeonMissionGraphOutput::Num() const
 {
 	return Links.Num();
 }
@@ -70,7 +70,7 @@ TSet<FGraphLink> FDungeonMissionGraphOutput::GetSymbolChildren(const FNumberedGr
 //	}
 //}
 
-void FDungeonMissionGraphOutput::Add(FNumberedGraphSymbol Parent, FGraphLink& Link)
+/*void FDungeonMissionGraphOutput::Add(FNumberedGraphSymbol Parent, FGraphLink& Link)
 {
 	if (Head.Symbol.Symbol == NULL)
 	{
@@ -136,4 +136,4 @@ TArray<FString> FDungeonMissionGraphOutput::GetChildrenStrings(FGraphLink Curren
 		}
 	}
 	return childStringList;
-}
+}*/

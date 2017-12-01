@@ -62,15 +62,21 @@ protected:
 	void TryToCreateDungeon(UDungeonMissionNode* StartingLocation, TArray<const UDungeonMissionGrammar*> AllowedGrammars, 
 		FRandomStream& Rng, int32 RemainingMaxStepCount);
 
-	void FindNodeMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars);
+	void FindNodeMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars,
+		UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars);
 
-	void CheckGrammarMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, const TArray<FGraphLink>& Links, UDungeonMissionNode* StartingLocation, bool bFoundMatches, TArray<FGraphOutput> &OutAcceptableGrammars);
+	void CheckGrammarMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars,
+		const TArray<FGraphLink>& Links, UDungeonMissionNode* StartingLocation, bool bFoundMatches,
+		TArray<FGraphOutput>& OutAcceptableGrammars);
 
-	void FindMatchesWithChildren(TArray<const UDungeonMissionGrammar *>& AllowedGrammars, UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars);
+	void FindMatchesWithChildren(TArray<const UDungeonMissionGrammar*>& AllowedGrammars,
+		UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars);
 
-	void ReplaceDungeonNodes(UDungeonMissionNode* StartingLocation, TArray<FGraphOutput> AcceptableGrammars, FRandomStream& Rng);
+	void ReplaceDungeonNodes(UDungeonMissionNode* StartingLocation,
+		TArray<FGraphOutput> AcceptableGrammars, FRandomStream& Rng);
 
-	void ReplaceNodes(UDungeonMissionNode* StartingLocation, const FGraphOutput& GrammarReplaceResult);
+	void ReplaceNodes(UDungeonMissionNode* StartingLocation,
+		const FGraphOutput& GrammarReplaceResult);
 
 	TMap<FString, int32> GrammarUsageCount;
 

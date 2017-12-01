@@ -2,18 +2,17 @@
 
 #include "DungeonMissionNode.h"
 
-UDungeonMissionNode* UDungeonMissionNode::FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const
+UDungeonMakerNode* UDungeonMissionNode::FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const
 {
-	if (NextNodes.Num() == 0)
+	if (ChildrenNodes.Num() == 0)
 	{
 		return NULL;
 	}
-	for (const FMissionNodeData& node : NextNodes)
+	for (UDungeonMakerNode* node : ChildrenNodes)
 	{
-		check(node.Node && node.Node->Symbol.Symbol);
-		if (node.Node->Symbol == ChildSymbol)
+		if (node->NodeType == ChildSymbol.Symbol && node->NodeID == ChildSymbol.SymbolID)
 		{
-			return node.Node;
+			return node;
 		}
 	}
 	return NULL;
@@ -21,49 +20,81 @@ UDungeonMissionNode* UDungeonMissionNode::FindChildNodeFromSymbol(FNumberedGraph
 
 void UDungeonMissionNode::BreakLinkWithNode(const UDungeonMissionNode* Child)
 {
-	if (NextNodes.Num() == 0 || Child == NULL)
+	if (ChildrenNodes.Num() == 0 || Child == NULL)
 	{
 		return;
 	}
-	for (FMissionNodeData& node : NextNodes)
+	for (UDungeonMakerNode* node : ChildrenNodes)
 	{
-		check(node.Node);
-		if (node.Node == Child)
+		if (node == Child)
 		{
-			NextNodes.Remove(node);
+			ChildrenNodes.Remove(node);
+			node->ParentNodes.Remove(this);
+			FString ourName = ToString(0);
+			FString childName = node->ToString(0);
+			UE_LOG(LogMissionGen, Log, TEXT("Breaking link between %s and %s."), *ourName, *childName);
 			break;
 		}
 	}
 }
 
-void UDungeonMissionNode::PrintNode(int32 IndentLevel)
+void UDungeonMissionNode::AddLinkToNode(UDungeonMissionNode* NewChild, bool bTightlyCoupled)
 {
-#if !UE_BUILD_SHIPPING
-	FString output;
-	for (int i = 0; i < IndentLevel; i++)
+	if (NewChild == NULL)
 	{
-		output.AppendChar(' ');
+		return;
 	}
-	output.Append("->");
-	output.Append(GetSymbolDescription());
-	output.Append(" (");
-	output.AppendInt(Symbol.SymbolID);
-	output.AppendChar(')');
-	UE_LOG(LogMissionGen, Log, TEXT("%s"), *output);
-	
-	for (FMissionNodeData& node : NextNodes)
+
+	bool bAlreadyHasChild = false;
+	for (int i = 0; i < ChildrenNodes.Num(); i++)
 	{
-		node.Node->PrintNode(IndentLevel + 4);
+		if (ChildrenNodes[i]->NodeID == NewChild->NodeID && 
+			ChildrenNodes[i]->NodeType == NewChild->NodeType)
+		{
+			bAlreadyHasChild = true;
+			break;
+		}
 	}
-#endif
+
+	if (!bAlreadyHasChild)
+	{
+		ChildrenNodes.Add(NewChild);
+	}
+
+	bool bAlreadyHasParent = false;
+	for (int i = 0; i < NewChild->ParentNodes.Num(); i++)
+	{
+		if (NewChild->ParentNodes[i]->NodeID == NodeID &&
+			NewChild->ParentNodes[i]->NodeType == NodeType)
+		{
+			bAlreadyHasParent = true;
+			break;
+		}
+	}
+	if (!bAlreadyHasParent)
+	{
+		NewChild->bTightlyCoupledToParent = bTightlyCoupled;
+		NewChild->ParentNodes.Add(this);
+	}
+
+	if (NewChild->bTightlyCoupledToParent)
+	{
+		UE_LOG(LogMissionGen, Log, TEXT("Parenting %s => %s"), *ToString(0), *NewChild->ToString(0));
+	}
+	else
+	{
+		UE_LOG(LogMissionGen, Log, TEXT("Parenting %s -> %s"), *ToString(0), *NewChild->ToString(0));
+	}
+
+	UE_LOG(LogMissionGen, Log, TEXT("Dungeon after reparenting: %s"), *ToString(0));
 }
 
 int32 UDungeonMissionNode::GetLevelCount()
 {
 	int32 biggest = 0;
-	for (FMissionNodeData& node : NextNodes)
+	for (UDungeonMakerNode* node : ChildrenNodes)
 	{
-		int32 nextNodeLevelCount = node.Node->GetLevelCount();
+		int32 nextNodeLevelCount = ((UDungeonMissionNode*)node)->GetLevelCount();
 		if (nextNodeLevelCount > biggest)
 		{
 			biggest = nextNodeLevelCount;
@@ -72,44 +103,26 @@ int32 UDungeonMissionNode::GetLevelCount()
 	return biggest + 1;
 }
 
-
-bool UDungeonMissionNode::IsChildOf(UDungeonMissionNode* ParentSymbol) const
-{
-	for (UDungeonMissionNode* parent : ParentNodes)
-	{
-		if (parent == ParentSymbol)
-		{
-			return true;
-		}
-		// If our parent is a child of this symbol, so are we
-		if (parent->IsChildOf(ParentSymbol))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-TArray<UDungeonMissionNode*> UDungeonMissionNode::GetDepthFirstSortedNodes(UDungeonMissionNode* Head, bool bOnlyTightlyCoupled)
+/*TArray<UDungeonMissionNode*> UDungeonMissionNode::GetDepthFirstSortedNodes(UDungeonMissionNode* Head, bool bOnlyTightlyCoupled)
 {
 	TSet<UDungeonMissionNode*> visited;
 	return DepthVisit(Head, visited, bOnlyTightlyCoupled);
 }
 
-TArray<UDungeonMissionNode*> UDungeonMissionNode::GetTopologicalSortedNodes(UDungeonMissionNode* Head)
+TArray<UDungeonMakerNode*> UDungeonMissionNode::GetTopologicalSortedNodes(UDungeonMakerNode* Head)
 {
 	// Code based on https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
-	TArray<UDungeonMissionNode*> sortedNodes;
-	TSet<UDungeonMissionNode*> temporarilyMarked;
-	TSet<UDungeonMissionNode*> marked;
+	TArray<UDungeonMakerNode*> sortedNodes;
+	TSet<UDungeonMakerNode*> temporarilyMarked;
+	TSet<UDungeonMakerNode*> marked;
 
 	TopologicalVisit(Head, marked, temporarilyMarked, sortedNodes);
 
 	return sortedNodes;
 }
 
-void UDungeonMissionNode::TopologicalVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Marked, 
-	TSet<UDungeonMissionNode*>& TemporaryMarked, TArray<UDungeonMissionNode*>& SortedList)
+void UDungeonMissionNode::TopologicalVisit(UDungeonMakerNode* Node, TSet<UDungeonMakerNode*>& Marked,
+	TSet<UDungeonMakerNode*>& TemporaryMarked, TArray<UDungeonMakerNode*>& SortedList)
 {
 	if (Marked.Contains(Node))
 	{
@@ -119,8 +132,8 @@ void UDungeonMissionNode::TopologicalVisit(UDungeonMissionNode* Node, TSet<UDung
 	{
 		return;
 	}
-	TSet<UDungeonMissionNode*> allMarkedNodes = Marked.Union(TemporaryMarked);
-	for (UDungeonMissionNode* parent : Node->ParentNodes)
+	TSet<UDungeonMakerNode*> allMarkedNodes = Marked.Union(TemporaryMarked);
+	for (UDungeonMakerNode* parent : Node->ParentNodes)
 	{
 		if (!allMarkedNodes.Contains(parent))
 		{
@@ -160,9 +173,13 @@ TArray<UDungeonMissionNode*> UDungeonMissionNode::DepthVisit(UDungeonMissionNode
 		output.Append(DepthVisit(child.Node, Visited, bOnlyTightlyCoupled));
 	}
 	return output;
-}
+}*/
 
 FString UDungeonMissionNode::GetSymbolDescription()
 {
-	return Symbol.GetSymbolDescription();
+	if (NodeType == NULL)
+	{
+		return "";
+	}
+	return NodeType->Description.ToString();
 }

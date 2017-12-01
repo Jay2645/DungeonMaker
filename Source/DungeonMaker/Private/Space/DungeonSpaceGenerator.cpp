@@ -11,7 +11,7 @@ UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 	MaxGeneratedRooms = -1;
 }
 
-void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
+bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
 {
 	TotalSymbolCount = SymbolCount;
 
@@ -33,7 +33,13 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	MissionSpaceHandler->RoomSize = RoomSize;
 	MissionSpaceHandler->InitializeDungeonFloor(this, dungeonLevelSizes);
 	// Map the mission to the space
-	MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
+	bool bMadeSpace = MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
+
+	if (!bMadeSpace)
+	{
+		MissionSpaceHandler->DestroyComponent();
+		return false;
+	}
 
 	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
@@ -101,6 +107,8 @@ void UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 			floor->SpawnRoomMeshes(FloorComponentLookup, CeilingComponentLookup, Rng);
 		}
 	}
+
+	return true;
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace()

@@ -19,8 +19,8 @@ UDungeonMissionGenerator::UDungeonMissionGenerator()
 void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 {
 	Head = NewObject<UDungeonMissionNode>();
-	Head->ParentNodes = TSet<UDungeonMissionNode*>();
-	Head->Symbol.Symbol = HeadSymbol.Symbol;
+	Head->NodeType = HeadSymbol.Symbol;
+	Head->NodeID = HeadSymbol.SymbolID;
 	Head->bTightlyCoupledToParent = false;
 	DungeonSize = 1;
 
@@ -41,11 +41,11 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 			continue;
 		}
 
-		current->Symbol.SymbolID = currentID;
+		current->NodeID = currentID;
 		currentID++;
-		for (FMissionNodeData& node : current->NextNodes)
+		for (UDungeonMakerNode* node : current->ChildrenNodes)
 		{
-			nodes.Add(node.Node);
+			nodes.Add((UDungeonMissionNode*)node);
 		}
 		processed.Add(current);
 
@@ -58,11 +58,12 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 #endif
 }
 
-void UDungeonMissionGenerator::FindNodeMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars)
+void UDungeonMissionGenerator::FindNodeMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, 
+	UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars)
 {
 	bool bFoundMatches = OutAcceptableGrammars.Num() > 0;
 	FGraphLink us;
-	us.Symbol = StartingLocation->Symbol;
+	us.Symbol = StartingLocation->ToGraphSymbol();
 	us.bIsTightlyCoupled = StartingLocation->bTightlyCoupledToParent;
 
 	// We're only checking if us by ourselves is valid, so the array just needs to contain us.
@@ -72,29 +73,29 @@ void UDungeonMissionGenerator::FindNodeMatches(TArray<const UDungeonMissionGramm
 	UE_LOG(LogMissionGen, Log, TEXT("Checking if %s is a valid input."), *us.Symbol.GetSymbolDescription());
 
 	CheckGrammarMatches(AllowedGrammars, links, StartingLocation, bFoundMatches, OutAcceptableGrammars);
-
 }
 
-void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMissionGrammar *>& AllowedGrammars, UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars)
+void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, 
+	UDungeonMissionNode* StartingLocation, TArray<FGraphOutput>& OutAcceptableGrammars)
 {
 	// We have children; we should check to see if we have a grammar which accepts us and our children
 	// Define us first
 	FGraphLink us;
-	us.Symbol = StartingLocation->Symbol;
+	us.Symbol = StartingLocation->ToGraphSymbol();
 	us.bIsTightlyCoupled = StartingLocation->bTightlyCoupledToParent;
 
 	UE_LOG(LogMissionGen, Log, TEXT("Trying to match childen of %s!"), *us.Symbol.GetSymbolDescription());
 
 	// Iterate over each child
-	for (FMissionNodeData& nextNode : StartingLocation->NextNodes)
+	for (UDungeonMakerNode* nextNode : StartingLocation->ChildrenNodes)
 	{
 		// Add ourselves to the array
 		TArray<FGraphLink> links;
 		links.Add(us);
 
 		FGraphLink next;
-		next.Symbol = nextNode.Node->Symbol;
-		next.bIsTightlyCoupled = nextNode.Node->bTightlyCoupledToParent;
+		next.Symbol = nextNode->ToGraphSymbol();
+		next.bIsTightlyCoupled = nextNode->bTightlyCoupledToParent;
 
 		links.Add(next);
 
@@ -111,7 +112,9 @@ void UDungeonMissionGenerator::FindMatchesWithChildren(TArray<const UDungeonMiss
 #endif
 }
 
-void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars, const TArray<FGraphLink>& Links, UDungeonMissionNode* StartingLocation, bool bFoundMatches, TArray<FGraphOutput>& OutAcceptableGrammars)
+void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionGrammar*>& AllowedGrammars,
+	const TArray<FGraphLink>& Links, UDungeonMissionNode* StartingLocation, bool bFoundMatches, 
+	TArray<FGraphOutput>& OutAcceptableGrammars)
 {
 	for (int i = 0; i < AllowedGrammars.Num(); i++)
 	{
@@ -122,28 +125,8 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 		if (resultType == EGrammarResultType::Accepted)
 		{
 			// We can replace ourselves with a new symbol!
-			// Grab our output
-			FDungeonMissionGraphOutput output;
-			const UGraphGrammar* graphGrammar = Cast<const UGraphGrammar>(grammar);
-			if (graphGrammar != NULL)
-			{
-				if (graphGrammar->OutputGraph != NULL)
-				{
-					output = graphGrammar->OutputGraph->CreateOutputGraph();
-				}
-				else
-				{
-					output = ((UGraphOutputGrammar*)grammar->RuleOutput)->Graph;
-				}
-			}
-			else if (grammar->RuleOutput == NULL)
-			{
-				continue;
-			}
-			else
-			{
-				output = ((UGraphOutputGrammar*)grammar->RuleOutput)->Graph;
-			}
+
+			UDungeonMakerGraph* graph = ((UGraphGrammar*)grammar)->OutputGraph;
 #if !UE_BUILD_SHIPPING
 			FString linkString = "";
 			for (int i = 0; i < Links.Num(); i++)
@@ -161,13 +144,14 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 					}
 				}
 			}
-			UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s."), *linkString, *output.ToString());
+			UE_LOG(LogMissionGen, Log, TEXT("Matching grammar found! %s can be replaced by %s."), *linkString, *graph->ToString());
 #endif
 			// Make us less likely to be chosen if we've been chosen a lot before
 			float weightModifier = 1.0f;
-			if (GrammarUsageCount.Contains(output.ToString()))
+			FString outputString = graph->ToString();
+			if (GrammarUsageCount.Contains(outputString))
 			{
-				weightModifier /= GrammarUsageCount[output.ToString()];
+				weightModifier /= GrammarUsageCount[outputString];
 			}
 			if (bFoundMatches)
 			{
@@ -175,7 +159,7 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 				weightModifier *= 0.25f;
 			}
 			FGraphOutput replaceResult;
-			replaceResult.Grammar = output;
+			replaceResult.Graph = graph;
 			replaceResult.Weight = grammar->Weight * weightModifier;
 			replaceResult.MatchedLinks = Links;
 			// Add it to the list of things we can do to ourselves
@@ -186,9 +170,9 @@ void UDungeonMissionGenerator::CheckGrammarMatches(TArray<const UDungeonMissionG
 
 void UDungeonMissionGenerator::DrawDebugDungeon()
 {
-	check(Head != NULL && Head->Symbol.Symbol != NULL);
+	check(Head != NULL && Head->NodeType != NULL);
 	int32 dungeonDepth = Head->GetLevelCount();
-	TMap<UDungeonMissionNode*, FIntVector> dungeonCoords;
+	TMap<UDungeonMakerNode*, FIntVector> dungeonCoords;
 	int xOffset = 0;
 	int yOffset = 0;
 
@@ -207,14 +191,14 @@ void UDungeonMissionGenerator::DrawDebugDungeon()
 			UDungeonMissionNode* next = allNodes[j][k];
 			nodesToDraw.Enqueue(next);
 			dungeonCoords.Add(next, FIntVector(xOffset + k, yOffset, 0));
-			for (FMissionNodeData& node : next->NextNodes)
+			for (UDungeonMakerNode* node : next->ChildrenNodes)
 			{
-				int32 nodesBelow = node.Node->GetLevelCount();
+				int32 nodesBelow = ((UDungeonMissionNode*)node)->GetLevelCount();
 				if (nodesBelow <= 1)
 				{
 					// Send to the bottom
-					nodesToDraw.Enqueue(node.Node);
-					dungeonCoords.Add(node.Node, FIntVector(xOffset + k, dungeonDepth - 1, 0));
+					nodesToDraw.Enqueue((UDungeonMissionNode*)node);
+					dungeonCoords.Add(node, FIntVector(xOffset + k, dungeonDepth - 1, 0));
 					// Increment the x offset; the bottom of this one is already accounted for
 					xOffset++;
 					continue;
@@ -222,7 +206,7 @@ void UDungeonMissionGenerator::DrawDebugDungeon()
 
 				// Otherwise, our child has child nodes
 				// This will never overflow because we already know how many children have child nodes
-				allNodes[j + 1].Add(node.Node);
+				allNodes[j + 1].Add((UDungeonMissionNode*)node);
 			}
 		}
 		yOffset++;
@@ -237,13 +221,13 @@ void UDungeonMissionGenerator::DrawDebugDungeon()
 		FVector drawLocation = FVector(nodeLocation.X * 100.0f, nodeLocation.Y * 100.0f, 0.0f);
 
 		DrawDebugSphere(GetWorld(), drawLocation, 15.0f, 8, FColor(255, 0, 255), true);
-		DrawDebugString(GetWorld(), drawLocation + FVector(0.0f, 0.0f, 100.0f), next->Symbol.GetSymbolDescription());
-		for (FMissionNodeData& node : next->NextNodes)
+		DrawDebugString(GetWorld(), drawLocation + FVector(0.0f, 0.0f, 100.0f), next->GetSymbolDescription());
+		for (UDungeonMakerNode* node : next->ChildrenNodes)
 		{
-			FIntVector childLocation = dungeonCoords[node.Node];
+			FIntVector childLocation = dungeonCoords[node];
 			FVector drawChildLocation = FVector(childLocation.X * 100.0f, childLocation.Y * 100.0f, 0.0f);
 			FColor lineColor;
-			if (node.bTightlyCoupledToParent)
+			if (node->bTightlyCoupledToParent)
 			{
 				lineColor = FColor(0, 0, 255);
 			}
@@ -258,8 +242,8 @@ void UDungeonMissionGenerator::DrawDebugDungeon()
 
 void UDungeonMissionGenerator::PrintDebugDungeon()
 {
-	check(Head != NULL && Head->Symbol.Symbol != NULL);
-	Head->PrintNode(0);
+	check(Head != NULL && Head->NodeType != NULL);
+	UE_LOG(LogMissionGen, Log, TEXT("%s"), *Head->ToString(0));
 }
 
 void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingLocation, 
@@ -267,25 +251,25 @@ void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingL
 {
 	checkf(StartingLocation != NULL, TEXT("Starting node for dungeon generation was null!"));
 	checkf(StartingLocation->IsValidLowLevel(), TEXT("Starting node for dungeon generation was invalid!"));
-	checkf(StartingLocation->Symbol.Symbol != NULL, TEXT("Starting node for dungeon generation had no symbols!"));
+	checkf(StartingLocation->NodeType != NULL, TEXT("Starting node for dungeon generation had no symbols!"));
 	checkf(AllowedGrammars.Num() > 0, TEXT("There were no allowed grammars for dungeon generation!"));
 	checkf(RemainingMaxStepCount >= 0, TEXT("Dungeon generation ran out of steps! You have an overflow issue."));
 
-	UE_LOG(LogMissionGen, Log, TEXT("Trying to create a dungeon starting from %s."), *StartingLocation->GetSymbolDescription());
-
-	if (StartingLocation->Symbol.Symbol->bIsTerminalNode)
+	if (StartingLocation->NodeType->bIsTerminalNode)
 	{
 		// This node has already been processed completely and turned into a terminal node
-		for (FMissionNodeData& node : StartingLocation->NextNodes)
+		for (UDungeonMakerNode* node : StartingLocation->ChildrenNodes)
 		{
 			// Try and process each child
-			TryToCreateDungeon(node.Node, AllowedGrammars, Rng, RemainingMaxStepCount - 1);
+			TryToCreateDungeon((UDungeonMissionNode*)node, AllowedGrammars, Rng, RemainingMaxStepCount - 1);
 		}
 		return;
 	}
 
+	UE_LOG(LogMissionGen, Log, TEXT("Trying to create a dungeon starting from %s."), *StartingLocation->GetSymbolDescription());
+
 	TArray<FGraphOutput> acceptableGrammars;
-	if (StartingLocation->NextNodes.Num() > 0)
+	if (StartingLocation->ChildrenNodes.Num() > 0)
 	{
 		FindMatchesWithChildren(AllowedGrammars, StartingLocation, acceptableGrammars);
 	}
@@ -306,10 +290,10 @@ void UDungeonMissionGenerator::TryToCreateDungeon(UDungeonMissionNode* StartingL
 		// No matching grammars; turn into a hook
 		UE_LOG(LogMissionGen, Error, TEXT("%s had no matching grammars."), *StartingLocation->GetSymbolDescription());
 		UnresolvedHooks.Add(StartingLocation);
-		for (FMissionNodeData& node : StartingLocation->NextNodes)
+		for (UDungeonMakerNode* node : StartingLocation->ChildrenNodes)
 		{
 			// Try and process each child
-			TryToCreateDungeon(node.Node, AllowedGrammars, Rng, RemainingMaxStepCount - 1);
+			TryToCreateDungeon((UDungeonMissionNode*)node, AllowedGrammars, Rng, RemainingMaxStepCount - 1);
 		}
 	}
 }
@@ -339,34 +323,36 @@ void UDungeonMissionGenerator::ReplaceDungeonNodes(UDungeonMissionNode* Starting
 		}
 	}
 
-	if (GrammarUsageCount.Contains(grammarReplaceResult.Grammar.ToString()))
+	FString grammarString = grammarReplaceResult.Graph->ToString();
+	if (GrammarUsageCount.Contains(grammarString))
 	{
-		GrammarUsageCount[grammarReplaceResult.Grammar.ToString()] += 1;
+		GrammarUsageCount[grammarString] += 1;
 	}
 	else
 	{
-		GrammarUsageCount.Add(grammarReplaceResult.Grammar.ToString(), 1);
+		GrammarUsageCount.Add(grammarString, 1);
 	}
 
+	// Actually do the replacement
 	ReplaceNodes(StartingLocation, grammarReplaceResult);
-
 }
 
-void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocation, const FGraphOutput& GrammarReplaceResult)
+void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocation, 
+	const FGraphOutput& GrammarReplaceResult)
 {
 	// Find the matched nodes
 	UDungeonMissionNode* startLocation = StartingLocation;
 	UDungeonMissionNode* replaceLocation = NULL;
 	if (GrammarReplaceResult.MatchedLinks.Num() > 1)
 	{
-		replaceLocation = StartingLocation->FindChildNodeFromSymbol(GrammarReplaceResult.MatchedLinks[1].Symbol);
+		replaceLocation = (UDungeonMissionNode*)StartingLocation->FindChildNodeFromSymbol(GrammarReplaceResult.MatchedLinks[1].Symbol);
 	}
 
 	// Number the nodes
-	startLocation->Symbol.SymbolID = 1;
+	startLocation->NodeID = 1;
 	if (replaceLocation != NULL)
 	{
-		replaceLocation->Symbol.SymbolID = 2;
+		replaceLocation->NodeID = 2;
 	}
 
 	FString initialShape = startLocation->GetSymbolDescription();
@@ -384,106 +370,116 @@ void UDungeonMissionGenerator::ReplaceNodes(UDungeonMissionNode* StartingLocatio
 	}
 
 	// Break their parent-child link
-	startLocation->BreakLinkWithNode(replaceLocation);
-	FDungeonMissionGraphOutput replacement = GrammarReplaceResult.Grammar;
-	if (replacement.Num() == 0)
+	UDungeonMakerGraph* graph = GrammarReplaceResult.Graph;
+	if (graph->GetLevelNum() == 0)
 	{
 		UE_LOG(LogMissionGen, Error, TEXT("Replacement grammar was null! Nodes that were to be replaced: %s"), *initialShape);
 		return;
 	}
 
-	FString grammarChain = replacement.ToString();
-	UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s (Total Length: %d)."), *initialShape, *grammarChain, replacement.Num());
+	graph->UpdateIDs();
 
-	TArray<FGraphLink> toProcess;
-	FGraphLink head = replacement.Head;
-	if (head.Symbol.Symbol == NULL)
+	FString grammarChain = graph->ToString();
+	UE_LOG(LogMissionGen, Log, TEXT("Replacing %s with %s (Total Length: %d)."), *initialShape, *grammarChain, graph->Num());
+
+	TArray<UDungeonMakerNode*> toProcess;
+	if (!graph->NodeIDLookup.Contains(1))
+	{
+		UE_LOG(LogMissionGen, Error, TEXT("No root symbol found when replacing %s with %s."), *initialShape, *grammarChain);
+		return;
+	}
+	UDungeonMakerNode* head = graph->NodeIDLookup[1];
+	if (head->NodeType == NULL)
 	{
 		UE_LOG(LogMissionGen, Error, TEXT("Encounted a null head symbol replacing %s with %s."), *initialShape, *grammarChain);
 		return;
 	}
 
-	if (!startLocation->Symbol.Symbol->bIsTerminalNode)
+	if (!startLocation->NodeType->bIsTerminalNode)
 	{
-		startLocation->Symbol = head.Symbol;
+		startLocation->NodeType = head->NodeType;
 	}
 
-	toProcess.Add(head);
-
-	// Process the head and all its children
-	while(toProcess.Num() > 0)
+	if (graph->Num() == 2 && replaceLocation != NULL)
 	{
-		FNumberedGraphSymbol fromSymbol = toProcess[0].Symbol;
-		toProcess.RemoveAt(0);
-		if (fromSymbol.Symbol == NULL)
+		replaceLocation->NodeType = graph->AllNodes[1]->NodeType;
+		replaceLocation->bTightlyCoupledToParent = graph->AllNodes[1]->bTightlyCoupledToParent;
+	}
+	else if(graph->Num() > 2)
+	{
+		if (replaceLocation != NULL)
 		{
-			UE_LOG(LogMissionGen, Error, TEXT("Encounted a null symbol when replacing %s with %s."), *initialShape, *grammarChain);
-			continue;
+			startLocation->BreakLinkWithNode(replaceLocation);
 		}
-		checkf(nodeMap.Contains(fromSymbol.SymbolID), TEXT("Shape did not contain symbol ID %d! Did you remember to add it to the output grammar?"), fromSymbol.SymbolID);
-		// It is assumed that the from node is already in the map
-		// It is also assumed that the from node has already replaced its symbol
-		UDungeonMissionNode* fromNode = nodeMap[fromSymbol.SymbolID];
 
-		TSet<FGraphLink> children = replacement.GetSymbolChildren(fromSymbol);
-		for (FGraphLink& child : children)
+		toProcess.Add(head);
+
+		// Process the head and all its children
+		while (toProcess.Num() > 0)
 		{
-			if (child.Symbol.Symbol == NULL)
+			UDungeonMakerNode* node = toProcess[0];
+			toProcess.RemoveAt(0);
+
+			FNumberedGraphSymbol fromSymbol = node->ToGraphSymbol();
+			if (fromSymbol.Symbol == NULL)
 			{
-				UE_LOG(LogMissionGen, Error, TEXT("%s had a null child symbol."), *fromSymbol.GetSymbolDescription());
+				UE_LOG(LogMissionGen, Error, TEXT("Encounted a null symbol when replacing %s with %s."), *initialShape, *grammarChain);
 				continue;
 			}
+			checkf(nodeMap.Contains(fromSymbol.SymbolID), TEXT("Shape did not contain symbol ID %d! Did you remember to add it to the output grammar?"), fromSymbol.SymbolID);
 
-			// Create nodes for all children of this node
-			UDungeonMissionNode* toNode;
-			
-			/*if (child.Symbol.SymbolID == 2 && replaceLocation != NULL)
+			// It is assumed that the from node is already in the map
+			// It is also assumed that the from node has already replaced its symbol
+			UDungeonMissionNode* fromNode = nodeMap[fromSymbol.SymbolID];
+
+			TArray<UDungeonMakerNode*> children = node->ChildrenNodes;
+			UE_LOG(LogMissionGen, Log, TEXT("Processing %s, with %d children."), *fromNode->ToString(0, false), children.Num());
+
+			for (int i = 0; i < children.Num(); i++)
 			{
-				// This is the replacement for the "last" node in our shape
-				// This may not necessarily be the actual last node, but it's
-				// still replacing one of the initial nodes we started with.
-				toNode = replaceLocation;
-			}
-			else */if (nodeMap.Contains(child.Symbol.SymbolID))
-			{
-				toNode = nodeMap[child.Symbol.SymbolID];
-			}
-			else
-			{
-				// Create a new node
-				toNode = NewObject<UDungeonMissionNode>();
-				toNode->ParentNodes = TSet<UDungeonMissionNode*>();
-				if (child.Symbol.SymbolID == 2)
+				UDungeonMakerNode* child = children[i];
+				if (child->NodeType == NULL)
 				{
-					// This is what would be the "last" node in our shape.
-					// However, we only needed to match one node.
-					replaceLocation = toNode;
+					UE_LOG(LogMissionGen, Error, TEXT("%s had a null child symbol."), *fromSymbol.GetSymbolDescription());
+					continue;
 				}
+
+				// Create nodes for all children of this node
+				UDungeonMissionNode* toNode;
+				FNumberedGraphSymbol childSymbol = child->ToGraphSymbol();
+				if (nodeMap.Contains(childSymbol.SymbolID))
+				{
+					toNode = nodeMap[childSymbol.SymbolID];
+				}
+				else
+				{
+					// Create a new node
+					toNode = NewObject<UDungeonMissionNode>();
+				}
+				// Change the symbol on the node
+				if (toNode->NodeType == NULL || !toNode->NodeType->bIsTerminalNode)
+				{
+					toNode->NodeType = childSymbol.Symbol;
+					toNode->NodeID = childSymbol.SymbolID;
+				}
+
+				fromNode->AddLinkToNode(toNode, child->bTightlyCoupledToParent);
+
+				// Update the node lookup
+				nodeMap.Add(child->NodeID, toNode);
+				// Add this child to our list of nodes to process for more children
+				toProcess.Add(child);
 			}
-			// Change the symbol on the node
-			if (toNode->Symbol.Symbol == NULL || !toNode->Symbol.Symbol->bIsTerminalNode)
+		}
+
+		if (replaceLocation != NULL && nodeMap.Contains(2))
+		{
+			if (nodeMap[2] != replaceLocation)
 			{
-				toNode->Symbol = child.Symbol;
+				nodeMap[2]->AddLinkToNode(replaceLocation, replaceLocation->bTightlyCoupledToParent);
 			}
-			toNode->ParentNodes.Add(fromNode);
-			toNode->bTightlyCoupledToParent = child.bIsTightlyCoupled;
-
-			// Update parent node metadata
-			FMissionNodeData nodeMetadata;
-			nodeMetadata.bTightlyCoupledToParent = child.bIsTightlyCoupled;
-			nodeMetadata.Node = toNode;
-
-			check(nodeMetadata.Node->Symbol.Symbol);
-			// Add it to the parent
-			fromNode->NextNodes.Add(nodeMetadata);
-
-			// Update the node lookup
-			nodeMap.Add(child.Symbol.SymbolID, toNode);
-			// Add this child to our list of nodes to process for more children
-			toProcess.Add(child);
 		}
 	}
-
 	// Relabel all the nodes with their new IDs
 	/*int32 currentID = 1;
 	TArray<UDungeonMissionNode*> nodes;

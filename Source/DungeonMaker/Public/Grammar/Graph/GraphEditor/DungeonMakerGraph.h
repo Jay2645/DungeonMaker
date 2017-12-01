@@ -43,9 +43,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
 	int32 AddNode(UDungeonMakerNode* NodeToAdd);
 
-	UFUNCTION(BlueprintPure, Category = "DungeonMaker")
-	FDungeonMissionGraphOutput CreateOutputGraph() const;
-
 	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
 	void Print(bool ToConsole = true, bool ToScreen = true);
 
@@ -56,4 +53,7 @@ public:
 	void GetNodesByLevel(int Level, TArray<UDungeonMakerNode*>& Nodes);
 
 	void ClearGraph();
+	void UpdateIDs();
+	FString ToString() const;
+	int32 Num() const;
 };

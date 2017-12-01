@@ -14,13 +14,13 @@ EGrammarResultType UGrammar::NodeMatchesGrammar(const UObject* ReferenceObject, 
 
 		// Run the state machine
 #if !UE_BUILD_SHIPPING
-		UE_LOG(LogStateMachine, Log, TEXT("Checking if state machine %s accepts node %s"), *RuleInput->GetName(), *Node->Description.ToString());
+		/*UE_LOG(LogStateMachine, Log, TEXT("Checking if state machine %s accepts node %s"), *RuleInput->GetName(), *Node->Description.ToString());
 
 		UE_LOG(LogStateMachine, Log, TEXT("Input shape:"));
 		for (int i = 0; i < OutGrammar.GrammarInputShape.Num(); i++)
 		{
 			UE_LOG(LogStateMachine, Log, TEXT("%d: %s"), i, *OutGrammar.GrammarInputShape[i]->Description.ToString());
-		}
+		}*/
 #endif
 
 		FStateMachineResult machineResult = RuleInput->RunState(ReferenceObject, OutGrammar.GrammarInputShape);
@@ -29,7 +29,7 @@ EGrammarResultType UGrammar::NodeMatchesGrammar(const UObject* ReferenceObject, 
 		{
 		case EStateMachineCompletionType::Accepted:
 			// Good to go! We can replace this grammar
-			UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s accepts node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
+			//UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s accepts node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
 			OutGrammar.NextState = machineResult.FinalState;
 			OutGrammar.GrammarResult = EGrammarResultType::Accepted;
 			return EGrammarResultType::Accepted;
@@ -45,18 +45,18 @@ EGrammarResultType UGrammar::NodeMatchesGrammar(const UObject* ReferenceObject, 
 			break;
 		
 		case EStateMachineCompletionType::NotAccepted:
-			UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s is still processing node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
+			//UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s is still processing node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
 			break;
 			// Other results mean that the machine is still in progress
 		}
 		// We did not explicitly accept or reject this node
-		UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s is still processing node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
+		//UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s is still processing node %s"), *OutGrammar.Grammar->ConvertToString(), *Node->Description.ToString());
 		OutGrammar.NextState = machineResult.FinalState;
 		OutGrammar.GrammarResult = EGrammarResultType::InProgress;
 		return EGrammarResultType::InProgress;
 	}
 	// We don't know about this symbol at all
-	UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s doesn't know anything about node %s"), *GetName(), *Node->Description.ToString());
+	//UE_LOG(LogStateMachine, Log, TEXT("Grammar dungeon shape %s doesn't know anything about node %s"), *GetName(), *Node->Description.ToString());
 	OutGrammar.GrammarResult = EGrammarResultType::Rejected;
 	return EGrammarResultType::Rejected;
 }

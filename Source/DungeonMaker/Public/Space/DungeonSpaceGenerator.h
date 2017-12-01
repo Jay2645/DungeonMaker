@@ -75,7 +75,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TArray<UDungeonFloorManager*> Floors;
 public:	
-	void CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
+	bool CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();
 	FIntVector ConvertToFloorSpace(FIntVector TileSpaceLocation);
 	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation);

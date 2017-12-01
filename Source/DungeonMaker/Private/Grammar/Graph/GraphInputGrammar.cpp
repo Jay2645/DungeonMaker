@@ -24,7 +24,7 @@ FStateMachineResult UGraphInputGrammar::RunCoupledStateWithBranches(const UObjec
 #if !UE_BUILD_SHIPPING
 	if (DataSource.IsValidIndex(DataIndex))
 	{
-		UE_LOG(LogStateMachine, Log, TEXT("Running state machine %s for %s (Chain Length: %d)."), *GetName(), *DataSource[DataIndex].Symbol.GetSymbolDescription(), DataSource.Num());
+//		UE_LOG(LogStateMachine, Log, TEXT("Running state machine %s for %s (Chain Length: %d)."), *GetName(), *DataSource[DataIndex].Symbol.GetSymbolDescription(), DataSource.Num());
 	}
 #endif
 
@@ -50,7 +50,7 @@ FStateMachineResult UGraphInputGrammar::RunCoupledStateWithBranches(const UObjec
 	UStateMachineState* finishedState = this;
 	EStateMachineCompletionType completion = bMustEndNow ? this->CompletionType : EStateMachineCompletionType::OutOfSteps;
 
-#if !UE_BUILD_SHIPPING
+/*#if !UE_BUILD_SHIPPING
 	if (DataSource.IsValidIndex(DataIndex))
 	{
 		UE_LOG(LogStateMachine, Log, TEXT("Finished running state machine %s for %s. Result: %d"), *GetName(), *DataSource[DataIndex].Symbol.GetSymbolDescription(), (int32)completion);
@@ -59,7 +59,7 @@ FStateMachineResult UGraphInputGrammar::RunCoupledStateWithBranches(const UObjec
 	{
 		UE_LOG(LogStateMachine, Log, TEXT("State machine %s had invalid data index. Result: %d"), *GetName(), (uint8)completion);
 	}
-#endif
+#endif*/
 
 	return FStateMachineResult(finishedState, DataIndex, completion);
 }

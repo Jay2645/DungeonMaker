@@ -56,8 +56,11 @@ public:
 	FString GetNodeTitle();
 
 	UFUNCTION(BlueprintPure, Category = "DungeonMakerNode")
-	FNumberedGraphSymbol ToGraphSymbol() const;
+		FNumberedGraphSymbol ToGraphSymbol() const;
+	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
+	FString ToString(int32 IndentLevel = 4, bool bPrintChildren = true);
 
+	bool IsChildOf(UDungeonMakerNode* ParentSymbol) const;
 	//////////////////////////////////////////////////////////////////////////
 	UDungeonMakerGraph* GetGraph();
 };

@@ -28,13 +28,13 @@ public:
 * and so on until no more matches can be found.
 * The Grammar class is in charge of matching "alphabet" symbols to the OutputGrammars that replace them.
 */
-UCLASS(BlueprintType)
+/*UCLASS(BlueprintType)
 class UDungeonMissionOutputGrammar : public UGraphOutputGrammar
 {
 	GENERATED_BODY()
 public:
 
-};
+};*/
 
 /**
 * This is a representation of a "rule" for replacing symbols with other symbols.
