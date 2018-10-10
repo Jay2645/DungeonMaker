@@ -5,6 +5,10 @@
 #include "CoreMinimal.h"
 #include "ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogMissionGen, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSpaceGen, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogStateMachine, Log, All);
+
 class FDungeonMakerModule : public IModuleInterface
 {
 public:

@@ -2,11 +2,10 @@
 
 #pragma once
 
+#include "DungeonMaker.h"
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "StateMachineSymbol.generated.h"
-
-DECLARE_LOG_CATEGORY_EXTERN(LogStateMachine, Log, All);
 
 /**
  * 

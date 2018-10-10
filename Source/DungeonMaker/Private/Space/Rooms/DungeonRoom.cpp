@@ -10,8 +10,6 @@
 #include "LockedRoom.h"
 #include "KeyRoom.h"
 
-DEFINE_LOG_CATEGORY(LogSpaceGen);
-
 // Sets default values for this component's properties
 ADungeonRoom::ADungeonRoom()
 {
@@ -44,28 +42,28 @@ ADungeonRoom::ADungeonRoom()
 
 	RoomTrigger->SetCollisionResponseToChannels(collisonChannels);
 	RoomTrigger->SetupAttachment(DummyRoot);
-	RoomTrigger->bGenerateOverlapEvents = true;
+	RoomTrigger->SetGenerateOverlapEvents(true);
 	RoomTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginTriggerOverlap);
 	RoomTrigger->OnComponentEndOverlap.AddDynamic(this, &ADungeonRoom::OnEndTriggerOverlap);
 
 	NorthEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
 	NorthEntranceTrigger->SetupAttachment(DummyRoot);
-	NorthEntranceTrigger->bGenerateOverlapEvents = true;
+	NorthEntranceTrigger->SetGenerateOverlapEvents(true);
 	NorthEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	SouthEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
 	SouthEntranceTrigger->SetupAttachment(DummyRoot);
-	SouthEntranceTrigger->bGenerateOverlapEvents = true;
+	SouthEntranceTrigger->SetGenerateOverlapEvents(true);
 	SouthEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	WestEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
 	WestEntranceTrigger->SetupAttachment(DummyRoot);
-	WestEntranceTrigger->bGenerateOverlapEvents = true;
+	WestEntranceTrigger->SetGenerateOverlapEvents(true);
 	WestEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	EastEntranceTrigger->SetCollisionResponseToChannels(collisonChannels);
 	EastEntranceTrigger->SetupAttachment(DummyRoot);
-	EastEntranceTrigger->bGenerateOverlapEvents = true;
+	EastEntranceTrigger->SetGenerateOverlapEvents(true);
 	EastEntranceTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADungeonRoom::OnBeginEntranceOverlap);
 
 	DebugRoomMaxExtents = FIntVector(16, 16, 1);

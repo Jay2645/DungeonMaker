@@ -3,8 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GraphNode.h"
+
 #include "Grammar/GrammarAlphabet.h"
 #include "RoomReplacementPattern.h"
+
 #include "DungeonMissionSymbol.generated.h"
 
 class ADungeonRoom;

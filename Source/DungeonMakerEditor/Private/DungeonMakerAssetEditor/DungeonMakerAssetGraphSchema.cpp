@@ -94,7 +94,7 @@ void UDungeonMakerAssetGraphSchema::GetBreakLinkToSubMenuActions(class FMenuBuil
 		FText Title = FText::FromString(TitleString);
 		if (Pin->PinName != TEXT(""))
 		{
-			TitleString = FString::Printf(TEXT("%s (%s)"), *TitleString, *Pin->PinName);
+			TitleString = FString::Printf(TEXT("%s (%s)"), *TitleString, *(Pin->PinName.ToString()));
 
 			// Add name of connection if possible
 			FFormatNamedArguments Args;
@@ -232,7 +232,7 @@ void UDungeonMakerAssetGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool b
 	Super::BreakPinLinks(TargetPin, bSendsNodeNotifcation);
 }
 
-void UDungeonMakerAssetGraphSchema::BreakSinglePinLink(UEdGraphPin* SourcePin, UEdGraphPin* TargetPin)
+void UDungeonMakerAssetGraphSchema::BreakSinglePinLink(UEdGraphPin* SourcePin, UEdGraphPin* TargetPin) const
 {
 	const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "GraphEd_BreakSinglePinLink", "Break Pin Link"));
 

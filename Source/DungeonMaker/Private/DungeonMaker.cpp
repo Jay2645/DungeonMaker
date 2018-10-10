@@ -4,6 +4,10 @@
 
 #define LOCTEXT_NAMESPACE "FDungeonMakerModule"
 
+DEFINE_LOG_CATEGORY(LogMissionGen);
+DEFINE_LOG_CATEGORY(LogSpaceGen);
+DEFINE_LOG_CATEGORY(LogStateMachine);
+
 void FDungeonMakerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module

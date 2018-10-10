@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "DungeonMaker.h"
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "DungeonTile.h"
@@ -10,8 +11,6 @@
 #include "../Mission/DungeonMissionSymbol.h"
 #include "DungeonFloorManager.h"
 #include "DungeonRoom.generated.h"
-
-DECLARE_LOG_CATEGORY_EXTERN(LogSpaceGen, Log, All);
 
 class UDungeonSpaceGenerator;
 class UGroundScatterManager;

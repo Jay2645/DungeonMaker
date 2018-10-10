@@ -191,7 +191,7 @@ int32 UGroundScatterManager::CreateScatterObject(ADungeonRoom* Room, const FIntV
 
 		meshComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		meshComponent->Mobility = EComponentMobility::Movable;
-		meshComponent->bGenerateOverlapEvents = false;
+		meshComponent->SetGenerateOverlapEvents(false);
 		meshComponent->bUseDefaultCollision = true;
 
 		meshComponent->SetStaticMesh(SelectedMesh);

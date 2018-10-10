@@ -5,8 +5,8 @@
 
 void UDungeonMakerEdNode::AllocateDefaultPins()
 {
-	CreatePin(EGPD_Input, UDungeonMakerEditorTypes::PinCategory_MultipleNodes, TEXT(""), NULL, false, false, TEXT("In"));
-	CreatePin(EGPD_Output, UDungeonMakerEditorTypes::PinCategory_MultipleNodes, TEXT(""), NULL, false, false, TEXT("Out"));
+	CreatePin(EGPD_Input, FName(*UDungeonMakerEditorTypes::PinCategory_MultipleNodes), TEXT(""), TEXT("In"));
+	CreatePin(EGPD_Output, FName(*UDungeonMakerEditorTypes::PinCategory_MultipleNodes), TEXT(""), TEXT("Out"));
 }
 
 void UDungeonMakerEdNode::NodeConnectionListChanged()

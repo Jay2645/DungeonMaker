@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "DungeonMaker.h"
 #include "DungeonMissionGenerator.h"
 #include "Runtime/Core/Public/Containers/Queue.h"
 #include "Grammar/Grammar.h"

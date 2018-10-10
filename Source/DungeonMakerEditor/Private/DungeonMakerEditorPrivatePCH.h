@@ -6,4 +6,4 @@
 // add includes for headers that are used in most of your module's source files though.
 #include "IDungeonMakerEditor.h"
 
-#define LOG_WARNING(FMT, ...) UE_LOG(DungeonMakerEditor, Warning, (FMT), ##__VA_ARGS__)
+//#define LOG_WARNING(FMT, ...) UE_LOG(DungeonMakerEditor, Warning, (FMT), ##__VA_ARGS__)

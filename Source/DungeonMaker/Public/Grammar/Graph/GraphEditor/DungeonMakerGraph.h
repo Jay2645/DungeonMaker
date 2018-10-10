@@ -5,7 +5,7 @@
 #include "GraphOutputGrammar.h"
 #include "DungeonMakerGraph.generated.h"
 
-#define LOG_WARNING(FMT, ...) UE_LOG(LogMissionGen, Warning, (FMT), ##__VA_ARGS__)
+#define LOG_WARNING(FMT, ...) UE_LOG(LogTemp, Warning, (FMT), ##__VA_ARGS__)
 
 UCLASS(Blueprintable)
 class DUNGEONMAKER_API UDungeonMakerGraph : public UObject

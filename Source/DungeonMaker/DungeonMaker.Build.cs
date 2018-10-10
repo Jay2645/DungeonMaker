@@ -10,7 +10,7 @@ public class DungeonMaker : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
-				"DungeonMaker/Public",
+				"D:/Documents/Projects/Unreal/DungeonGenerator/Plugins/DungeonMaker/Source/DungeonMaker/Public",
 				// ... add public include paths required here ...
 			}
 			);
@@ -18,7 +18,7 @@ public class DungeonMaker : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				"DungeonMaker/Private",
+				"D:/Documents/Projects/Unreal/DungeonGenerator/Plugins/DungeonMaker/Source/DungeonMaker/Private",
 				// ... add other private include paths required here ...
 			}
 			);

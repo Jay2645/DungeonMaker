@@ -42,7 +42,7 @@ void ASpaceMeshActor::SetStaticMesh(const UDungeonTile* Tile, TArray<FDungeonTil
 
 		meshComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 		meshComponent->Mobility = EComponentMobility::Movable;
-		meshComponent->bGenerateOverlapEvents = false;
+		meshComponent->SetGenerateOverlapEvents(false);
 		meshComponent->bUseDefaultCollision = true;
 
 		meshComponent->SetStaticMesh(Meshes[i].Mesh);
