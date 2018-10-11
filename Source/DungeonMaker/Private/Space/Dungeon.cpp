@@ -3,6 +3,7 @@
 #include "Dungeon.h"
 #include "DungeonMaker.h"
 #include "Grammar/Grammar.h"
+
 #include <DrawDebugHelpers.h>
 
 // Sets default values
@@ -43,6 +44,16 @@ void ADungeon::BeginPlay()
 	do 
 	{
 		Mission->TryToCreateDungeon(rng);
-		bSuccessfullyMadeDungeon = Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
+
+		if (bDebugMission)
+		{
+			Mission->PrintDebugDungeon();
+			Mission->DrawDebugDungeon();
+			bSuccessfullyMadeDungeon = true;
+		}
+		else
+		{
+			bSuccessfullyMadeDungeon = Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
+		}
 	} while (!bSuccessfullyMadeDungeon);
 }

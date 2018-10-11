@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Space/Floor/DungeonMissionSpaceHandler.h"
+#include "DungeonMissionSpaceHandler.h"
 #include "MissionSpaceBacktrackHandler.generated.h"
 
 /**

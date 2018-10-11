@@ -8,7 +8,7 @@
 #include "Tiles/RoomReplacementPattern.h"
 #include "Tiles/DungeonTile.h"
 #include "Rooms/DungeonRoom.h"
-#include "Floor/DungeonMissionSpaceHandler.h"
+#include "DungeonMissionSpaceHandler.h"
 #include "Floor/DungeonFloorManager.h"
 #include "../Mission/DungeonMissionNode.h"
 #include "GroundScatterManager.h"
@@ -31,6 +31,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	const UDungeonTile* DefaultEntranceTile;
 
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
+	TSubclassOf<UDungeonMissionSpaceHandler> MissionToSpaceHandlerClass;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 MaxGeneratedRooms;
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Debug")
@@ -77,6 +80,7 @@ public:
 public:	
 	bool CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
 	void DrawDebugSpace();
+
 	FIntVector ConvertToFloorSpace(FIntVector TileSpaceLocation);
 	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation);
 };

@@ -17,7 +17,7 @@ class UDungeonSpaceGenerator;
 * This is a class which takes a DungeonMission and converts it into a DungeonFloor, representing
 * the space in the level.
 */
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(Abstract)
 class DUNGEONMAKER_API UDungeonMissionSpaceHandler : public UActorComponent
 {
 	GENERATED_BODY()
@@ -26,7 +26,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDungeonSpaceGenerator* DungeonSpaceGenerator;
 
-	// The size of any room on this floor, in tile space.
+	// The max size of any room on this floor, in tile space.
 	// The total number of rooms this floor will have is determined by
 	// ceil(sqrt(FloorSize / RoomSize))^2.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -61,17 +61,12 @@ public:
 	bool CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 		int32 SymbolCount, FRandomStream& Rng);
 
-private:
-	bool PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms, 
-		FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms, 
-		FIntVector EntranceRoom, TMap<FIntVector, FIntVector>& AllOpenRooms, 
-		bool bIsTightCoupling, int32 TotalSymbolCount);
-
+protected:
 	TSet<FIntVector> GetAvailableLocations(FIntVector Location, TSet<FIntVector> IgnoredLocations = TSet<FIntVector>());
 	FFloorRoom MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location,
 		FRandomStream& Rng, int32 TotalSymbolCount);
 	void SetRoom(FFloorRoom Room);
-	void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
+	virtual void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
 	TKeyValuePair<FIntVector, FIntVector> GetOpenRoom(UDungeonMissionNode* Node,
 		TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms);
 	void ProcessRoomNeighbors();

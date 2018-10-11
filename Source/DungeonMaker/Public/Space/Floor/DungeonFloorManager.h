@@ -44,7 +44,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomReplacements> PostGenerationRoomReplacementPhases;
 
-	// The size of any room on this floor, in tile space.
+	// The max size of any room on this floor, in tile space.
 	// The total number of rooms this floor will have is determined by
 	// ceil(sqrt(FloorSize / RoomSize))^2.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)

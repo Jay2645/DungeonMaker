@@ -3,10 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
 #include "DungeonTile.h"
 #include "DungeonMissionGenerator.h"
 #include "DungeonSpaceGenerator.h"
-#include "GameFramework/Actor.h"
+
 #include "Dungeon.generated.h"
 
 UCLASS()
@@ -18,13 +20,21 @@ public:
 	// Sets default values for this actor's properties
 	ADungeon();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Mission")
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Mission")
 	UDungeonMissionGenerator* Mission;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Space")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Space")
 	UDungeonSpaceGenerator* Space;
+
+public:
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	int32 Seed = 1234;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Debug")
+	bool bDebugMission = false;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
 	bool bChooseRandomSeedAtRuntime = false;
 

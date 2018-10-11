@@ -32,7 +32,7 @@ void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPa
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom = CreateRoom(floor[y][x], Rng, GlobalGroundScatter);
+			floor[y][x].SpawnedRoom = CreateRoom(floor[y][x], Rng, GlobalGroundScatter);
 		}
 	}
 
@@ -127,8 +127,8 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->OnRoomGenerationComplete();
+			floor[y][x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
+			floor[y][x].SpawnedRoom->OnRoomGenerationComplete();
 		}
 	}
 }
@@ -183,26 +183,6 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 	room->InitializeRoom(DungeonSpaceGenerator, DefaultFloorTile, DefaultWallTile, DefaultEntranceTile,
 		this, RoomSize, RoomSize, roomLocation.X, roomLocation.Y, roomLocation.Z,
 		Room, Rng);
-
-	/*// Exploit the fact that our for loop runs from 0 upward to check to see if we can delete a wall
-	// These rooms are guaranteed to have been spawned before us
-	// We avoid the corners, however
-	for (int x = roomLocation.X + 1; x < roomLocation.X + RoomSize - 1; x++)
-	{
-		const UDungeonTile* tile = GetTileFromTileSpace(FIntVector(x, roomLocation.Y - 1, roomLocation.Z));
-		if (tile != NULL && tile->TileType == ETileType::Wall)
-		{
-			room->SetTileGridCoordinates(FIntVector(x, roomLocation.Y, roomLocation.Z), DefaultFloorTile);
-		}
-	}
-	for (int y = roomLocation.Y + 1; y < roomLocation.Y + RoomSize - 1; y++)
-	{
-		const UDungeonTile* tile = GetTileFromTileSpace(FIntVector(roomLocation.X - 1, y, roomLocation.Z));
-		if (tile != NULL && tile->TileType == ETileType::Wall)
-		{
-			room->SetTileGridCoordinates(FIntVector(roomLocation.X, y, roomLocation.Z), DefaultFloorTile);
-		}
-	}*/
 
 	if (room->IsChangedAtRuntime())
 	{

@@ -5,7 +5,11 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/StaticMesh.h"
+
 #include "DungeonTile.h"
+#include "DungeonMissionNode.h"
+#include "GraphNode.h"
+
 #include "DungeonFloor.generated.h"
 
 class ADungeonRoom;
@@ -20,6 +24,7 @@ USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FFloorRoom
 {
 	GENERATED_BODY()
+
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	TSubclassOf<ADungeonRoom> RoomClass;
@@ -33,6 +38,8 @@ public:
 	TSet<FIntVector> NeighboringTightlyCoupledRooms;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FIntVector IncomingRoom;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 MaxRoomSize;
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	float Difficulty;
@@ -66,18 +73,25 @@ USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloorRow
 {
 	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		TArray<FFloorRoom> DungeonRooms;
 
+private:
+	UPROPERTY(EditAnywhere)
+	TArray<FFloorRoom> DungeonRooms;
+	int RoomSize;
+
+public:
 	FDungeonFloorRow()
 	{
 		DungeonRooms = TArray<FFloorRoom>();
+		RoomSize = 1;
 	}
 
-	FDungeonFloorRow(int Size)
+	FDungeonFloorRow(int Size, int MaxRoomSize)
 	{
-		DungeonRooms.SetNum(Size);
-		for (int i = 0; i < Size; i++)
+		RoomSize = MaxRoomSize;
+		int realSize = RoomSize * Size;
+		DungeonRooms.SetNum(realSize);
+		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
 			DungeonRooms[i] = FFloorRoom();
 		}
@@ -85,19 +99,31 @@ struct DUNGEONMAKER_API FDungeonFloorRow
 
 	void Set(FFloorRoom Room, int Index)
 	{
-		DungeonRooms[Index] = Room;
+		for (int i = 0; i < Room.MaxRoomSize; i++)
+		{
+			DungeonRooms[Index + i] = Room;
+		}
 	}
 
-	FFloorRoom operator[] (int Index)
+	FFloorRoom& GetTileSpace(int Index)
 	{
 		return DungeonRooms[Index];
 	}
 
-	int Num() const
+	FFloorRoom& operator[] (int Index)
+	{
+		return DungeonRooms[Index * RoomSize];
+	}
+
+	int TileSizeNum() const
 	{
 		return DungeonRooms.Num();
 	}
 
+	int Num() const
+	{
+		return TileSizeNum() / RoomSize;
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -105,28 +131,42 @@ struct DUNGEONMAKER_API FDungeonFloor
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+private:
+	UPROPERTY(EditAnywhere)
 	TArray<FDungeonFloorRow> DungeonRooms;
 
+	int RoomSize;
+
+public:
 	FDungeonFloor()
 	{
 		DungeonRooms = TArray<FDungeonFloorRow>();
+		RoomSize = 1;
 	}
 
-	FDungeonFloor(int SizeX, int SizeY)
+	FDungeonFloor(int SizeX, int SizeY, int MaxRoomSize)
 	{
 		check(SizeX >= 0);
 		check(SizeY >= 0);
-		DungeonRooms.SetNum(SizeY);
-		for (int i = 0; i < SizeY; i++)
+
+		RoomSize = MaxRoomSize;
+		int realSize = RoomSize * SizeX;
+		
+		DungeonRooms.SetNum(realSize);
+		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
-			DungeonRooms[i] = FDungeonFloorRow(SizeX);
+			DungeonRooms[i] = FDungeonFloorRow(SizeX, RoomSize);
 		}
+	}
+
+	FFloorRoom& GetTileSpace(int X, int Y)
+	{
+		return DungeonRooms[Y].GetTileSpace(X);
 	}
 
 	FDungeonFloorRow& operator[] (int Index)
 	{
-		return DungeonRooms[Index];
+		return DungeonRooms[Index * RoomSize];
 	}
 
 	int XSize() const
@@ -141,20 +181,49 @@ struct DUNGEONMAKER_API FDungeonFloor
 		}
 	}
 
+	int XTileSize() const
+	{
+		if (DungeonRooms.Num() == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return DungeonRooms[0].TileSizeNum();
+		}
+	}
+
 	int YSize() const
+	{
+		return YTileSize() / RoomSize;
+	}
+
+	int YTileSize() const
 	{
 		return DungeonRooms.Num();
 	}
 
-	//FColor DrawFloor(AActor* ContextObject, FIntVector Position);
-
-/*	void PlaceNewTile(FIntVector CurrentLocation, ADungeonRoom* Room, const UDungeonTile* Tile);
-	void UpdateTile(FIntVector CurrentLocation, const UDungeonTile* NewTile);
-
-	bool TileIsWall(FIntVector Location) const;
-	const UDungeonTile* GetTileAt(FIntVector CurrentLocation);
-	ADungeonRoom* GetRoom(FIntVector CurrentLocation);*/
 	void DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOffset);
-	void Set(FFloorRoom Room);
-	void UpdateChildren(FIntVector A, FIntVector B);
+
+	void Set(FFloorRoom Room)
+	{
+		for (int i = 0; i < Room.MaxRoomSize; i++)
+		{
+			DungeonRooms[Room.Location.Y * i].Set(Room, Room.Location.X);
+		}
+	}
+
+	void SetTileSpace(FFloorRoom Room, FIntVector TileSpaceStartPosition)
+	{
+		for (int i = TileSpaceStartPosition.Y; i < TileSpaceStartPosition.Y + Room.MaxRoomSize; i++)
+		{
+			DungeonRooms[i].Set(Room, TileSpaceStartPosition.X);
+		}
+	}
+
+	void UpdateChildren(FIntVector A, FIntVector B)
+	{
+		DungeonRooms[A.Y][A.X].NeighboringRooms.Add(B);
+		DungeonRooms[B.Y][B.X].NeighboringRooms.Add(A);
+	}
 };

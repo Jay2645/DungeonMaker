@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonSpaceGenerator.h"
+#include "MissionSpaceHandlers/NeighboringMissionSpaceHandler.h"
 
 // Sets default values for this component's properties
 UDungeonSpaceGenerator::UDungeonSpaceGenerator()
@@ -9,6 +10,7 @@ UDungeonSpaceGenerator::UDungeonSpaceGenerator()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
 	MaxGeneratedRooms = -1;
+	MissionToSpaceHandlerClass = UNeighboringMissionSpaceHandler::StaticClass();
 }
 
 bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng)
@@ -29,7 +31,7 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		dungeonLevelSizes[i] = floorSideSize;
 	}
 	
-	MissionSpaceHandler = NewObject<UDungeonMissionSpaceHandler>(GetOuter(), TEXT("Mission Space Manager"));
+	MissionSpaceHandler = NewObject<UDungeonMissionSpaceHandler>(GetOuter(), MissionToSpaceHandlerClass, TEXT("Mission Space Manager"));
 	MissionSpaceHandler->RoomSize = RoomSize;
 	MissionSpaceHandler->InitializeDungeonFloor(this, dungeonLevelSizes);
 	// Map the mission to the space
