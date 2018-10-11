@@ -212,7 +212,7 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, const UGro
 			{
 				for (int y = -1; y <= 1; y++)
 				{
-					FFloorRoom nextRoom = Room->DungeonFloor->GetRoomFromTileSpace(Location + FIntVector(x, y, Location.Z));
+					FFloorRoom nextRoom = Room->GetFloorManager()->GetRoomFromTileSpace(Location + FIntVector(x, y, Location.Z));
 					if (nextRoom.SpawnedRoom == NULL || nextRoom.SpawnedRoom == Room)
 					{
 						continue;
@@ -231,7 +231,7 @@ bool UGroundScatterManager::IsAdjacencyOkay(ETileDirection Direction, const UGro
 			{
 				for (int y = -1; y <= 1; y++)
 				{
-					FFloorRoom nextRoom = Room->DungeonFloor->GetRoomFromTileSpace(Location + FIntVector(x, y, Location.Z));
+					FFloorRoom nextRoom = Room->GetFloorManager()->GetRoomFromTileSpace(Location + FIntVector(x, y, Location.Z));
 					if (nextRoom.SpawnedRoom == NULL || nextRoom.SpawnedRoom == Room)
 					{
 						continue;

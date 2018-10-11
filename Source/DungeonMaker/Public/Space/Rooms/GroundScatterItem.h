@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
+
 #include "GroundScatterItem.generated.h"
 
 /**
@@ -32,6 +34,12 @@ public:
 	// How likely it is that this object will be selected.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SelectionChance;
+
+	// Metadata about this scatter object.
+	// Objects with tags that more closely match tags associated with the dungeon get more weight
+	// when being considered for selection.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTagContainer ObjectTags;
 
 	// An additive difficulty modifier which gets added to the selection chance
 	// based on the difficulty of the room.

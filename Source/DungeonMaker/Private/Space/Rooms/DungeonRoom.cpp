@@ -264,6 +264,16 @@ void ADungeonRoom::DoTileReplacement(FRandomStream &Rng)
 	OnRoomTilesReplaced();
 }
 
+UGroundScatterManager* ADungeonRoom::GetGroundScatter() const
+{
+	return GroundScatter;
+}
+
+UDungeonFloorManager* ADungeonRoom::GetFloorManager() const
+{
+	return DungeonFloor;
+}
+
 void ADungeonRoom::PlaceRoomTiles(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
 	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 	FRandomStream& Rng)

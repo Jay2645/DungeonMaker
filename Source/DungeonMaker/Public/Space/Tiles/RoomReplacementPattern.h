@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
+
 #include "RoomHelpers.h"
 #include "RoomReplacementPattern.generated.h"
 
@@ -56,7 +58,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "-1.0", ClampMax = "1.0"))
 	float SelectionDifficultyModifier;
 
+	// Any metadata regarding this replacement pattern.
+	// Metadata may be used to select a more appropriate pattern in "themed" dungeons.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTagContainer PatternTags;
+
+public:
 	URoomReplacementPattern();
+
+public:
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
 	bool FindAndReplace(FDungeonRoomMetadata& ReplaceRoom, FRandomStream& Rng);
 

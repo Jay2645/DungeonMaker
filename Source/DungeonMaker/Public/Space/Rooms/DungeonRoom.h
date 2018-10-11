@@ -10,6 +10,7 @@
 #include "Components/BoxComponent.h"
 #include "../Mission/DungeonMissionSymbol.h"
 #include "DungeonFloorManager.h"
+#include "GameplayTagContainer.h"
 #include "DungeonRoom.generated.h"
 
 class UDungeonSpaceGenerator;
@@ -24,23 +25,32 @@ public:
 	// Sets default values for this component's properties
 	ADungeonRoom();
 
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	USceneComponent* DummyRoot;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UBoxComponent* RoomTrigger;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UBoxComponent* NorthEntranceTrigger;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UBoxComponent* SouthEntranceTrigger;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UBoxComponent* WestEntranceTrigger;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UBoxComponent* EastEntranceTrigger;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UGroundScatterManager* GroundScatter;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UDungeonFloorManager* DungeonFloor;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Room")
+	UDungeonSpaceGenerator* DungeonSpace;
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	FDungeonRoomMetadata RoomTiles;
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Room")
 	const UDungeonMissionSymbol* Symbol;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Room")
-	USceneComponent* DummyRoot;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UBoxComponent* RoomTrigger;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UBoxComponent* NorthEntranceTrigger;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UBoxComponent* SouthEntranceTrigger;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UBoxComponent* WestEntranceTrigger;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UBoxComponent* EastEntranceTrigger;
 
 	// An optional icon for this room.
 	// By default, we don't do anything with it, but this could be used
@@ -61,8 +71,6 @@ public:
 	TArray<FRoomReplacements> RoomReplacementPhases;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Tiles")
 	TSet<FIntVector> EntranceLocations;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	UGroundScatterManager* GroundScatter;
 	// A list of actors that get scattered throughout the room
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
 	uint8 RoomLevel;
@@ -70,10 +78,6 @@ public:
 	TSet<ADungeonRoom*> AllNeighbors;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
 	TSet<ADungeonRoom*> TightlyCoupledNeighbors;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Floor")
-	UDungeonFloorManager* DungeonFloor;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Space")
-	UDungeonSpaceGenerator* DungeonSpace;
 
 	// These all determine which tiles we have selected, to ensure consistency
 	// throughout the room
@@ -83,6 +87,9 @@ public:
 	TMap<const UDungeonTile*, int32> CeilingTileMeshSelections;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Tiles")
 	TMap<const UDungeonTile*, FDungeonTileInteractionOptions> InteractionOptions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	FGameplayTagContainer RoomTags;
 
 
 	// Debug
@@ -149,6 +156,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms")
 	void DoTileReplacement(FRandomStream &Rng);
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Ground Scatter")
+	UGroundScatterManager* GetGroundScatter() const;
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation")
+	UDungeonFloorManager* GetFloorManager() const;
 
 	void PlaceRoomTiles(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
 		TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,

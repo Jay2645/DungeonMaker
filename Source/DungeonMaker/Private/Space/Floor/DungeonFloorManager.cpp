@@ -174,7 +174,7 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 #endif
 	room->Rename(*roomName);
 
-	room->GroundScatter->GroundScatter.CombinePairings(GlobalGroundScatter);
+	room->GetGroundScatter()->GroundScatter.CombinePairings(GlobalGroundScatter);
 
 	FIntVector roomLocation = Room.Location * RoomSize;
 	roomLocation.Z = Room.Location.Z;
