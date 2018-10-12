@@ -76,21 +76,17 @@ struct DUNGEONMAKER_API FDungeonFloorRow
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FFloorRoom> DungeonRooms;
-	int RoomSize;
+	TArray<FFloorRoom> DungeonRooms;
 
 public:
 	FDungeonFloorRow()
 	{
 		DungeonRooms = TArray<FFloorRoom>();
-		RoomSize = 1;
 	}
 
-	FDungeonFloorRow(int Size, int MaxRoomSize)
+	FDungeonFloorRow(int Size)
 	{
 		check(Size >= 0);
-
-		RoomSize = 1;
 
 		DungeonRooms.SetNum(Size);
 
@@ -102,17 +98,12 @@ public:
 
 	void Set(FFloorRoom Room, int Index)
 	{
-		DungeonRooms[Index * RoomSize] = Room;
-	}
-
-	FFloorRoom& GetTileSpace(int Index)
-	{
-		return DungeonRooms[Index];
+		DungeonRooms[Index] = Room;
 	}
 
 	FFloorRoom& Get(int Index)
 	{
-		return GetTileSpace(Index * RoomSize);
+		return DungeonRooms[Index];
 	}
 
 	FFloorRoom& operator[] (int Index)
@@ -120,14 +111,9 @@ public:
 		return Get(Index);
 	}
 
-	int TileSizeNum() const
-	{
-		return DungeonRooms.Num();
-	}
-
 	int Num() const
 	{
-		return TileSizeNum() / RoomSize;
+		return DungeonRooms.Num();
 	}
 };
 
@@ -138,38 +124,28 @@ struct DUNGEONMAKER_API FDungeonFloor
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FDungeonFloorRow> DungeonRooms;
-
-	int RoomSize;
+	TArray<FDungeonFloorRow> DungeonRooms;
 
 public:
 	FDungeonFloor()
 	{
 		DungeonRooms = TArray<FDungeonFloorRow>();
-		RoomSize = 1;
 	}
 
-	FDungeonFloor(int SizeX, int SizeY, int MaxRoomSize)
+	FDungeonFloor(int SizeX, int SizeY)
 	{
 		check(SizeX >= 0);
-
-		RoomSize = 1;
 
 		DungeonRooms.SetNum(SizeY);
 		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
-			DungeonRooms[i] = FDungeonFloorRow(SizeX, RoomSize);
+			DungeonRooms[i] = FDungeonFloorRow(SizeX);
 		}
-	}
-
-	FFloorRoom& GetTileSpace(int X, int Y)
-	{
-		return DungeonRooms[Y].GetTileSpace(X);
 	}
 
 	FDungeonFloorRow& Get(int Index)
 	{
-		return DungeonRooms[Index * RoomSize];
+		return DungeonRooms[Index];
 	}
 
 	FDungeonFloorRow& operator[] (int Index)
@@ -189,24 +165,7 @@ public:
 		}
 	}
 
-	int XTileSize() const
-	{
-		if (DungeonRooms.Num() == 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return DungeonRooms[0].TileSizeNum();
-		}
-	}
-
 	int YSize() const
-	{
-		return YTileSize() / RoomSize;
-	}
-
-	int YTileSize() const
 	{
 		return DungeonRooms.Num();
 	}
@@ -215,7 +174,7 @@ public:
 
 	void Set(FFloorRoom Room)
 	{
-		DungeonRooms[Room.Location.Y * RoomSize].Set(Room, Room.Location.X);
+		Get(Room.Location.Y).Set(Room, Room.Location.X);
 	}
 
 	void SetTileSpace(FFloorRoom Room, FIntVector TileSpaceStartPosition)
@@ -240,7 +199,7 @@ struct DUNGEONMAKER_API FDungeonSpace
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FDungeonFloor> Floors;
+	TArray<FDungeonFloor> Floors;
 
 public:
 	FDungeonSpace()
@@ -248,19 +207,13 @@ public:
 		Floors = TArray<FDungeonFloor>();
 	}
 
-	FDungeonSpace(TArray<int32> LevelSizes, int MaxRoomSize)
+	FDungeonSpace(TArray<int32> LevelSizes)
 	{
 		Floors.SetNum(LevelSizes.Num());
 		for (int i = 0; i < Floors.Num(); i++)
 		{
-			Floors[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i], MaxRoomSize);
+			Floors[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i]);
 		}
-
-	}
-
-	FFloorRoom& GetTileSpace(const FIntVector& Location)
-	{
-		return Floors[Location.Z].GetTileSpace(Location.X, Location.Y);
 	}
 
 	FDungeonFloor& Get(int Index)
@@ -290,18 +243,6 @@ public:
 		}
 	}
 
-	int XTileSize() const
-	{
-		if (Floors.Num() == 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return Floors[0].XTileSize();
-		}
-	}
-
 	int YSize() const
 	{
 		if (Floors.Num() == 0)
@@ -311,18 +252,6 @@ public:
 		else
 		{
 			return Floors[0].YSize();
-		}
-	}
-
-	int YTileSize() const
-	{
-		if (Floors.Num() == 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return Floors[0].YTileSize();
 		}
 	}
 

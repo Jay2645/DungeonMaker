@@ -7,7 +7,7 @@
 void UDungeonMissionSpaceHandler::InitializeDungeonFloor(UDungeonSpaceGenerator* SpaceGenerator, TArray<int32> LevelSizes)
 {
 	DungeonSpaceGenerator = SpaceGenerator;
-	DungeonSpaceGenerator->DungeonSpace = FDungeonSpace(LevelSizes, RoomSize);
+	DungeonSpaceGenerator->DungeonSpace = FDungeonSpace(LevelSizes);
 }
 
 bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
@@ -17,7 +17,6 @@ bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, 
 	int32 currentAttempts = 0;
 	do
 	{
-
 		// Create space for each room on the DungeonFloor
 		RoomCount = 0;
 		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
