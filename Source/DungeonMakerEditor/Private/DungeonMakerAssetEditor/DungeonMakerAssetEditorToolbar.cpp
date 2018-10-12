@@ -19,7 +19,7 @@ void FDungeonMakerAssetEditorToolbar::FillDungeonMakerToolbar(FToolBarBuilder& T
 	check(DungeonMakerEditor.IsValid());
 	TSharedPtr<FDungeonMakerAssetEditor> DungeonMakerEditorPtr = DungeonMakerEditor.Pin();
 
-	ToolbarBuilder.BeginSection("Generic Graph");
+	ToolbarBuilder.BeginSection("Dungeon Mission");
 	{
 
 		const FText GraphSettingsLabel = LOCTEXT("GraphSettings_Label", "Graph Settings");

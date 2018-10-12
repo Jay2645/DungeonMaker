@@ -7,7 +7,7 @@ class FDungeonMakerEditorCommands : public TCommands<FDungeonMakerEditorCommands
 public:
 	/** Constructor */
 	FDungeonMakerEditorCommands()
-		: TCommands<FDungeonMakerEditorCommands>("DungeonMakerEditor", NSLOCTEXT("Contexts", "DungeonMakerEditor", "Generic Graph Editor"), NAME_None, FEditorStyle::GetStyleSetName())
+		: TCommands<FDungeonMakerEditorCommands>("DungeonMakerEditor", NSLOCTEXT("Contexts", "DungeonMakerEditor", "Dungeon Mission Editor"), NAME_None, FEditorStyle::GetStyleSetName())
 	{
 	}
 	

@@ -10,7 +10,7 @@ FDungeonMakerAssetTypeActions::FDungeonMakerAssetTypeActions(EAssetTypeCategorie
 
 FText FDungeonMakerAssetTypeActions::GetName() const
 {
-	return LOCTEXT("FDungeonMakerAssetTypeActionsName", "Generic Graph");
+	return LOCTEXT("FDungeonMakerAssetTypeActionsName", "Dungeon Mission");
 }
 
 FColor FDungeonMakerAssetTypeActions::GetTypeColor() const
