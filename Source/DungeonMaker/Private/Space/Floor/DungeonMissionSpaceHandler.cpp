@@ -7,23 +7,7 @@
 void UDungeonMissionSpaceHandler::InitializeDungeonFloor(UDungeonSpaceGenerator* SpaceGenerator, TArray<int32> LevelSizes)
 {
 	DungeonSpaceGenerator = SpaceGenerator;
-
-	// All our actual array management is using this pointer to the space generator
-	// This is done because Unreal doesn't like having pointers to TArrays, and
-	// a reference would need to be initialized to a default value somewhere.
-
-	// Using pointers keeps everything anchored to a single object, so we can change
-	// it without needing to worry about updating 50 different references.
-
-	// Additionally, this *should* be a "fire and forget" sort of generation, only ever
-	// done once. Because of that, the loss of efficiency that this pointer lookup causes
-	// is negligible at best.
-	DungeonSpaceGenerator->DungeonSpace = TArray<FDungeonFloor>();
-	DungeonSpaceGenerator->DungeonSpace.SetNum(LevelSizes.Num());
-	for (int i = 0; i < LevelSizes.Num(); i++)
-	{
-		DungeonSpaceGenerator->DungeonSpace[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i]);
-	}
+	DungeonSpaceGenerator->DungeonSpace = FDungeonSpace(LevelSizes, RoomSize);
 }
 
 bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
@@ -423,13 +407,13 @@ bool UDungeonMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node, TM
 		// Link the children
 		if (bIsTightCoupling)
 		{
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z].DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z].DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
+			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z][roomLocation.Key.Y][roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
+			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z][roomLocation.Value.Y][roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
 		}
 		else
 		{
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z].DungeonRooms[roomLocation.Key.Y].DungeonRooms[roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z].DungeonRooms[roomLocation.Value.Y].DungeonRooms[roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
+			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z][roomLocation.Key.Y][roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
+			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z][roomLocation.Value.Y][roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
 		}
 	}
 
@@ -506,11 +490,11 @@ void UDungeonMissionSpaceHandler::ProcessRoomNeighbors()
 			{
 				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace[z][y][x].NeighboringRooms)
 				{
-					DungeonSpaceGenerator->DungeonSpace[neighbor.Z].DungeonRooms[neighbor.Y].DungeonRooms[neighbor.X].NeighboringRooms.Add(FIntVector(x, y, z));
+					DungeonSpaceGenerator->DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X].NeighboringRooms.Add(FIntVector(x, y, z));
 				}
 				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace[z][y][x].NeighboringTightlyCoupledRooms)
 				{
-					DungeonSpaceGenerator->DungeonSpace[neighbor.Z].DungeonRooms[neighbor.Y].DungeonRooms[neighbor.X].NeighboringTightlyCoupledRooms.Add(FIntVector(x, y, z));
+					DungeonSpaceGenerator->DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X].NeighboringTightlyCoupledRooms.Add(FIntVector(x, y, z));
 				}
 			}
 		}

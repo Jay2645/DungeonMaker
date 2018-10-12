@@ -32,7 +32,7 @@ void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPa
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom = CreateRoom(floor[y][x], Rng, GlobalGroundScatter);
+			floor[y][x].SpawnedRoom = CreateRoom(floor[y][x], Rng, GlobalGroundScatter);
 		}
 	}
 
@@ -127,8 +127,8 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 				// This room is empty
 				continue;
 			}
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
-			floor.DungeonRooms[y].DungeonRooms[x].SpawnedRoom->OnRoomGenerationComplete();
+			floor[y][x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
+			floor[y][x].SpawnedRoom->OnRoomGenerationComplete();
 		}
 	}
 }

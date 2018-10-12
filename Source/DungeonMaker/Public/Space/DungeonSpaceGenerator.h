@@ -70,7 +70,7 @@ public:
 	int32 TotalSymbolCount;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
-	TArray<FDungeonFloor> DungeonSpace;
+	FDungeonSpace DungeonSpace;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TArray<UDungeonFloorManager*> Floors;

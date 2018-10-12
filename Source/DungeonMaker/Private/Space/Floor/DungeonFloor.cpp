@@ -55,15 +55,3 @@ void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOff
 		}
 	}
 }
-
-void FDungeonFloor::Set(FFloorRoom Room)
-{
-	DungeonRooms[Room.Location.Y].Set(Room, Room.Location.X);
-}
-
-void FDungeonFloor::UpdateChildren(FIntVector A, FIntVector B)
-{
-	UE_LOG(LogSpaceGen, Log, TEXT("(%d, %d, %d) neighbors (%d, %d, %d)."), A.X, A.Y, A.Z, B.X, B.Y, B.Z);
-	DungeonRooms[A.Y][A.X].NeighboringRooms.Add(B);
-	DungeonRooms[B.Y][B.X].NeighboringRooms.Add(A);
-}
