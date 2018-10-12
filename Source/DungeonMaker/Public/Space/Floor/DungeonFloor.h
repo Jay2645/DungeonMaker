@@ -69,6 +69,10 @@ public:
 	}
 };
 
+/*
+* Helper data type for FDungeonFloor.
+* Represents a row of FFloorRooms.
+*/
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloorRow
 {
@@ -117,6 +121,19 @@ public:
 	}
 };
 
+
+/*
+* This is a 2D array of FFloorRooms.
+*
+* These rooms have not been turned into tiles yet, so all this
+* does is map out where rooms are in relation to other rooms.
+* 
+* When the space has been generated, the generation algorithm
+* will do its best to ensure that rooms get placed relative to
+* each other according to this array. In a way, this is the 
+* "low-resolution" version of the "high-resolution" map that
+* will be created once tiles start coming into play.
+*/
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloor
 {
@@ -170,7 +187,7 @@ public:
 		return DungeonRooms.Num();
 	}
 
-	void DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOffset);
+	void DrawDungeonFloor(AActor* Context, int32 ZOffset);
 
 	void Set(FFloorRoom Room)
 	{
@@ -192,6 +209,15 @@ public:
 	}
 };
 
+/*
+* This is a graph representing an entire dungeon, from
+* start to finish. 
+*
+* However, the rooms in this dungeon  have not been 
+* broken down into tiles -- instead, this structure 
+* just lists the eventual relative position of each room 
+* in a 3D array-like structure.
+*/
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonSpace
 {

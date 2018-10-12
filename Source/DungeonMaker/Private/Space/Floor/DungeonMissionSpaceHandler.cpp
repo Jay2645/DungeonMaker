@@ -48,9 +48,10 @@ bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, 
 
 void UDungeonMissionSpaceHandler::DrawDebugSpace()
 {
-	for (int i = 0; i < DungeonSpaceGenerator->DungeonSpace.Num(); i++)
+	FDungeonSpace dungeonSpace = DungeonSpaceGenerator->DungeonSpace;
+	for (int i = 0; i < dungeonSpace.Num(); i++)
 	{
-		DungeonSpaceGenerator->DungeonSpace[i].DrawDungeonFloor(GetOwner(), RoomSize, i);
+		dungeonSpace[i].DrawDungeonFloor(GetOwner(), i);
 	}
 }
 
