@@ -113,21 +113,88 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	return true;
 }
 
+bool UDungeonSpaceGenerator::IsLocationValid(FIntVector FloorSpaceCoordinates)
+{
+	// If it's below 0, it's always invalid
+	if (FloorSpaceCoordinates.X < 0 || FloorSpaceCoordinates.Y < 0 || FloorSpaceCoordinates.Z < 0)
+	{
+		return false;
+	}
+	// If it's above our total number of floors, it's also invalid
+	if (FloorSpaceCoordinates.Z >= DungeonSpace.Num())
+	{
+		return false;
+	}
+	FDungeonFloor floor = DungeonSpace.Get(FloorSpaceCoordinates.Z);
+	return FloorSpaceCoordinates.X < floor.XSize() && FloorSpaceCoordinates.Y < floor.YSize();
+}
+
+
+TArray<FFloorRoom> UDungeonSpaceGenerator::GetAllNeighbors(FFloorRoom Room)
+{
+	TArray<FFloorRoom> neighbors;
+	for (FIntVector neighbor : Room.NeighboringRooms)
+	{
+		if (!IsLocationValid(neighbor))
+		{
+			continue;
+		}
+		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
+	}
+	for (FIntVector neighbor : Room.NeighboringTightlyCoupledRooms)
+	{
+		if (!IsLocationValid(neighbor))
+		{
+			continue;
+		}
+		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
+	}
+	return neighbors;
+}
+
+void UDungeonSpaceGenerator::SetRoom(FFloorRoom Room)
+{
+	// Verify that the location is valid
+	if (!IsLocationValid(Room.Location))
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room at (%d, %d, %d) because it was an invalid location!"), Room.Location.X, Room.Location.Y, Room.Location.Z);
+		return;
+	}
+	DungeonSpace.Set(Room);
+}
+
+FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates)
+{
+	if (!IsLocationValid(FloorSpaceCoordinates))
+	{
+		return FFloorRoom();
+	}
+	return DungeonSpace[FloorSpaceCoordinates.Z][FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
+}
+
+FFloorRoom UDungeonSpaceGenerator::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
+{
+	// Convert to floor space
+	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
+	return GetRoomFromFloorCoordinates(floorSpaceLocation);
+}
+
+FIntVector UDungeonSpaceGenerator::ConvertToFloorSpace(const FIntVector& TileSpaceVector) const
+{
+	// Floor space is found by dividing by how big each room is, then rounding down
+	// As an example, if the room is 24 tiles long and the location is 22x22, it
+	// would return the room located at 0, 0 (which stretches from (0,0) to (23, 23)).
+	FIntVector floorSpaceVector = TileSpaceVector;
+	floorSpaceVector.X = FMath::FloorToInt(TileSpaceVector.X / (float)RoomSize);
+	floorSpaceVector.Y = FMath::FloorToInt(TileSpaceVector.Y / (float)RoomSize);
+	// Z is left alone -- it's assumed that Z in tile space and floor space are the same
+	return floorSpaceVector;
+}
+
 void UDungeonSpaceGenerator::DrawDebugSpace()
 {
-	MissionSpaceHandler->DrawDebugSpace();
-	for (int i = 0; i < Floors.Num(); i++)
+	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
-		Floors[i]->DrawDebugSpace();
+		DungeonSpace[i].DrawDungeonFloor(GetOwner(), i);
 	}
-}
-
-FIntVector UDungeonSpaceGenerator::ConvertToFloorSpace(FIntVector TileSpaceLocation)
-{
-	return MissionSpaceHandler->ConvertToFloorSpace(TileSpaceLocation);
-}
-
-FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation)
-{
-	return MissionSpaceHandler->GetRoomFromFloorCoordinates(FloorSpaceLocation);
 }

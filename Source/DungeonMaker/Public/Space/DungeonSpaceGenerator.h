@@ -73,14 +73,20 @@ public:
 	int32 TotalSymbolCount;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
-	TArray<FDungeonFloor> DungeonSpace;
+	FDungeonSpace DungeonSpace;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Dungeon")
 	TArray<UDungeonFloorManager*> Floors;
 public:	
 	bool CreateDungeonSpace(UDungeonMissionNode* Head, int32 SymbolCount, FRandomStream& Rng);
-	void DrawDebugSpace();
 
-	FIntVector ConvertToFloorSpace(FIntVector TileSpaceLocation);
-	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceLocation);
+	bool IsLocationValid(FIntVector FloorSpaceCoordinates);
+	TArray<FFloorRoom> GetAllNeighbors(FFloorRoom Room);
+	void SetRoom(FFloorRoom Room);
+
+	FFloorRoom GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates);
+	FFloorRoom GetRoomFromTileSpace(const FIntVector& TileSpaceLocation);
+	FIntVector ConvertToFloorSpace(const FIntVector& TileSpaceVector) const;
+
+	void DrawDebugSpace();
 };

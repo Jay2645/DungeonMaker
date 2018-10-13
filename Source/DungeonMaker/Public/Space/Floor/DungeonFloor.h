@@ -27,26 +27,26 @@ struct DUNGEONMAKER_API FFloorRoom
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	TSubclassOf<ADungeonRoom> RoomClass;
+		TSubclassOf<ADungeonRoom> RoomClass;
 	UDungeonMissionNode* RoomNode;
-	
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	FIntVector Location;
+		FIntVector Location;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TSet<FIntVector> NeighboringRooms;
+		TSet<FIntVector> NeighboringRooms;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TSet<FIntVector> NeighboringTightlyCoupledRooms;
+		TSet<FIntVector> NeighboringTightlyCoupledRooms;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	FIntVector IncomingRoom;
+		FIntVector IncomingRoom;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	int32 MaxRoomSize;
-	
+		int32 MaxRoomSize;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	float Difficulty;
+		float Difficulty;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	ADungeonRoom* SpawnedRoom;
+		ADungeonRoom* SpawnedRoom;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	FNumberedGraphSymbol DungeonSymbol;
+		FNumberedGraphSymbol DungeonSymbol;
 
 	FFloorRoom()
 	{
@@ -69,6 +69,10 @@ public:
 	}
 };
 
+/*
+* Helper data type for FDungeonFloor.
+* Represents a row of FFloorRooms.
+*/
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloorRow
 {
@@ -76,21 +80,20 @@ struct DUNGEONMAKER_API FDungeonFloorRow
 
 private:
 	UPROPERTY(EditAnywhere)
-	TArray<FFloorRoom> DungeonRooms;
-	int RoomSize;
+		TArray<FFloorRoom> DungeonRooms;
 
 public:
 	FDungeonFloorRow()
 	{
 		DungeonRooms = TArray<FFloorRoom>();
-		RoomSize = 1;
 	}
 
-	FDungeonFloorRow(int Size, int MaxRoomSize)
+	FDungeonFloorRow(int Size)
 	{
-		RoomSize = MaxRoomSize;
-		int realSize = RoomSize * Size;
-		DungeonRooms.SetNum(realSize);
+		check(Size >= 0);
+
+		DungeonRooms.SetNum(Size);
+
 		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
 			DungeonRooms[i] = FFloorRoom();
@@ -99,33 +102,38 @@ public:
 
 	void Set(FFloorRoom Room, int Index)
 	{
-		for (int i = 0; i < Room.MaxRoomSize; i++)
-		{
-			DungeonRooms[Index + i] = Room;
-		}
+		DungeonRooms[Index] = Room;
 	}
 
-	FFloorRoom& GetTileSpace(int Index)
+	FFloorRoom& Get(int Index)
 	{
 		return DungeonRooms[Index];
 	}
 
 	FFloorRoom& operator[] (int Index)
 	{
-		return DungeonRooms[Index * RoomSize];
-	}
-
-	int TileSizeNum() const
-	{
-		return DungeonRooms.Num();
+		return Get(Index);
 	}
 
 	int Num() const
 	{
-		return TileSizeNum() / RoomSize;
+		return DungeonRooms.Num();
 	}
 };
 
+
+/*
+* This is a 2D array of FFloorRooms.
+*
+* These rooms have not been turned into tiles yet, so all this
+* does is map out where rooms are in relation to other rooms.
+*
+* When the space has been generated, the generation algorithm
+* will do its best to ensure that rooms get placed relative to
+* each other according to this array. In a way, this is the
+* "low-resolution" version of the "high-resolution" map that
+* will be created once tiles start coming into play.
+*/
 USTRUCT(BlueprintType)
 struct DUNGEONMAKER_API FDungeonFloor
 {
@@ -133,40 +141,33 @@ struct DUNGEONMAKER_API FDungeonFloor
 
 private:
 	UPROPERTY(EditAnywhere)
-	TArray<FDungeonFloorRow> DungeonRooms;
-
-	int RoomSize;
+		TArray<FDungeonFloorRow> DungeonRooms;
 
 public:
 	FDungeonFloor()
 	{
 		DungeonRooms = TArray<FDungeonFloorRow>();
-		RoomSize = 1;
 	}
 
-	FDungeonFloor(int SizeX, int SizeY, int MaxRoomSize)
+	FDungeonFloor(int SizeX, int SizeY)
 	{
 		check(SizeX >= 0);
-		check(SizeY >= 0);
 
-		RoomSize = MaxRoomSize;
-		int realSize = RoomSize * SizeX;
-		
-		DungeonRooms.SetNum(realSize);
+		DungeonRooms.SetNum(SizeY);
 		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
-			DungeonRooms[i] = FDungeonFloorRow(SizeX, RoomSize);
+			DungeonRooms[i] = FDungeonFloorRow(SizeX);
 		}
 	}
 
-	FFloorRoom& GetTileSpace(int X, int Y)
+	FDungeonFloorRow& Get(int Index)
 	{
-		return DungeonRooms[Y].GetTileSpace(X);
+		return DungeonRooms[Index];
 	}
 
 	FDungeonFloorRow& operator[] (int Index)
 	{
-		return DungeonRooms[Index * RoomSize];
+		return Get(Index);
 	}
 
 	int XSize() const
@@ -181,36 +182,16 @@ public:
 		}
 	}
 
-	int XTileSize() const
-	{
-		if (DungeonRooms.Num() == 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return DungeonRooms[0].TileSizeNum();
-		}
-	}
-
 	int YSize() const
-	{
-		return YTileSize() / RoomSize;
-	}
-
-	int YTileSize() const
 	{
 		return DungeonRooms.Num();
 	}
 
-	void DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOffset);
+	void DrawDungeonFloor(AActor* Context, int32 ZOffset);
 
 	void Set(FFloorRoom Room)
 	{
-		for (int i = 0; i < Room.MaxRoomSize; i++)
-		{
-			DungeonRooms[Room.Location.Y * i].Set(Room, Room.Location.X);
-		}
+		Get(Room.Location.Y).Set(Room, Room.Location.X);
 	}
 
 	void SetTileSpace(FFloorRoom Room, FIntVector TileSpaceStartPosition)
@@ -225,5 +206,112 @@ public:
 	{
 		DungeonRooms[A.Y][A.X].NeighboringRooms.Add(B);
 		DungeonRooms[B.Y][B.X].NeighboringRooms.Add(A);
+	}
+};
+
+/*
+* This is a graph representing an entire dungeon, from
+* start to finish.
+*
+* However, the rooms in this dungeon  have not been
+* broken down into tiles -- instead, this structure
+* just lists the eventual relative position of each room
+* in a 3D array-like structure.
+*/
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FDungeonSpace
+{
+	GENERATED_BODY()
+
+private:
+	UPROPERTY(EditAnywhere)
+		TArray<FDungeonFloor> Floors;
+
+public:
+	FDungeonSpace()
+	{
+		Floors = TArray<FDungeonFloor>();
+	}
+
+	FDungeonSpace(TArray<int32> LevelSizes)
+	{
+		Floors.SetNum(LevelSizes.Num());
+		for (int i = 0; i < Floors.Num(); i++)
+		{
+			Floors[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i]);
+		}
+	}
+
+	FDungeonFloor& Get(int32 Index)
+	{
+		return Floors[Index];
+	}
+
+	FFloorRoom& Get(const FIntVector& Location)
+	{
+		return Get(Location.Z).Get(Location.Y).Get(Location.X);
+	}
+
+	FDungeonFloor& operator[] (int Index)
+	{
+		return Get(Index);
+	}
+
+	int XSize() const
+	{
+		if (Floors.Num() == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return Floors[0].XSize();
+		}
+	}
+
+	int YSize() const
+	{
+		if (Floors.Num() == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return Floors[0].YSize();
+		}
+	}
+
+	int Num() const
+	{
+		return Floors.Num();
+	}
+
+	int ZSize() const
+	{
+		return Num();
+	}
+
+	void Set(FFloorRoom Room)
+	{
+		// @TODO: Multi-room support
+		Floors[Room.Location.Z].Set(Room);
+	}
+
+	void SetTileSpace(FFloorRoom Room, FIntVector TileSpaceStartPosition)
+	{
+		Floors[TileSpaceStartPosition.Z].SetTileSpace(Room, TileSpaceStartPosition);
+	}
+
+	TSet<FIntVector>& GetNeighbors(const FIntVector& Location, bool bGetTightlyCoupled)
+	{
+		FFloorRoom& room = Get(Location);
+		if (bGetTightlyCoupled)
+		{
+			return room.NeighboringTightlyCoupledRooms;
+		}
+		else
+		{
+			return room.NeighboringRooms;
+		}
 	}
 };

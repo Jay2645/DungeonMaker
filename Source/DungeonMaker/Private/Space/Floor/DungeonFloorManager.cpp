@@ -81,13 +81,6 @@ void UDungeonFloorManager::DrawDebugSpace()
 	}
 }
 
-FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(FIntVector TileSpaceLocation)
-{
-	// Convert to floor space
-	FIntVector floorSpaceLocation = DungeonSpaceGenerator->ConvertToFloorSpace(TileSpaceLocation);
-	return DungeonSpaceGenerator->GetRoomFromFloorCoordinates(floorSpaceLocation);
-}
-
 const UDungeonTile* UDungeonFloorManager::GetTileFromTileSpace(FIntVector TileSpaceLocation)
 {
 	FIntVector floorSpaceLocation = DungeonSpaceGenerator->ConvertToFloorSpace(TileSpaceLocation);
@@ -158,6 +151,11 @@ TSet<FIntVector> UDungeonFloorManager::GetAllTilesOfType(ETileType Type)
 		}
 	}
 	return tileTypes;
+}
+
+FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
+{
+	return DungeonSpaceGenerator->GetRoomFromTileSpace(TileSpaceLocation);
 }
 
 ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 

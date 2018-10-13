@@ -205,7 +205,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	SetRoom(room);
 	
 	// Don't bother setting neighbors if one of the neighbors would be invalid
-	if (IsLocationValid(roomLocation.Key) && IsLocationValid(roomLocation.Value))
+	if (DungeonSpaceGenerator->IsLocationValid(roomLocation.Key) && DungeonSpaceGenerator->IsLocationValid(roomLocation.Value))
 	{
 		// Link the children
 		if (bIsTightCoupling)

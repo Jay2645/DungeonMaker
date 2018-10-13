@@ -62,8 +62,6 @@ public:
 	void SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter);
 	void DrawDebugSpace();
 	// Gets a room based on tile space coordinates.
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	FFloorRoom GetRoomFromTileSpace(FIntVector TileSpaceLocation);
 
 	const UDungeonTile* GetTileFromTileSpace(FIntVector TileSpaceLocation);
 	void UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile);
@@ -77,6 +75,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")
 	TSet<FIntVector> GetAllTilesOfType(ETileType Type);
 
+	FFloorRoom GetRoomFromTileSpace(const FIntVector& TileSpaceLocation);
 private:
 	ADungeonRoom* CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 
 		const FGroundScatterPairing& GlobalGroundScatter);

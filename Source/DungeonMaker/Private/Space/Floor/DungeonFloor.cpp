@@ -3,7 +3,7 @@
 #include "DungeonFloor.h"
 #include <DrawDebugHelpers.h>
 
-void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOffset)
+void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 {
 	for (int x = 0; x < XSize(); x++)
 	{
@@ -14,7 +14,7 @@ void FDungeonFloor::DrawDungeonFloor(AActor* Context, int32 RoomSize, int32 ZOff
 			int32 xOffset = x;
 			int32 yOffset = y;
 
-			float offset = UDungeonTile::TILE_SIZE * RoomSize;
+			float offset = UDungeonTile::TILE_SIZE * DungeonRooms[y][x].MaxRoomSize;
 
 			FVector startingLocation(xOffset * offset, yOffset * offset, ZOffset * offset);
 			FVector endingLocation(xOffset * offset, (yOffset + 1) * offset, ZOffset * offset);

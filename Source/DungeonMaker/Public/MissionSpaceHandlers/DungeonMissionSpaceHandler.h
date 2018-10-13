@@ -37,24 +37,6 @@ private:
 
 public:
 	void DrawDebugSpace();
-	// Gets a room based on floor-space coordinates.
-	// This is different than world space (where things are physically placed
-	// as well as different from tile space (where tiles get placed).
-	// This governs which rooms are neighboring which.
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	FFloorRoom GetRoomFromFloorCoordinates(FIntVector FloorSpaceCoordinates);
-	// Gets a room based on tile space coordinates.
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	FFloorRoom GetRoomFromTileSpace(FIntVector TileSpaceLocation);
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	FIntVector ConvertToFloorSpace(FIntVector TileSpaceVector) const;
-	// Given a vector in floor space, returns whether that location can potentially contain a room.
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	bool IsLocationValid(FIntVector FloorSpaceCoordinates) const;
-
-	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
-	TArray<FFloorRoom> GetAllNeighbors(FFloorRoom Room);
-
 	// Creates a blank DungeonFloor array, with the specified size.
 	void InitializeDungeonFloor(UDungeonSpaceGenerator* SpaceGenerator, TArray<int32> LevelSizes);
 
