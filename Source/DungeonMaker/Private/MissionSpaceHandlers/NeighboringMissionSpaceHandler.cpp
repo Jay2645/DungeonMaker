@@ -1,37 +1,41 @@
 
 
 #include "NeighboringMissionSpaceHandler.h"
+#include "DungeonMissionSpaceHandler.h"
+#include "DungeonMissionSymbol.h"
+#include "DungeonMissionNode.h"
+#include "DungeonSpaceGenerator.h"
 
+#define INVALID_LOCATION FIntVector(-1, -1, -1)
 
 void UNeighboringMissionSpaceHandler::GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount)
 {
+	FMissionSpaceHelper spaceHelper = FMissionSpaceHelper(Rng, StartLocation);
 	TMap<FIntVector, FIntVector> availableRooms;
-	TSet<UDungeonMissionNode*> processedNodes;
-	TSet<FIntVector> processedRooms;
-	TMap<FIntVector, FIntVector> openRooms;
-
-	availableRooms.Add(StartLocation, FIntVector(-1, -1, -1));
-	openRooms.Add(StartLocation, FIntVector(-1, -1, -1));
-
-	PairNodesToRooms(Head, availableRooms, Rng, processedNodes, processedRooms, StartLocation, openRooms, false, SymbolCount);
+	availableRooms.Add(StartLocation, INVALID_LOCATION);
+	PairNodesToRooms(Head, availableRooms, spaceHelper, false, SymbolCount);
 }
 
 bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms,
-	FRandomStream& Rng, TSet<UDungeonMissionNode*>& ProcessedNodes, TSet<FIntVector>& ProcessedRooms,
-	FIntVector EntranceRoom, TMap<FIntVector, FIntVector>& AllOpenRooms,
-	bool bIsTightCoupling, int32 TotalSymbolCount)
+	FMissionSpaceHelper& SpaceHelper, bool bIsTightCoupling, int32 TotalSymbolCount)
 {
-	if (ProcessedNodes.Contains(Node))
-	{
-		// Already processed this node
-		return true;
-	}
+	// This is the real "meat and potatoes" of mapping the Dungeon Mission to the Dungeon Space.
+	// It will take a given node and assign it to a room. It also will go and check all children
+	// of that node, assigning them to rooms as well, if needed.
+	
+	// Check input
 	if (Node == NULL)
 	{
 		// No rooms to pair
 		UE_LOG(LogSpaceGen, Error, TEXT("Null node was provided to the Mission Space Handler!"));
 		return true;
 	}
+	if (SpaceHelper.HasProcessed(Node))
+	{
+		// Already processed this node
+		return true;
+	}
+
 	if (((UDungeonMissionSymbol*)Node->NodeType)->RoomTypes.Num() == 0)
 	{
 		UE_LOG(LogSpaceGen, Error, TEXT("Mission Space Handler tried handling %s, which had no room types defined!"), *Node->GetNodeTitle());
@@ -40,7 +44,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 
 	for (int i = 0; i < Node->ParentNodes.Num(); i++)
 	{
-		if (!ProcessedNodes.Contains((UDungeonMissionNode*)Node->ParentNodes[i]))
+		if (!SpaceHelper.HasProcessed((UDungeonMissionNode*)Node->ParentNodes[i]))
 		{
 			// We haven't processed all our parent nodes yet!
 			// We should be processed further on down the line, once our next parent node
@@ -55,76 +59,91 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 		UE_LOG(LogSpaceGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
-	if (AllOpenRooms.Num() == 0 && !bIsTightCoupling)
+	if (!SpaceHelper.HasOpenRooms() && !bIsTightCoupling)
 	{
 		UE_LOG(LogSpaceGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 
+	// Input valid; let's go
+
 	UE_LOG(LogSpaceGen, Log, TEXT("Creating room for %s! Rooms available: %d, Room Children: %d"), *Node->GetSymbolDescription(), AvailableRooms.Num(), Node->ChildrenNodes.Num());
 	// Find an open room to add this to
-	TKeyValuePair<FIntVector, FIntVector> roomLocation;
+	FRoomPairing roomLocation;
 	if (bIsTightCoupling)
 	{
-		roomLocation = GetOpenRoom(Node, AvailableRooms, Rng, ProcessedRooms);
+		// A tightly-coupled room must be placed adjacent to the last room we placed.
+		roomLocation = GetOpenRoom(Node, AvailableRooms, SpaceHelper);
 	}
 	else
 	{
-		roomLocation = GetOpenRoom(Node, AllOpenRooms, Rng, ProcessedRooms);
+		// This room can be placed alongside any room we have already placed.
+		roomLocation = GetOpenRoom(Node, AvailableRooms, SpaceHelper);
 	}
 
-	ProcessedRooms.Add(roomLocation.Key);
-	ProcessedNodes.Add(Node);
+	// The key of the roomLocation is where the next room will be placed
+	// The value is what room is adjacent to it
+
+	// Mark the next room location as invalid
+	// That way, we don't reuse it if something goes wrong
+	FIntVector nextLocation = roomLocation.ChildRoom;
+	SpaceHelper.MarkAsProcessed(nextLocation);
+	// Mark this node as processed ahead of time
+	// If we go recursive depth-first instead of breadth-first, it will
+	// mess with things if we haven't been marked as processed
+	SpaceHelper.MarkAsProcessed(Node);
 
 	// Grab all our neighbor rooms, excluding those which have already been processed
-	TSet<FIntVector> neighboringRooms = GetAvailableLocations(roomLocation.Key, ProcessedRooms);
-	TMap<FIntVector, FIntVector> roomNeighborMap;
-	// Map us to be the neighbor to all our neighbors
-	for (FIntVector neighbor : neighboringRooms)
-	{
-		roomNeighborMap.Add(neighbor, roomLocation.Key);
-	}
+	TMap<FIntVector, FIntVector> roomNeighborMap = GetRoomNeighbors(nextLocation, SpaceHelper);
 
-	// Find all the tightly coupled nodes attached to our current node
+	// Process all our child nodes
 	TArray<UDungeonMissionNode*> nextToProcess;
-	for (UDungeonMakerNode* neighborNode : Node->ChildrenNodes)
+	for (UDungeonMakerNode* childNode : Node->ChildrenNodes)
 	{
-		if (neighborNode->bTightlyCoupledToParent)
+		if (childNode->bTightlyCoupledToParent)
 		{
 			// If we're tightly coupled to our parent, ensure we get added to a neighboring leaf
-			UE_LOG(LogSpaceGen, Log, TEXT("Placing tightly-coupled room %s next to parent %s."), *neighborNode->GetNodeTitle(), *Node->GetNodeTitle());
-			bool bSuccesfullyPairedChild = PairNodesToRooms((UDungeonMissionNode*)neighborNode, roomNeighborMap, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, true, TotalSymbolCount);
+			// We do this by going depth-first
+			UE_LOG(LogSpaceGen, Log, TEXT("Placing tightly-coupled room %s next to parent %s."), *childNode->GetNodeTitle(), *Node->GetNodeTitle());
+			bool bSuccesfullyPairedChild = PairNodesToRooms((UDungeonMissionNode*)childNode, roomNeighborMap, SpaceHelper, true, TotalSymbolCount);
 			if (!bSuccesfullyPairedChild)
 			{
-				// Failed to find a child leaf; back out
-				ProcessedNodes.Remove(Node);
-				// Restart -- next time, we'll select a different leaf
+				// Failed to find a child leaf; back out of our current node
+				SpaceHelper.MarkAsUnprocessed(Node);
+				// Restart processing our current node -- now that the leaf we tried has been
+				// marked as invalid, we're guaranteed to choose a different leaf next time
 				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child rooms to match our tightly-coupled rooms."), *Node->GetSymbolDescription());
-				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
+				return PairNodesToRooms(Node, AvailableRooms, SpaceHelper, bIsTightCoupling, TotalSymbolCount);
 			}
 		}
 		else
 		{
-			nextToProcess.Add((UDungeonMissionNode*)neighborNode);
+			// Doesn't matter where we get placed
+			// Add our child to the list of nodes to process next
+			// These will be processed breadth-first in the next step
+			nextToProcess.Add((UDungeonMissionNode*)childNode);
 		}
 	}
 
+	// If we're allowed to have children, mark our neighbors as available
 	if (((UDungeonMissionSymbol*)Node->NodeType)->bAllowedToHaveChildren)
 	{
 		AvailableRooms.Append(roomNeighborMap);
 	}
-	AllOpenRooms.Append(AvailableRooms);
-	TArray<UDungeonMissionNode*> deferredNodes;
+	// List all the rooms we have open
+	SpaceHelper.AddOpenRooms(AvailableRooms);
 
-	// Now we process all non-tightly coupled nodes
-	UE_LOG(LogSpaceGen, Log, TEXT("%s has %d children to process."), *Node->GetNodeTitle(), nextToProcess.Num());
+
+	// Step 2: Process all non-tightly coupled nodes
+	TArray<UDungeonMissionNode*> deferredNodes;
+	UE_LOG(LogSpaceGen, Verbose, TEXT("%s has %d children to process."), *Node->GetNodeTitle(), nextToProcess.Num());
 	for (int i = 0; i < nextToProcess.Num(); i++)
 	{
 		// If we're not tightly coupled, ensure that we have all our required parents generated
 		bool bDeferProcessing = false;
 		for (int j = 0; j < nextToProcess[i]->ParentNodes.Num(); j++)
 		{
-			if (!ProcessedNodes.Contains((UDungeonMissionNode*)nextToProcess[i]->ParentNodes[j]))
+			if (!SpaceHelper.HasProcessed((UDungeonMissionNode*)nextToProcess[i]->ParentNodes[j]))
 			{
 				bDeferProcessing = true;
 				break;
@@ -137,19 +156,20 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 			continue;
 		}
 
-		UE_LOG(LogSpaceGen, Log, TEXT("Placing loosely-coupled room %s. Parent: %s."), *nextToProcess[i]->GetNodeTitle(), *Node->GetNodeTitle());
-		bool bSuccesfullyPairedChild = PairNodesToRooms(nextToProcess[i], AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
+		UE_LOG(LogSpaceGen, Verbose, TEXT("Placing loosely-coupled room %s. Parent: %s."), *nextToProcess[i]->GetNodeTitle(), *Node->GetNodeTitle());
+		bool bSuccesfullyPairedChild = PairNodesToRooms(nextToProcess[i], AvailableRooms, SpaceHelper, false, TotalSymbolCount);
 		if (!bSuccesfullyPairedChild)
 		{
 			// Failed to find a child leaf; back out
-			ProcessedNodes.Remove(Node);
+			SpaceHelper.MarkAsUnprocessed(Node);
 			// Restart -- next time, we'll select a different leaf
 			UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-			return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
+			return PairNodesToRooms(Node, AvailableRooms, SpaceHelper, bIsTightCoupling, TotalSymbolCount);
 		}
 	}
 
-	// Attempt to place our deferred nodes
+
+	// Step 3: Attempt to place our deferred nodes
 	TMap<UDungeonMissionNode*, uint8> attemptCount;
 	const uint8 MAX_ATTEMPT_COUNT = 12;
 	while (deferredNodes.Num() > 0)
@@ -168,7 +188,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 		bool bDeferProcessing = false;
 		for (int j = 0; j < currentNode->ParentNodes.Num(); j++)
 		{
-			if (!ProcessedNodes.Contains((UDungeonMissionNode*)currentNode->ParentNodes[j]))
+			if (!SpaceHelper.HasProcessed((UDungeonMissionNode*)currentNode->ParentNodes[j]))
 			{
 				bDeferProcessing = true;
 				break;
@@ -176,14 +196,14 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 		}
 		if (!bDeferProcessing)
 		{
-			bool bSuccesfullyPairedChild = PairNodesToRooms(currentNode, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, roomLocation.Key, AllOpenRooms, false, TotalSymbolCount);
+			bool bSuccesfullyPairedChild = PairNodesToRooms(currentNode, AvailableRooms, SpaceHelper, false, TotalSymbolCount);
 			if (!bSuccesfullyPairedChild)
 			{
 				// Failed to find a child leaf; back out
-				ProcessedNodes.Remove(Node);
+				SpaceHelper.MarkAsUnprocessed(Node);
 				// Restart -- next time, we'll select a different leaf
 				UE_LOG(LogSpaceGen, Warning, TEXT("Restarting processing for %s because we couldn't find enough child leaves."), *Node->GetSymbolDescription());
-				return PairNodesToRooms(Node, AvailableRooms, Rng, ProcessedNodes, ProcessedRooms, EntranceRoom, AllOpenRooms, bIsTightCoupling, TotalSymbolCount);
+				return PairNodesToRooms(Node, AvailableRooms, SpaceHelper, bIsTightCoupling, TotalSymbolCount);
 			}
 			else
 			{
@@ -201,24 +221,98 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	}
 
 	// Make the actual room
-	FFloorRoom room = MakeFloorRoom(Node, roomLocation.Key, Rng, TotalSymbolCount);
+	FFloorRoom room = MakeFloorRoom(Node, nextLocation, SpaceHelper.Rng, TotalSymbolCount);
 	SetRoom(room);
 	
+	// Update neighbors
+	UpdateNeighbors(roomLocation, bIsTightCoupling);
+
+	return true;
+}
+
+void UNeighboringMissionSpaceHandler::UpdateNeighbors(const FRoomPairing& RoomPairing, bool bIsTightCoupling)
+{
+	FIntVector childRoom = RoomPairing.ChildRoom;
+	FIntVector parentRoom = RoomPairing.ParentRoom;
+
 	// Don't bother setting neighbors if one of the neighbors would be invalid
-	if (DungeonSpaceGenerator->IsLocationValid(roomLocation.Key) && DungeonSpaceGenerator->IsLocationValid(roomLocation.Value))
+	if (DungeonSpaceGenerator->IsLocationValid(childRoom) && DungeonSpaceGenerator->IsLocationValid(parentRoom))
 	{
 		// Link the children
 		if (bIsTightCoupling)
 		{
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z][roomLocation.Key.Y][roomLocation.Key.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Value);
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z][roomLocation.Value.Y][roomLocation.Value.X].NeighboringTightlyCoupledRooms.Add(roomLocation.Key);
+			DungeonSpaceGenerator->DungeonSpace[childRoom.Z][childRoom.Y][childRoom.X].NeighboringTightlyCoupledRooms.Add(parentRoom);
+			DungeonSpaceGenerator->DungeonSpace[parentRoom.Z][parentRoom.Y][parentRoom.X].NeighboringTightlyCoupledRooms.Add(childRoom);
 		}
 		else
 		{
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Key.Z][roomLocation.Key.Y][roomLocation.Key.X].NeighboringRooms.Add(roomLocation.Value);
-			DungeonSpaceGenerator->DungeonSpace[roomLocation.Value.Z][roomLocation.Value.Y][roomLocation.Value.X].NeighboringRooms.Add(roomLocation.Key);
+			DungeonSpaceGenerator->DungeonSpace[childRoom.Z][childRoom.Y][childRoom.X].NeighboringRooms.Add(parentRoom);
+			DungeonSpaceGenerator->DungeonSpace[parentRoom.Z][parentRoom.Y][parentRoom.X].NeighboringRooms.Add(childRoom);
+		}
+	}
+}
+
+TMap<FIntVector, FIntVector> UNeighboringMissionSpaceHandler::GetRoomNeighbors(FIntVector RoomLocation, FMissionSpaceHelper &SpaceHelper)
+{
+	// Grab all our neighbor rooms, excluding those which have already been processed
+	TSet<FIntVector> neighboringRooms = GetAvailableLocations(RoomLocation, SpaceHelper.GetProcessedRooms());
+	TMap<FIntVector, FIntVector> roomNeighborMap;
+	// Map us to be the neighbor to all our neighbors
+	for (FIntVector neighbor : neighboringRooms)
+	{
+		roomNeighborMap.Add(neighbor, RoomLocation);
+	}
+	return roomNeighborMap;
+}
+
+FRoomPairing UNeighboringMissionSpaceHandler::GetOpenRoom(UDungeonMissionNode* Node, 
+	TMap<FIntVector, FIntVector>& AvailableRooms, FMissionSpaceHelper& SpaceHelper)
+{
+	TSet<UDungeonMissionNode*> nodesToCheck;
+	// If this node has a tightly-coupled child, ensure that there's room to place the child as well
+	for (UDungeonMakerNode* neighborNode : Node->ChildrenNodes)
+	{
+		if (neighborNode->bTightlyCoupledToParent)
+		{
+			nodesToCheck.Add((UDungeonMissionNode*)neighborNode);
 		}
 	}
 
-	return true;
+	// Initialize our starting location to an invalid location
+	FIntVector roomLocation = INVALID_LOCATION;
+	FIntVector parentLocation = INVALID_LOCATION;
+	do
+	{
+		if (AvailableRooms.Num() == 0)
+		{
+			// Out of rooms; return an invalid input
+			UE_LOG(LogSpaceGen, Warning, TEXT("Ran out of rooms when trying to place %s"), *Node->ToString(0, false));
+			return FRoomPairing();
+		}
+		int32 leafIndex = SpaceHelper.Rng.RandRange(0, AvailableRooms.Num() - 1);
+		TArray<FIntVector> allAvailableRooms;
+		AvailableRooms.GetKeys(allAvailableRooms);
+		roomLocation = allAvailableRooms[leafIndex];
+		parentLocation = AvailableRooms[roomLocation];
+		AvailableRooms.Remove(roomLocation);
+
+		if (SpaceHelper.HasProcessed(roomLocation))
+		{
+			// Already processed this leaf
+			roomLocation = INVALID_LOCATION;
+			parentLocation = INVALID_LOCATION;
+			continue;
+		}
+
+		TSet<FIntVector> neighbors = GetAvailableLocations(roomLocation, SpaceHelper.GetProcessedRooms());
+
+		if (neighbors.Num() < nodesToCheck.Num())
+		{
+			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
+			roomLocation = INVALID_LOCATION;
+			parentLocation = INVALID_LOCATION;
+			continue;
+		}
+	} while (roomLocation == INVALID_LOCATION);
+	return FRoomPairing(roomLocation, parentLocation);
 }

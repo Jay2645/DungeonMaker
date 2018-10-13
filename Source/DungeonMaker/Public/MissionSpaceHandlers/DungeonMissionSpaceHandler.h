@@ -13,6 +13,109 @@
 
 class UDungeonSpaceGenerator;
 
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FRoomPairing
+{
+	GENERATED_BODY()
+
+public:
+	// The room that leads into the next room
+	// Should have already been processed
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FIntVector ParentRoom;
+	// The room we've selected as a child room
+	// Should not be processed yet
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FIntVector ChildRoom;
+
+	FRoomPairing()
+	{
+		ParentRoom = FIntVector(-1, -1, -1);
+		ChildRoom = FIntVector(-1, -1, -1);
+	}
+
+	FRoomPairing(FIntVector Child, FIntVector Parent)
+	{
+		ChildRoom = Child;
+		ParentRoom = Parent;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FMissionSpaceHelper
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FRandomStream& Rng;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	TSet<UDungeonMissionNode*> ProcessedNodes;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	TSet<FIntVector> ProcessedRooms;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	TMap<FIntVector, FIntVector> OpenRooms;
+
+	FMissionSpaceHelper() : Rng(*(new FRandomStream()))
+	{
+		// Empty
+	}
+
+	FMissionSpaceHelper(FRandomStream& RandomNumbers, FIntVector StartLocation) : Rng(RandomNumbers)
+	{
+		OpenRooms.Add(StartLocation, FIntVector(-1, -1, -1));
+	}
+
+	FMissionSpaceHelper& operator= (const FMissionSpaceHelper& Helper)
+	{
+		Rng = Helper.Rng;
+		ProcessedNodes.Append(Helper.ProcessedNodes.Array());
+		ProcessedRooms.Append(Helper.ProcessedRooms.Array());
+		OpenRooms.Append(Helper.OpenRooms);
+		return *this;
+	}
+
+	bool HasProcessed(UDungeonMissionNode* Node) const
+	{
+		return ProcessedNodes.Contains(Node);
+	}
+
+	bool HasProcessed(FIntVector RoomLocation) const
+	{
+		return ProcessedRooms.Contains(RoomLocation);
+	}
+
+	bool HasOpenRooms() const
+	{
+		return OpenRooms.Num() > 0;
+	}
+
+	TSet<FIntVector>& GetProcessedRooms()
+	{
+		return ProcessedRooms;
+	}
+
+	void MarkAsProcessed(FIntVector RoomLocation)
+	{
+		ProcessedRooms.Add(RoomLocation);
+	}
+
+	void MarkAsProcessed(UDungeonMissionNode* Node)
+	{
+		ProcessedNodes.Add(Node);
+	}
+
+	void MarkAsUnprocessed(UDungeonMissionNode* Node)
+	{
+		ProcessedNodes.Remove(Node);
+	}
+
+	void AddOpenRooms(TMap<FIntVector, FIntVector> MoreOpenRooms)
+	{
+		OpenRooms.Append(MoreOpenRooms);
+	}
+};
+
 /*
 * This is a class which takes a DungeonMission and converts it into a DungeonFloor, representing
 * the space in the level.
@@ -49,7 +152,5 @@ protected:
 		FRandomStream& Rng, int32 TotalSymbolCount);
 	void SetRoom(FFloorRoom Room);
 	virtual void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
-	TKeyValuePair<FIntVector, FIntVector> GetOpenRoom(UDungeonMissionNode* Node,
-		TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms);
 	void ProcessRoomNeighbors();
 };

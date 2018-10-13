@@ -17,7 +17,7 @@ UGraphInputGrammar* UGraphEdge::TryCoupledBranch(const UObject* ReferenceObject,
 		}
 		else
 		{
-			UE_LOG(LogStateMachine, Log, TEXT("%s does not accept input %s due to coupling mismatch!"), *GetName(), *DataSource[DataIndex].Symbol.GetSymbolDescription());
+			UE_LOG(LogStateMachine, Verbose, TEXT("%s does not accept input %s due to coupling mismatch!"), *GetName(), *DataSource[DataIndex].Symbol.GetSymbolDescription());
 			OutDataIndex = DataIndex + 1;
 			return bReverseInputTest ? (UGraphInputGrammar*)DestinationState : NULL;
 		}

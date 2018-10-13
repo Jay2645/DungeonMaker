@@ -43,6 +43,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
 	int32 AddNode(UDungeonMakerNode* NodeToAdd);
 
+	int32 UpdateNodeID(UDungeonMakerNode* NodeToUpdate, int32 Index);
+
 	UFUNCTION(BlueprintCallable, Category = "DungeonMaker")
 	void Print(bool ToConsole = true, bool ToScreen = true);
 

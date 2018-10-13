@@ -29,12 +29,4 @@ public:
 
 	void AddLinkToNode(UDungeonMissionNode* NewChild, bool bTightlyCoupled);
 	int32 GetLevelCount();
-
-	/*static TArray<UDungeonMissionNode*> GetDepthFirstSortedNodes(UDungeonMissionNode* Head, bool bOnlyTightlyCoupled);
-	static TArray<UDungeonMissionNode*> GetTopologicalSortedNodes(UDungeonMissionNode* Head);
-
-private:
-	static void TopologicalVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Marked,
-		TSet<UDungeonMissionNode*>& TemporaryMarked, TArray<UDungeonMissionNode*>& SortedList);
-	static TArray<UDungeonMissionNode*> DepthVisit(UDungeonMissionNode* Node, TSet<UDungeonMissionNode*>& Visited, bool bOnlyTightlyCoupled);*/
 };

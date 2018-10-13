@@ -8,7 +8,7 @@ UStateMachineState* UStateMachineBranch::TryBranch(const UObject* ReferenceObjec
 	OutDataIndex = DataIndex + 1;
 	if (DataSource.IsValidIndex(DataIndex) && AcceptableInputs.Contains(DataSource[DataIndex]))
 	{
-		UE_LOG(LogStateMachine, Log, TEXT("%s accepts input %s!"), *GetName(), *DataSource[DataIndex]->Description.ToString());
+		UE_LOG(LogStateMachine, Verbose, TEXT("%s accepts input %s!"), *GetName(), *DataSource[DataIndex]->Description.ToString());
 		return bReverseInputTest ? NULL : DestinationState;
 	}
 	else
@@ -23,7 +23,7 @@ UStateMachineState* UStateMachineBranch::TryBranch(const UObject* ReferenceObjec
 				acceptedInputs.Append(", ");
 			}
 		}
-		UE_LOG(LogStateMachine, Log, TEXT("%s does not accept input %s! Acceptable inputs: %s"), *GetName(), *DataSource[DataIndex]->Description.ToString(), *acceptedInputs);
+		UE_LOG(LogStateMachine, Verbose, TEXT("%s does not accept input %s! Acceptable inputs: %s"), *GetName(), *DataSource[DataIndex]->Description.ToString(), *acceptedInputs);
 #endif
 		return bReverseInputTest ? DestinationState : NULL;
 	}

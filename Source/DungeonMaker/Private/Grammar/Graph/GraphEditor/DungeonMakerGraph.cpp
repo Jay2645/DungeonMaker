@@ -20,12 +20,18 @@ UDungeonMakerGraph::~UDungeonMakerGraph()
 int32 UDungeonMakerGraph::AddNode(UDungeonMakerNode* NodeToAdd)
 {
 	int32 index = AllNodes.Add(NodeToAdd);
-	
+	int nextID = UpdateNodeID(NodeToAdd, index);
+	NodeIDLookup.Add(nextID, NodeToAdd);
+	return index;
+}
+
+int32 UDungeonMakerGraph::UpdateNodeID(UDungeonMakerNode* NodeToUpdate, int32 Index)
+{
 	// See if we should change the actual node ID based on our input
 	// This is the ID of the node in the graph segment we're replacing
-	int32 inputID = NodeToAdd->InputNodeID;
+	int32 inputID = NodeToUpdate->InputNodeID;
 	// This is the ID that we should be assigned next
-	int32 nextID = index + 1;
+	int32 nextID = Index + 1;
 	if (inputID > 0)
 	{
 		// If the user has specified that this node should replace another node
@@ -41,10 +47,8 @@ int32 UDungeonMakerGraph::AddNode(UDungeonMakerNode* NodeToAdd)
 	}
 
 	// Update our ID
-	NodeToAdd->NodeID = nextID;
-	NodeIDLookup.Add(nextID, NodeToAdd);
-
-	return index;
+	NodeToUpdate->NodeID = nextID;
+	return nextID;
 }
 
 void UDungeonMakerGraph::Print(bool ToConsole /*= true*/, bool ToScreen /*= true*/)
@@ -160,7 +164,7 @@ void UDungeonMakerGraph::UpdateIDs()
 	for (int i = 0; i < AllNodes.Num(); ++i)
 	{
 		UDungeonMakerNode* Node = AllNodes[i];
-
+		UpdateNodeID(Node, i);
 		NodeIDLookup.Add(Node->NodeID, Node);
 	}
 }

@@ -15,8 +15,7 @@ public:
 	UDungeonMakerNode();
 	virtual ~UDungeonMakerNode();
 
-	//////////////////////////////////////////////////////////////////////////
-	// uproperties
+	// The type of node represented by this graph.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Graph Node")
 	UGraphNode* NodeType;
 
@@ -56,7 +55,8 @@ public:
 	FString GetNodeTitle();
 
 	UFUNCTION(BlueprintPure, Category = "DungeonMakerNode")
-		FNumberedGraphSymbol ToGraphSymbol() const;
+	FNumberedGraphSymbol ToGraphSymbol() const;
+	
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeons|Missions|Debug")
 	FString ToString(int32 IndentLevel = 4, bool bPrintChildren = true);
 

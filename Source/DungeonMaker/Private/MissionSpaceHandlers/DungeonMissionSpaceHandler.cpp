@@ -151,57 +151,6 @@ void UDungeonMissionSpaceHandler::GenerateDungeonRooms(UDungeonMissionNode* Head
 	// Empty
 }
 
-TKeyValuePair<FIntVector, FIntVector> UDungeonMissionSpaceHandler::GetOpenRoom(UDungeonMissionNode* Node, 
-	TMap<FIntVector, FIntVector>& AvailableRooms, FRandomStream& Rng, TSet<FIntVector>& ProcessedRooms)
-{
-	TSet<UDungeonMissionNode*> nodesToCheck;
-	for (UDungeonMakerNode* neighborNode : Node->ChildrenNodes)
-	{
-		if (neighborNode->bTightlyCoupledToParent)
-		{
-			nodesToCheck.Add((UDungeonMissionNode*)neighborNode);
-		}
-	}
-
-	FIntVector roomLocation = FIntVector(-1, -1, -1);
-	FIntVector parentLocation = FIntVector(-1, -1, -1);
-
-	do
-	{
-		if (AvailableRooms.Num() == 0)
-		{
-			// Out of rooms; return an invalid input
-			UE_LOG(LogSpaceGen, Warning, TEXT("Ran out of rooms when trying to place %s"), *Node->ToString(0, false));
-			return TKeyValuePair<FIntVector, FIntVector>(FIntVector(-1, -1, -1), FIntVector(-1, -1, -1));
-		}
-		int32 leafIndex = Rng.RandRange(0, AvailableRooms.Num() - 1);
-		TArray<FIntVector> allAvailableRooms;
-		AvailableRooms.GetKeys(allAvailableRooms);
-		roomLocation = allAvailableRooms[leafIndex];
-		parentLocation = AvailableRooms[roomLocation];
-		AvailableRooms.Remove(roomLocation);
-
-		if (ProcessedRooms.Contains(roomLocation))
-		{
-			// Already processed this leaf
-			roomLocation = FIntVector(-1, -1, -1);
-			parentLocation = FIntVector(-1, -1, -1);
-			continue;
-		}
-
-		TSet<FIntVector> neighbors = GetAvailableLocations(roomLocation, ProcessedRooms);
-
-		if (neighbors.Num() < nodesToCheck.Num())
-		{
-			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
-			roomLocation = FIntVector(-1, -1, -1);
-			parentLocation = FIntVector(-1, -1, -1);
-			continue;
-		}
-	} while (roomLocation.X == -1 && roomLocation.Y == -1 && roomLocation.Z == -1);
-	return TKeyValuePair<FIntVector, FIntVector>(roomLocation, parentLocation);
-}
-
 void UDungeonMissionSpaceHandler::ProcessRoomNeighbors()
 {
 	for (int z = 0; z < DungeonSpaceGenerator->DungeonSpace.Num(); z++)
