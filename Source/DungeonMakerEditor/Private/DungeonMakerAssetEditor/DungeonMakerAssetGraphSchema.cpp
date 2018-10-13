@@ -57,7 +57,7 @@ UEdGraphNode* FDungeonMakerAssetSchemaAction_NewNode::PerformAction(class UEdGra
 {
 	UDungeonMakerGraph* Graph = CastChecked<UDungeonMakerGraph>(ParentGraph->GetOuter());
 
-	const FScopedTransaction Transaction(LOCTEXT("DungeonMakerEditorNewNode", "Generic Graph Editor: New Node"));
+	const FScopedTransaction Transaction(LOCTEXT("DungeonMakerEditorNewNode", "Dungeon Mission Editor: New Node"));
 	ParentGraph->Modify();
 	Graph->Modify();
 
@@ -131,7 +131,7 @@ void UDungeonMakerAssetGraphSchema::GetGraphContextActions(FGraphContextMenuBuil
 
 	const FText AddToolTip = LOCTEXT("NewDungeonMakerNodeTooltip", "Add node here");
 	const FText Desc = LOCTEXT("NewDungeonMakerNodeTooltip", "Add Node");
-	TSharedPtr<FDungeonMakerAssetSchemaAction_NewNode> NewNodeAction(new FDungeonMakerAssetSchemaAction_NewNode(LOCTEXT("DungeonMakerNodeAction", "Generic Graph Node"), Desc, AddToolTip, 0));
+	TSharedPtr<FDungeonMakerAssetSchemaAction_NewNode> NewNodeAction(new FDungeonMakerAssetSchemaAction_NewNode(LOCTEXT("DungeonMakerNodeAction", "Dungeon Mission Node"), Desc, AddToolTip, 0));
 
 	ContextMenuBuilder.AddAction(NewNodeAction);
 }

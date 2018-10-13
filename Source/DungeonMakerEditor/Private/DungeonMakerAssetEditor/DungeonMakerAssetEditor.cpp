@@ -135,7 +135,7 @@ FName FDungeonMakerAssetEditor::GetToolkitFName() const
 
 FText FDungeonMakerAssetEditor::GetBaseToolkitName() const
 {
-	return LOCTEXT("DungeonMakerEditorAppLabel", "Generic Graph Editor");
+	return LOCTEXT("DungeonMakerEditorAppLabel", "Dungeon Mission Editor");
 }
 
 FText FDungeonMakerAssetEditor::GetToolkitName() const
@@ -230,7 +230,7 @@ void FDungeonMakerAssetEditor::CreateInternalWidgets()
 TSharedRef<SGraphEditor> FDungeonMakerAssetEditor::CreateViewportWidget()
 {
 	FGraphAppearanceInfo AppearanceInfo;
-	AppearanceInfo.CornerText = LOCTEXT("AppearanceCornerText_DungeonMaker", "Generic Graph");
+	AppearanceInfo.CornerText = LOCTEXT("AppearanceCornerText_DungeonMaker", "Dungeon Mission");
 
 	CreateCommandList();
 
