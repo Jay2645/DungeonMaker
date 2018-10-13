@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/StaticMesh.h"
+
 #include "DungeonTile.generated.h"
 
 class UDungeonMissionSymbol;
@@ -69,7 +70,7 @@ public:
 	// All possible options that we can select from
 	// to interact with.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TArray<FDungeonTileInteraction> Options;
+	TArray<FDungeonTileInteraction> Options;
 	
 	// The offset of our actor. Different directions can have
 	// different offsets. Center means anywhere which is not an edge.

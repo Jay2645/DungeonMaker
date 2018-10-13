@@ -125,7 +125,7 @@ bool UDungeonSpaceGenerator::IsLocationValid(FIntVector FloorSpaceCoordinates)
 	{
 		return false;
 	}
-	FDungeonFloor floor = DungeonSpace.Get(FloorSpaceCoordinates.Z);
+	FLowResDungeonFloor floor = DungeonSpace.GetLowRes(FloorSpaceCoordinates.Z);
 	return FloorSpaceCoordinates.X < floor.XSize() && FloorSpaceCoordinates.Y < floor.YSize();
 }
 
@@ -139,7 +139,7 @@ TArray<FFloorRoom> UDungeonSpaceGenerator::GetAllNeighbors(FFloorRoom Room)
 		{
 			continue;
 		}
-		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
+		neighbors.Add(DungeonSpace.GetLowRes(neighbor.Z)[neighbor.Y][neighbor.X]);
 	}
 	for (FIntVector neighbor : Room.NeighboringTightlyCoupledRooms)
 	{
@@ -147,7 +147,7 @@ TArray<FFloorRoom> UDungeonSpaceGenerator::GetAllNeighbors(FFloorRoom Room)
 		{
 			continue;
 		}
-		neighbors.Add(DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X]);
+		neighbors.Add(DungeonSpace.GetLowRes(neighbor.Z)[neighbor.Y][neighbor.X]);
 	}
 	return neighbors;
 }
@@ -160,7 +160,7 @@ void UDungeonSpaceGenerator::SetRoom(FFloorRoom Room)
 		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room at (%d, %d, %d) because it was an invalid location!"), Room.Location.X, Room.Location.Y, Room.Location.Z);
 		return;
 	}
-	DungeonSpace.Set(Room);
+	DungeonSpace.Set(Room, DefaultFloorTile);
 }
 
 FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates)
@@ -169,7 +169,7 @@ FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(const FIntVector&
 	{
 		return FFloorRoom();
 	}
-	return DungeonSpace[FloorSpaceCoordinates.Z][FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
+	return DungeonSpace.GetLowRes(FloorSpaceCoordinates.Z)[FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
 }
 
 FFloorRoom UDungeonSpaceGenerator::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
@@ -195,6 +195,6 @@ void UDungeonSpaceGenerator::DrawDebugSpace()
 {
 	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
-		DungeonSpace[i].DrawDungeonFloor(GetOwner(), i);
+		DungeonSpace.GetHighRes(i).DrawDungeonFloor(GetOwner(), i);
 	}
 }

@@ -8,7 +8,7 @@ void UDungeonMissionSpaceHandler::InitializeDungeonFloor(UDungeonSpaceGenerator*
 {
 	DungeonSpaceGenerator = SpaceGenerator;
 
-	DungeonSpaceGenerator->DungeonSpace = FDungeonSpace(LevelSizes);
+	DungeonSpaceGenerator->DungeonSpace = FDungeonSpace(LevelSizes, RoomSize);
 }
 
 bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
@@ -29,7 +29,7 @@ bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, 
 			TArray<int32> levelSizes;
 			for (int i = 0; i < DungeonSpaceGenerator->DungeonSpace.Num(); i++)
 			{
-				levelSizes.Add(DungeonSpaceGenerator->DungeonSpace[i].XSize());
+				levelSizes.Add(DungeonSpaceGenerator->DungeonSpace.GetLowRes(i).XSize());
 			}
 			InitializeDungeonFloor(DungeonSpaceGenerator, levelSizes);
 
@@ -54,7 +54,7 @@ void UDungeonMissionSpaceHandler::DrawDebugSpace()
 {
 	for (int i = 0; i < DungeonSpaceGenerator->DungeonSpace.Num(); i++)
 	{
-		DungeonSpaceGenerator->DungeonSpace[i].DrawDungeonFloor(GetOwner(), i);
+		DungeonSpaceGenerator->DungeonSpace.GetLowRes(i).DrawDungeonFloor(GetOwner(), i);
 	}
 }
 
@@ -63,9 +63,9 @@ TSet<FIntVector> UDungeonMissionSpaceHandler::GetAvailableLocations(FIntVector L
 {
 	TSet<FIntVector> availableLocations;
 
-	if (DungeonSpaceGenerator->IsLocationValid(Location) && DungeonSpaceGenerator->DungeonSpace[Location.Z][Location.Y][Location.X].DungeonSymbol.Symbol != NULL)
+	if (DungeonSpaceGenerator->IsLocationValid(Location) && DungeonSpaceGenerator->DungeonSpace.GetLowRes(Location.Z)[Location.Y][Location.X].DungeonSymbol.Symbol != NULL)
 	{
-		UDungeonMissionSymbol* symbol = (UDungeonMissionSymbol*)DungeonSpaceGenerator->DungeonSpace[Location.Z][Location.Y][Location.X].DungeonSymbol.Symbol;
+		UDungeonMissionSymbol* symbol = (UDungeonMissionSymbol*)DungeonSpaceGenerator->DungeonSpace.GetLowRes(Location.Z)[Location.Y][Location.X].DungeonSymbol.Symbol;
 		if (!symbol->bAllowedToHaveChildren)
 		{
 			// Not allowed to have children; return empty set
@@ -112,7 +112,7 @@ TSet<FIntVector> UDungeonMissionSpaceHandler::GetAvailableLocations(FIntVector L
 					// Out of range
 					continue;
 				}
-				if (DungeonSpaceGenerator->DungeonSpace[possibleLocation.Z][possibleLocation.Y][possibleLocation.X].RoomClass != NULL)
+				if (DungeonSpaceGenerator->DungeonSpace.GetLowRes(possibleLocation.Z)[possibleLocation.Y][possibleLocation.X].RoomClass != NULL)
 				{
 					// Already placed
 					continue;
@@ -155,17 +155,17 @@ void UDungeonMissionSpaceHandler::ProcessRoomNeighbors()
 {
 	for (int z = 0; z < DungeonSpaceGenerator->DungeonSpace.Num(); z++)
 	{
-		for (int y = 0; y < DungeonSpaceGenerator->DungeonSpace[z].YSize(); y++)
+		for (int y = 0; y < DungeonSpaceGenerator->DungeonSpace.GetLowRes(z).YSize(); y++)
 		{
-			for (int x = 0; x < DungeonSpaceGenerator->DungeonSpace[z].XSize(); x++)
+			for (int x = 0; x < DungeonSpaceGenerator->DungeonSpace.GetLowRes(z).XSize(); x++)
 			{
-				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace[z][y][x].NeighboringRooms)
+				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace.GetLowRes(z)[y][x].NeighboringRooms)
 				{
-					DungeonSpaceGenerator->DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X].NeighboringRooms.Add(FIntVector(x, y, z));
+					DungeonSpaceGenerator->DungeonSpace.GetLowRes(neighbor.Z)[neighbor.Y][neighbor.X].NeighboringRooms.Add(FIntVector(x, y, z));
 				}
-				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace[z][y][x].NeighboringTightlyCoupledRooms)
+				for (FIntVector neighbor : DungeonSpaceGenerator->DungeonSpace.GetLowRes(z)[y][x].NeighboringTightlyCoupledRooms)
 				{
-					DungeonSpaceGenerator->DungeonSpace[neighbor.Z][neighbor.Y][neighbor.X].NeighboringTightlyCoupledRooms.Add(FIntVector(x, y, z));
+					DungeonSpaceGenerator->DungeonSpace.GetLowRes(neighbor.Z)[neighbor.Y][neighbor.X].NeighboringTightlyCoupledRooms.Add(FIntVector(x, y, z));
 				}
 			}
 		}

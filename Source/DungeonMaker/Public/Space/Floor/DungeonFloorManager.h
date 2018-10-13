@@ -80,7 +80,7 @@ private:
 	ADungeonRoom* CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 
 		const FGroundScatterPairing& GlobalGroundScatter);
 	// Returns a COPY of the DungeonFloor we represent.
-	FDungeonFloor GetDungeonFloor() const;
+	FLowResDungeonFloor GetDungeonFloor() const;
 	void CreateEntrances(ADungeonRoom* Room, FRandomStream& Rng);
 	void DoTileReplacement(ADungeonRoom* Room, FRandomStream& Rng);
 	void DoFloorWideTileReplacement(TArray<FRoomReplacements> ReplacementPhases, FRandomStream &Rng);

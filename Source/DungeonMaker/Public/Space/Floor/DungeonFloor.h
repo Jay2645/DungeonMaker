@@ -69,26 +69,89 @@ public:
 	}
 };
 
-/*
-* Helper data type for FDungeonFloor.
-* Represents a row of FFloorRooms.
-*/
 USTRUCT(BlueprintType)
-struct DUNGEONMAKER_API FDungeonFloorRow
+struct DUNGEONMAKER_API FRoomTile
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	const UDungeonTile* Tile;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FFloorRoom Room;
+
+	FRoomTile()
+	{
+		Tile = NULL;
+		Room = FFloorRoom();
+	}
+};
+
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FHighResDungeonFloorRow
 {
 	GENERATED_BODY()
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FFloorRoom> DungeonRooms;
+	TArray<FRoomTile> DungeonTiles;
 
 public:
-	FDungeonFloorRow()
+	FHighResDungeonFloorRow()
+	{
+		DungeonTiles = TArray<FRoomTile>();
+	}
+
+	FHighResDungeonFloorRow(int32 Size)
+	{
+		DungeonTiles = TArray<FRoomTile>();
+		DungeonTiles.SetNum(Size);
+		for (int i = 0; i < DungeonTiles.Num(); i++)
+		{
+			DungeonTiles[i] = FRoomTile();
+		}
+	}
+
+	void Set(FRoomTile Tile)
+	{
+		FFloorRoom room = Tile.Room;
+		for (int i = 0; i < room.MaxRoomSize; i++)
+		{
+			DungeonTiles[room.MaxRoomSize * room.Location.X + i] = Tile;
+		}
+	}
+
+	FRoomTile& Get(int Index)
+	{
+		return DungeonTiles[Index];
+	}
+
+	int32 Num() const
+	{
+		return DungeonTiles.Num();
+	}
+};
+
+/*
+* Helper data type for FDungeonFloor.
+* Represents a row of FFloorRooms.
+*/
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FLowResDungeonFloorRow
+{
+	GENERATED_BODY()
+
+private:
+	UPROPERTY(EditAnywhere)
+	TArray<FFloorRoom> DungeonRooms;
+
+public:
+	FLowResDungeonFloorRow()
 	{
 		DungeonRooms = TArray<FFloorRoom>();
 	}
 
-	FDungeonFloorRow(int Size)
+	FLowResDungeonFloorRow(int Size)
 	{
 		check(Size >= 0);
 
@@ -121,6 +184,63 @@ public:
 	}
 };
 
+USTRUCT(BlueprintType)
+struct DUNGEONMAKER_API FHighResDungeonFloor
+{
+	GENERATED_BODY()
+private:
+	TArray<FHighResDungeonFloorRow> Rows;
+
+public:
+	FHighResDungeonFloor()
+	{
+		Rows = TArray<FHighResDungeonFloorRow>();
+	}
+
+	FHighResDungeonFloor(int32 XSize, int32 YSize)
+	{
+		Rows = TArray<FHighResDungeonFloorRow>();
+		Rows.SetNum(YSize);
+		for (int i = 0; i < Rows.Num(); i++)
+		{
+			Rows[i] = FHighResDungeonFloorRow(XSize);
+		}
+	}
+
+	void Set(FRoomTile Tile)
+	{
+		FFloorRoom room = Tile.Room;
+		for (int i = 0; i < room.MaxRoomSize; i++)
+		{
+			Rows[room.MaxRoomSize * room.Location.Y + i].Set(Tile);
+		}
+	}
+
+	FRoomTile& Get(int X, int Y)
+	{
+		return Rows[Y].Get(X);
+	}
+
+	int XSize() const
+	{
+		if (Rows.Num() == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return Rows[0].Num();
+		}
+	}
+
+	int YSize() const
+	{
+		return Rows.Num();
+	}
+
+	void DrawDungeonFloor(AActor* Context, int32 ZOffset);
+};
+
 
 /*
 * This is a 2D array of FFloorRooms.
@@ -135,37 +255,37 @@ public:
 * will be created once tiles start coming into play.
 */
 USTRUCT(BlueprintType)
-struct DUNGEONMAKER_API FDungeonFloor
+struct DUNGEONMAKER_API FLowResDungeonFloor
 {
 	GENERATED_BODY()
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FDungeonFloorRow> DungeonRooms;
+	TArray<FLowResDungeonFloorRow> DungeonRooms;
 
 public:
-	FDungeonFloor()
+	FLowResDungeonFloor()
 	{
-		DungeonRooms = TArray<FDungeonFloorRow>();
+		DungeonRooms = TArray<FLowResDungeonFloorRow>();
 	}
 
-	FDungeonFloor(int SizeX, int SizeY)
+	FLowResDungeonFloor(int SizeX, int SizeY)
 	{
 		check(SizeX >= 0);
 
 		DungeonRooms.SetNum(SizeY);
 		for (int i = 0; i < DungeonRooms.Num(); i++)
 		{
-			DungeonRooms[i] = FDungeonFloorRow(SizeX);
+			DungeonRooms[i] = FLowResDungeonFloorRow(SizeX);
 		}
 	}
 
-	FDungeonFloorRow& Get(int Index)
+	FLowResDungeonFloorRow& Get(int Index)
 	{
 		return DungeonRooms[Index];
 	}
 
-	FDungeonFloorRow& operator[] (int Index)
+	FLowResDungeonFloorRow& operator[] (int Index)
 	{
 		return Get(Index);
 	}
@@ -213,7 +333,7 @@ public:
 * This is a graph representing an entire dungeon, from
 * start to finish.
 *
-* However, the rooms in this dungeon  have not been
+* However, the rooms in this dungeon have not been
 * broken down into tiles -- instead, this structure
 * just lists the eventual relative position of each room
 * in a 3D array-like structure.
@@ -225,65 +345,71 @@ struct DUNGEONMAKER_API FDungeonSpace
 
 private:
 	UPROPERTY(EditAnywhere)
-		TArray<FDungeonFloor> Floors;
-
+	TArray<FLowResDungeonFloor> LowResFloors;
+	UPROPERTY(EditAnywhere)
+	TArray<FHighResDungeonFloor> HighResFloors;
 public:
 	FDungeonSpace()
 	{
-		Floors = TArray<FDungeonFloor>();
+		LowResFloors = TArray<FLowResDungeonFloor>();
+		HighResFloors = TArray<FHighResDungeonFloor>();
 	}
 
-	FDungeonSpace(TArray<int32> LevelSizes)
+	FDungeonSpace(TArray<int32> LevelSizes, int32 MaxRoomSize)
 	{
-		Floors.SetNum(LevelSizes.Num());
-		for (int i = 0; i < Floors.Num(); i++)
+		LowResFloors = TArray<FLowResDungeonFloor>();
+		HighResFloors = TArray<FHighResDungeonFloor>();
+		LowResFloors.SetNum(LevelSizes.Num());
+		HighResFloors.SetNum(LevelSizes.Num());
+		for (int i = 0; i < LowResFloors.Num(); i++)
 		{
-			Floors[i] = FDungeonFloor(LevelSizes[i], LevelSizes[i]);
+			LowResFloors[i] = FLowResDungeonFloor(LevelSizes[i], LevelSizes[i]);
+			HighResFloors[i] = FHighResDungeonFloor(LevelSizes[i] * MaxRoomSize, LevelSizes[i] * MaxRoomSize);
 		}
 	}
 
-	FDungeonFloor& Get(int32 Index)
+	FLowResDungeonFloor& GetLowRes(int32 Index)
 	{
-		return Floors[Index];
+		return LowResFloors[Index];
 	}
 
-	FFloorRoom& Get(const FIntVector& Location)
+	FHighResDungeonFloor& GetHighRes(int32 Index)
 	{
-		return Get(Location.Z).Get(Location.Y).Get(Location.X);
+		return HighResFloors[Index];
 	}
 
-	FDungeonFloor& operator[] (int Index)
+	FFloorRoom& GetLowRes(const FIntVector& Location)
 	{
-		return Get(Index);
+		return GetLowRes(Location.Z).Get(Location.Y).Get(Location.X);
 	}
 
-	int XSize() const
+	int LowResXSize() const
 	{
-		if (Floors.Num() == 0)
+		if (LowResFloors.Num() == 0)
 		{
 			return 0;
 		}
 		else
 		{
-			return Floors[0].XSize();
+			return LowResFloors[0].XSize();
 		}
 	}
 
-	int YSize() const
+	int LowResYSize() const
 	{
-		if (Floors.Num() == 0)
+		if (LowResFloors.Num() == 0)
 		{
 			return 0;
 		}
 		else
 		{
-			return Floors[0].YSize();
+			return LowResFloors[0].YSize();
 		}
 	}
 
 	int Num() const
 	{
-		return Floors.Num();
+		return LowResFloors.Num();
 	}
 
 	int ZSize() const
@@ -291,20 +417,20 @@ public:
 		return Num();
 	}
 
-	void Set(FFloorRoom Room)
+	void Set(FFloorRoom Room, const UDungeonTile* DefaultTile)
 	{
 		// @TODO: Multi-room support
-		Floors[Room.Location.Z].Set(Room);
-	}
-
-	void SetTileSpace(FFloorRoom Room, FIntVector TileSpaceStartPosition)
-	{
-		Floors[TileSpaceStartPosition.Z].SetTileSpace(Room, TileSpaceStartPosition);
+		LowResFloors[Room.Location.Z].Set(Room);
+		
+		FRoomTile roomTile = FRoomTile();
+		roomTile.Tile = DefaultTile;
+		roomTile.Room = Room;
+		HighResFloors[Room.Location.Z].Set(roomTile);
 	}
 
 	TSet<FIntVector>& GetNeighbors(const FIntVector& Location, bool bGetTightlyCoupled)
 	{
-		FFloorRoom& room = Get(Location);
+		FFloorRoom& room = GetLowRes(Location);
 		if (bGetTightlyCoupled)
 		{
 			return room.NeighboringTightlyCoupledRooms;

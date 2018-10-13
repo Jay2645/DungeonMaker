@@ -22,7 +22,7 @@ void UDungeonFloorManager::InitializeFloorManager(UDungeonSpaceGenerator* SpaceG
 
 void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter)
 {
-	FDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
+	FLowResDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace.GetLowRes(DungeonLevel);
 	for (int x = 0; x < floor.XSize(); x++)
 	{
 		for (int y = 0; y < floor.YSize(); y++)
@@ -67,7 +67,7 @@ void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPa
 
 void UDungeonFloorManager::DrawDebugSpace()
 {
-	FDungeonFloor floor = GetDungeonFloor();
+	FLowResDungeonFloor floor = GetDungeonFloor();
 	for (int x = 0; x < floor.XSize(); x++)
 	{
 		for (int y = 0; y < floor.YSize(); y++)
@@ -110,7 +110,7 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 	TMap<const UDungeonTile*, ASpaceMeshActor*>& CeilingComponentLookup,
 	FRandomStream& Rng)
 {
-	FDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
+	FLowResDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace.GetLowRes(DungeonLevel);
 	for (int x = 0; x < floor.XSize(); x++)
 	{
 		for (int y = 0; y < floor.YSize(); y++)
@@ -190,9 +190,9 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 	return room;
 }
 
-FDungeonFloor UDungeonFloorManager::GetDungeonFloor() const
+FLowResDungeonFloor UDungeonFloorManager::GetDungeonFloor() const
 {
-	return DungeonSpaceGenerator->DungeonSpace[DungeonLevel];
+	return DungeonSpaceGenerator->DungeonSpace.GetLowRes(DungeonLevel);
 }
 
 void UDungeonFloorManager::CreateEntrances(ADungeonRoom* Room, FRandomStream& Rng)

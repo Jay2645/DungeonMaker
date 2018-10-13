@@ -241,13 +241,13 @@ void UNeighboringMissionSpaceHandler::UpdateNeighbors(const FRoomPairing& RoomPa
 		// Link the children
 		if (bIsTightCoupling)
 		{
-			DungeonSpaceGenerator->DungeonSpace[childRoom.Z][childRoom.Y][childRoom.X].NeighboringTightlyCoupledRooms.Add(parentRoom);
-			DungeonSpaceGenerator->DungeonSpace[parentRoom.Z][parentRoom.Y][parentRoom.X].NeighboringTightlyCoupledRooms.Add(childRoom);
+			DungeonSpaceGenerator->DungeonSpace.GetLowRes(childRoom.Z)[childRoom.Y][childRoom.X].NeighboringTightlyCoupledRooms.Add(parentRoom);
+			DungeonSpaceGenerator->DungeonSpace.GetLowRes(parentRoom.Z)[parentRoom.Y][parentRoom.X].NeighboringTightlyCoupledRooms.Add(childRoom);
 		}
 		else
 		{
-			DungeonSpaceGenerator->DungeonSpace[childRoom.Z][childRoom.Y][childRoom.X].NeighboringRooms.Add(parentRoom);
-			DungeonSpaceGenerator->DungeonSpace[parentRoom.Z][parentRoom.Y][parentRoom.X].NeighboringRooms.Add(childRoom);
+			DungeonSpaceGenerator->DungeonSpace.GetLowRes(childRoom.Z)[childRoom.Y][childRoom.X].NeighboringRooms.Add(parentRoom);
+			DungeonSpaceGenerator->DungeonSpace.GetLowRes(parentRoom.Z)[parentRoom.Y][parentRoom.X].NeighboringRooms.Add(childRoom);
 		}
 	}
 }
