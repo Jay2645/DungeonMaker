@@ -168,6 +168,9 @@ public:
 
 	void DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntVector>> TileLocations,
 		FRandomStream& Rng);
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	FDungeonSpace& GetDungeon() const;
 	
 	// Gets the transform for a tile from that tile's position in local space ((0,0,0) to Room Bounds).
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms|Tiles")

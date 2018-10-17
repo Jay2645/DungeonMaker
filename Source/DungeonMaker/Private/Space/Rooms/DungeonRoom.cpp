@@ -341,6 +341,11 @@ void ADungeonRoom::DetermineGroundScatter(TMap<const UDungeonTile*, TArray<FIntV
 	GroundScatter->DetermineGroundScatter(TileLocations, Rng, this);
 }
 
+FDungeonSpace& ADungeonRoom::GetDungeon() const
+{
+	return DungeonSpace->DungeonSpace;
+}
+
 FTransform ADungeonRoom::GetTileTransform(const FIntVector& LocalLocation) const
 {
 	FIntVector worldLocation = GetRoomTileSpacePosition() + LocalLocation;
