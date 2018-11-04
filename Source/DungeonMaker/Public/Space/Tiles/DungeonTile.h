@@ -27,7 +27,8 @@ UENUM(BlueprintType)
 enum class ETileType : uint8
 {
 	Floor,
-	Wall
+	Wall,
+	Entrance
 };
 
 USTRUCT(BlueprintType)

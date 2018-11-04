@@ -98,7 +98,6 @@ UDungeonMakerGraph* UDungeonMakerNode::GetGraph()
 	return Cast<UDungeonMakerGraph>(GetOuter());
 }
 
-
 FLinearColor UDungeonMakerNode::GetBackgroundColor() const
 {
 	if (NodeType == NULL)
@@ -113,6 +112,7 @@ FLinearColor UDungeonMakerNode::GetBackgroundColor() const
 	{
 		return DefaultBackgroundColor;
 	}
+	return FLinearColor(1.0f, 0.0f, 0.0f, 1.0f);
 }
 
 #undef LOCTEXT_NAMESPACE

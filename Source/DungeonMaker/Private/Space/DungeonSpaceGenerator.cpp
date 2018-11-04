@@ -60,33 +60,30 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	}
 	else
 	{
-		for (ADungeonRoom* room : MissionRooms)
+		TSet<const UDungeonTile*> roomTiles = DungeonSpace.FindAllTiles();
+		for (const UDungeonTile* tile : roomTiles)
 		{
-			TSet<const UDungeonTile*> roomTiles = room->FindAllTiles();
-			for (const UDungeonTile* tile : roomTiles)
+			if (!FloorComponentLookup.Contains(tile) && tile->GroundMesh.Num() > 0)
 			{
-				if (!FloorComponentLookup.Contains(tile) && tile->GroundMesh.Num() > 0)
-				{
-					// Otherwise, create a new InstancedStaticMeshComponent
-					FString componentName = tile->TileID.ToString() + " Floor";
-					UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
+				// Otherwise, create a new InstancedStaticMeshComponent
+				FString componentName = tile->TileID.ToString() + " Floor";
+				UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
 
-					ASpaceMeshActor* floorMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
-					floorMeshComponent->Rename(*componentName);
-					floorMeshComponent->SetStaticMesh(tile, tile->GroundMesh);
-					FloorComponentLookup.Add(tile, floorMeshComponent);
-				}
-				if (!CeilingComponentLookup.Contains(tile) && tile->CeilingMesh.Num() > 0)
-				{
-					// Otherwise, create a new InstancedStaticMeshComponent
-					FString componentName = tile->TileID.ToString() + " Ceiling";
-					UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
+				ASpaceMeshActor* floorMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
+				floorMeshComponent->Rename(*componentName);
+				floorMeshComponent->SetStaticMesh(tile, tile->GroundMesh);
+				FloorComponentLookup.Add(tile, floorMeshComponent);
+			}
+			if (!CeilingComponentLookup.Contains(tile) && tile->CeilingMesh.Num() > 0)
+			{
+				// Otherwise, create a new InstancedStaticMeshComponent
+				FString componentName = tile->TileID.ToString() + " Ceiling";
+				UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
 
-					ASpaceMeshActor* ceilingMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
-					ceilingMeshComponent->Rename(*componentName);
-					ceilingMeshComponent->SetStaticMesh(tile, tile->CeilingMesh);
-					CeilingComponentLookup.Add(tile, ceilingMeshComponent);
-				}
+				ASpaceMeshActor* ceilingMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
+				ceilingMeshComponent->Rename(*componentName);
+				ceilingMeshComponent->SetStaticMesh(tile, tile->CeilingMesh);
+				CeilingComponentLookup.Add(tile, ceilingMeshComponent);
 			}
 		}
 		UE_LOG(LogSpaceGen, Log, TEXT("Generated %d ceiling meshes and %d floor meshes for %d rooms."), CeilingComponentLookup.Num(), FloorComponentLookup.Num(), MissionRooms.Num());
@@ -110,6 +107,10 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		}
 	}
 
+	for (int i = 0; i < DungeonSpace.ZSize(); i++)
+	{
+		UE_LOG(LogSpaceGen, Log, TEXT("Dungeon Level %d Tiles:\n%s"), i, *DungeonSpace.GetHighRes(i).ToString());
+	}
 	return true;
 }
 
@@ -163,32 +164,27 @@ void UDungeonSpaceGenerator::SetRoom(FFloorRoom Room)
 	DungeonSpace.Set(Room, DefaultFloorTile);
 }
 
-FFloorRoom UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates)
+void UDungeonSpaceGenerator::SetTile(const FIntVector& Location, const UDungeonTile* Tile)
 {
-	if (!IsLocationValid(FloorSpaceCoordinates))
-	{
-		return FFloorRoom();
-	}
+	DungeonSpace.SetTile(Location, Tile);
+}
+
+const UDungeonTile* UDungeonSpaceGenerator::GetTile(const FIntVector& Location)
+{
+	return DungeonSpace.GetTile(Location);
+}
+
+FFloorRoom& UDungeonSpaceGenerator::GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates)
+{
+	checkf(IsLocationValid(FloorSpaceCoordinates), TEXT("Passed coordinates %s were invalid!"), *FloorSpaceCoordinates.ToString());
 	return DungeonSpace.GetLowRes(FloorSpaceCoordinates.Z)[FloorSpaceCoordinates.Y][FloorSpaceCoordinates.X];
 }
 
-FFloorRoom UDungeonSpaceGenerator::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
+FFloorRoom& UDungeonSpaceGenerator::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
 {
 	// Convert to floor space
-	FIntVector floorSpaceLocation = ConvertToFloorSpace(TileSpaceLocation);
+	FIntVector floorSpaceLocation = DungeonSpace.ConvertHighResLocationToLowRes(TileSpaceLocation);
 	return GetRoomFromFloorCoordinates(floorSpaceLocation);
-}
-
-FIntVector UDungeonSpaceGenerator::ConvertToFloorSpace(const FIntVector& TileSpaceVector) const
-{
-	// Floor space is found by dividing by how big each room is, then rounding down
-	// As an example, if the room is 24 tiles long and the location is 22x22, it
-	// would return the room located at 0, 0 (which stretches from (0,0) to (23, 23)).
-	FIntVector floorSpaceVector = TileSpaceVector;
-	floorSpaceVector.X = FMath::FloorToInt(TileSpaceVector.X / (float)RoomSize);
-	floorSpaceVector.Y = FMath::FloorToInt(TileSpaceVector.Y / (float)RoomSize);
-	// Z is left alone -- it's assumed that Z in tile space and floor space are the same
-	return floorSpaceVector;
 }
 
 void UDungeonSpaceGenerator::DrawDebugSpace()

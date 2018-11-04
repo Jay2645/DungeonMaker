@@ -24,7 +24,7 @@ protected:
 public:
 	virtual void DoTileReplacementPreprocessing(FRandomStream& Rng) override;
 
-	bool PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount = true) const;
+	bool PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount = true);
 	bool MakeSection(FIntVector Location, const UDungeonTile* DefaultTile, bool bForceGenerate = false);
 protected:
 	bool RecursiveBacktracker(const FIntVector& Start, const UDungeonTile* DefaultTile,

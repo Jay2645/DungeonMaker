@@ -40,14 +40,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Graph Node")
 	TArray<UDungeonMakerNode*> ChildrenNodes;
 
-#if WITH_EDITOR
 	UPROPERTY()
 	FLinearColor DefaultBackgroundColor;
 	UPROPERTY()
 	FLinearColor TightlyCoupledBackgroundColor;
 
 	FLinearColor GetBackgroundColor() const;
-#endif
 
 	//////////////////////////////////////////////////////////////////////////
 	// ufunctions

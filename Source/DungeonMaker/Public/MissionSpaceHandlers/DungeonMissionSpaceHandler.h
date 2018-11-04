@@ -58,7 +58,8 @@ public:
 
 	FMissionSpaceHelper() : Rng(*(new FRandomStream()))
 	{
-		// Empty
+		UE_LOG(LogMissionGen, Log, TEXT("Default MissionSpaceHelper constructor!"));
+		Rng.Initialize(0);
 	}
 
 	FMissionSpaceHelper(FRandomStream& RandomNumbers, FIntVector StartLocation) : Rng(RandomNumbers)

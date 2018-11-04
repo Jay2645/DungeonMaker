@@ -30,6 +30,8 @@ public:
 	const UDungeonTile* DefaultWallTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	const UDungeonTile* DefaultEntranceTile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
+	const UDungeonTile* DefaultExitTile;
 
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dungeon")
@@ -83,10 +85,11 @@ public:
 	bool IsLocationValid(FIntVector FloorSpaceCoordinates);
 	TArray<FFloorRoom> GetAllNeighbors(FFloorRoom Room);
 	void SetRoom(FFloorRoom Room);
+	void SetTile(const FIntVector& Location, const UDungeonTile* Tile);
 
-	FFloorRoom GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates);
-	FFloorRoom GetRoomFromTileSpace(const FIntVector& TileSpaceLocation);
-	FIntVector ConvertToFloorSpace(const FIntVector& TileSpaceVector) const;
+	const UDungeonTile* GetTile(const FIntVector& Location);
+	FFloorRoom& GetRoomFromFloorCoordinates(const FIntVector& FloorSpaceCoordinates);
+	FFloorRoom& GetRoomFromTileSpace(const FIntVector& TileSpaceLocation);
 
 	void DrawDebugSpace();
 };

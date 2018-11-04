@@ -1,6 +1,8 @@
 #include "TrialRoomBase.h"
 #include "TrapTrigger.h"
 #include "Trap.h"
+#include "DungeonSpaceGenerator.h"
+#include "RoomTileComponent.h"
 
 void ATrialRoomBase::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -20,6 +22,7 @@ void ATrialRoomBase::OnBeginTriggerOverlap(UPrimitiveComponent* OverlappedCompon
 void ATrialRoomBase::DoTileReplacementPreprocessing(FRandomStream& Rng)
 {
 	ADungeonRoom::DoTileReplacementPreprocessing(Rng);
+
 	TArray<FRoomReplacements> trapTileReplacements;
 
 	if (TriggerTileReplacements.Num() > 0)
@@ -43,7 +46,7 @@ void ATrialRoomBase::DoTileReplacementPreprocessing(FRandomStream& Rng)
 		trapTileReplacements.Add(traps);
 	}
 
-	RoomReplacementPhases.Insert(trapTileReplacements, 0);
+	RoomTiles->AddReplacementPhases(trapTileReplacements);
 }
 
 TArray<AActor*> ATrialRoomBase::CreateTriggers_Implementation(FRandomStream Rng)
@@ -51,10 +54,10 @@ TArray<AActor*> ATrialRoomBase::CreateTriggers_Implementation(FRandomStream Rng)
 	TArray<AActor*> triggers;
 	for (auto& kvp : TileTriggerObjects)
 	{
-		TArray<FIntVector> tileLocations = GetTileLocations(kvp.Key);
-		for (int i = 0; i < tileLocations.Num(); i++)
+		TSet<FIntVector> tileLocations = DungeonSpace->DungeonSpace.GetTileLocations(kvp.Key);
+		for (FIntVector tileLocation : tileLocations)
 		{
-			AActor* triggerActor = GroundScatter->SpawnScatterActor(this, tileLocations[i], kvp.Value, Rng);
+			AActor* triggerActor = GroundScatter->SpawnScatterActor(this, tileLocation, kvp.Value, Rng);
 			if (triggerActor == NULL)
 			{
 				continue;
@@ -68,6 +71,7 @@ TArray<AActor*> ATrialRoomBase::CreateTriggers_Implementation(FRandomStream Rng)
 		}
 	}
 	TriggerList = triggers;
+	UE_LOG(LogSpaceGen, Log, TEXT("%s (%s) created %d triggers."), *GetName(), *GetClass()->GetName(), triggers.Num());
 	return triggers;
 }
 
@@ -76,10 +80,10 @@ TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
 	TArray<AActor*> traps;
 	for (auto& kvp : TileTrapObjects)
 	{
-		TArray<FIntVector> tileLocations = GetTileLocations(kvp.Key);
-		for (int i = 0; i < tileLocations.Num(); i++)
+		TSet<FIntVector> tileLocations = DungeonSpace->DungeonSpace.GetTileLocations(kvp.Key);
+		for (FIntVector tileLocation : tileLocations)
 		{
-			AActor* trapActor = GroundScatter->SpawnScatterActor(this, tileLocations[i], kvp.Value, Rng);
+			AActor* trapActor = GroundScatter->SpawnScatterActor(this, tileLocation, kvp.Value, Rng);
 			if (trapActor == NULL)
 			{
 				continue;
@@ -100,5 +104,6 @@ TArray<AActor*> ATrialRoomBase::CreateTraps_Implementation(FRandomStream Rng)
 		}
 	}
 	TrapList = traps;
+	UE_LOG(LogSpaceGen, Log, TEXT("%s (%s) created %d traps."), *GetName(), *GetClass()->GetName(), traps.Num());
 	return traps;
 }

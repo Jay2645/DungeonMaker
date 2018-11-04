@@ -9,6 +9,7 @@
 #include "../Tiles/RoomReplacementPattern.h"
 #include "DungeonMissionNode.h"
 #include "DungeonFloor.h"
+#include "SpaceMeshActor.h"
 #include "GroundScatterManager.h"
 #include "DungeonFloorManager.generated.h"
 
@@ -38,6 +39,8 @@ public:
 	const UDungeonTile* DefaultWallTile;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	const UDungeonTile* DefaultEntranceTile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	const UDungeonTile* DefaultExitTile;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomReplacements> PreGenerationRoomReplacementPhases;

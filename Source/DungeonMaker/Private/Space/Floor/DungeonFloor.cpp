@@ -3,8 +3,16 @@
 #include "DungeonFloor.h"
 #include <DrawDebugHelpers.h>
 
+const float UDungeonTile::TILE_SIZE = 500.0f;
+
 void FLowResDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 {
+	if (Context == NULL)
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Can't draw without a context actor provided!"));
+		return;
+	}
+
 	for (int x = 0; x < XSize(); x++)
 	{
 		for (int y = 0; y < YSize(); y++)
@@ -57,6 +65,12 @@ void FLowResDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 
 void FHighResDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 {
+	if (Context == NULL)
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Can't draw without a context actor provided!"));
+		return;
+	}
+
 	TMap<FIntVector, FColor> randomColorLookup;
 	for (int x = 0; x < XSize(); x++)
 	{
@@ -68,7 +82,11 @@ void FHighResDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 				continue;
 			}
 
-			FIntVector location = tile.Room.Location;
+			FIntVector location = tile.RoomLocation;
+			if (location.X < 0 || location.Y < 0 || location.Z < 0)
+			{
+				continue;
+			}
 			FColor randomColor;
 			if (randomColorLookup.Contains(location))
 			{
@@ -98,4 +116,148 @@ void FHighResDungeonFloor::DrawDungeonFloor(AActor* Context, int32 ZOffset)
 			DrawDebugLine(Context->GetWorld(), startingLocation, endingLocation, randomColor, true);
 		}
 	}
+}
+
+FString FHighResDungeonFloor::RoomToString(ADungeonRoom* Room, TArray<FLowResDungeonFloor> LowResFloors)
+{
+	if (Room == NULL)
+	{
+		UE_LOG(LogSpaceGen, Warning, TEXT("Did not specify room to create string from!"));
+		return "Not a valid room!";
+	}
+
+	FString output = "";
+	FString lastOutput = "";
+	for (int i = 0; i < Rows.Num(); i++)
+	{
+		if (lastOutput != "")
+		{
+			output += "\n";
+		}
+		lastOutput = Rows[i].RoomToString(Room, LowResFloors);
+		output += lastOutput;
+	}
+	if (output == "")
+	{
+		UE_LOG(LogSpaceGen, Warning, TEXT("Could not find room %s in dungeon."), *Room->GetName());
+		output = "Room not found!";
+	}
+	return output;
+}
+
+FString FDungeonSpace::RoomToString(ADungeonRoom* Room)
+{
+	if (Room == NULL)
+	{
+		return "No room specified!";
+	}
+	return HighResFloors[Room->GetRoomLocation().Z].RoomToString(Room, LowResFloors);
+}
+
+TSet<const UDungeonTile*> FHighResDungeonFloorRow::FindAllTiles(TArray<FLowResDungeonFloor>& LowResFloors, ADungeonRoom* Room /*= NULL*/)
+{
+	TSet<const UDungeonTile*> tiles;
+	for (int i = 0; i < DungeonTiles.Num(); i++)
+	{
+		FIntVector roomSpace = DungeonTiles[i].RoomLocation;
+		if (roomSpace.X < 0 || roomSpace.Y < 0 || roomSpace.Z < 0)
+		{
+			continue;
+		}
+		if (Room != NULL && LowResFloors[roomSpace.Z].Get(roomSpace.Y).Get(roomSpace.X).SpawnedRoom != Room)
+		{
+			continue;
+		}
+		if (DungeonTiles[i].Tile != NULL)
+		{
+			tiles.Add(DungeonTiles[i].Tile);
+		}
+	}
+	return tiles;
+}
+
+TSet<FIntVector> FHighResDungeonFloorRow::GetTileLocations(const ETileType& TileType, int32 Y, int32 Z, TArray<FLowResDungeonFloor>& LowResFloors, ADungeonRoom* Room /*= NULL*/)
+{
+	TSet<FIntVector> locations;
+	for (int x = 0; x < DungeonTiles.Num(); x++)
+	{
+		FIntVector roomSpace = DungeonTiles[x].RoomLocation;
+		if (roomSpace.X < 0 || roomSpace.Y < 0 || roomSpace.Z < 0)
+		{
+			continue;
+		}
+		if (Room != NULL && Room != LowResFloors[roomSpace.Z].Get(roomSpace.Y).Get(roomSpace.X).SpawnedRoom)
+		{
+			continue;
+		}
+		if (DungeonTiles[x].Tile == NULL)
+		{
+			continue;
+		}
+		if (DungeonTiles[x].Tile->TileType == TileType)
+		{
+			locations.Add(FIntVector(x, Y, Z));
+		}
+	}
+	return locations;
+}
+
+TSet<FIntVector> FHighResDungeonFloorRow::GetTileLocations(const UDungeonTile* Tile, int32 Y, int32 Z, TArray<FLowResDungeonFloor>& LowResFloors, ADungeonRoom* Room /*= NULL*/)
+{
+	TSet<FIntVector> locations;
+	for (int x = 0; x < DungeonTiles.Num(); x++)
+	{
+		FIntVector roomSpace = DungeonTiles[x].RoomLocation;
+		if (roomSpace.X < 0 || roomSpace.Y < 0 || roomSpace.Z < 0)
+		{
+			continue;
+		}
+		if (Room != NULL && Room != LowResFloors[roomSpace.Z].Get(roomSpace.Y).Get(roomSpace.X).SpawnedRoom)
+		{
+			continue;
+		}
+		if (DungeonTiles[x].Tile == Tile)
+		{
+			locations.Add(FIntVector(x, Y, Z));
+		}
+	}
+	return locations;
+}
+
+FString FHighResDungeonFloorRow::RoomToString(ADungeonRoom* Room, TArray<FLowResDungeonFloor> LowResFloors)
+{
+	if (Room == NULL)
+	{
+		UE_LOG(LogSpaceGen, Warning, TEXT("Did not specify room to create string from!"));
+		return "Not a valid room!";
+	}
+
+	FString output = "";
+	for (int i = 0; i < DungeonTiles.Num(); i++)
+	{
+		FIntVector roomSpace = DungeonTiles[i].RoomLocation;
+		if (roomSpace.X < 0 || roomSpace.Y < 0 || roomSpace.Z < 0)
+		{
+			continue;
+		}
+
+		ADungeonRoom* spawnedRoom = LowResFloors[roomSpace.Z].Get(roomSpace.Y).Get(roomSpace.X).SpawnedRoom;
+		if (spawnedRoom != Room)
+		{
+			if (spawnedRoom == NULL)
+			{
+				UE_LOG(LogSpaceGen, Warning, TEXT("Found an unspawned room at (%d, %d, %d)!"), roomSpace.X, roomSpace.Y, roomSpace.Z);
+			}
+			continue;
+		}
+		else if (DungeonTiles[i].Tile == NULL)
+		{
+			output += 'X';
+		}
+		else
+		{
+			output += DungeonTiles[i].Tile->TileID.ToString();
+		}
+	}
+	return output;
 }

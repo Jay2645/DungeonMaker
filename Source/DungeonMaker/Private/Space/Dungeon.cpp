@@ -28,15 +28,15 @@ TSet<FIntVector> ADungeon::GetAllTilesOfType(ETileType Type) const
 void ADungeon::BeginPlay()
 {
 	Super::BeginPlay();
-	FRandomStream rng;
+	FRandomStream rng = FRandomStream();
 	if (bChooseRandomSeedAtRuntime)
 	{
 		FDateTime now = FDateTime::UtcNow();
-		rng = FRandomStream(now.ToUnixTimestamp());
+		rng.Initialize(now.ToUnixTimestamp());
 	}
 	else
 	{
-		rng = FRandomStream(Seed);
+		rng.Initialize(Seed);
 	}
 	UE_LOG(LogMissionGen, Log, TEXT("Creating dungeon out of seed %d."), Seed);
 	bool bSuccessfullyMadeDungeon = false;

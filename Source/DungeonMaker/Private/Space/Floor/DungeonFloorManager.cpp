@@ -3,6 +3,7 @@
 #include "DungeonFloorManager.h"
 #include "DungeonSpaceGenerator.h"
 #include "DungeonMissionSymbol.h"
+#include "Components/RoomMeshComponent.h"
 
 void UDungeonFloorManager::InitializeFloorManager(UDungeonSpaceGenerator* SpaceGenerator, int32 Level)
 {
@@ -16,6 +17,7 @@ void UDungeonFloorManager::InitializeFloorManager(UDungeonSpaceGenerator* SpaceG
 	DefaultFloorTile = DungeonSpaceGenerator->DefaultFloorTile;
 	DefaultWallTile = DungeonSpaceGenerator->DefaultWallTile;
 	DefaultEntranceTile = DungeonSpaceGenerator->DefaultEntranceTile;
+	DefaultExitTile = DungeonSpaceGenerator->DefaultExitTile;
 
 	UnresolvedHooks.Empty();
 }
@@ -68,42 +70,17 @@ void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPa
 void UDungeonFloorManager::DrawDebugSpace()
 {
 	FLowResDungeonFloor floor = GetDungeonFloor();
-	for (int x = 0; x < floor.XSize(); x++)
-	{
-		for (int y = 0; y < floor.YSize(); y++)
-		{
-			if (floor[y][x].SpawnedRoom == NULL)
-			{
-				continue;
-			}
-			floor[y][x].SpawnedRoom->DrawDebugRoom();
-		}
-	}
+	floor.DrawDungeonFloor(GetOwner(), DungeonLevel);
 }
 
 const UDungeonTile* UDungeonFloorManager::GetTileFromTileSpace(FIntVector TileSpaceLocation)
 {
-	FIntVector floorSpaceLocation = DungeonSpaceGenerator->ConvertToFloorSpace(TileSpaceLocation);
-	FFloorRoom room = DungeonSpaceGenerator->GetRoomFromFloorCoordinates(floorSpaceLocation);
-	if (room.SpawnedRoom == NULL)
-	{
-		return NULL;
-	}
-	FIntVector localTileOffset = TileSpaceLocation - (floorSpaceLocation * RoomSize);
-	return room.SpawnedRoom->GetTile(localTileOffset.X, localTileOffset.Y);
+	return DungeonSpaceGenerator->GetTile(TileSpaceLocation);
 }
 
 void UDungeonFloorManager::UpdateTileFromTileSpace(FIntVector TileSpaceLocation, const UDungeonTile* NewTile)
 {
-	FIntVector floorSpaceLocation = DungeonSpaceGenerator->ConvertToFloorSpace(TileSpaceLocation);
-	FFloorRoom room = DungeonSpaceGenerator->GetRoomFromFloorCoordinates(floorSpaceLocation);
-	if (room.SpawnedRoom == NULL)
-	{
-		UE_LOG(LogSpaceGen, Warning, TEXT("Tile has not been placed yet at (%d, %d, %d)."), TileSpaceLocation.X, TileSpaceLocation.Y, TileSpaceLocation.Z);
-		return;
-	}
-	FIntVector localTileOffset = TileSpaceLocation - floorSpaceLocation;
-	room.SpawnedRoom->SetTileGridCoordinates(localTileOffset, NewTile);
+	DungeonSpaceGenerator->SetTile(TileSpaceLocation, NewTile);
 }
 
 void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshActor*>& FloorComponentLookup,
@@ -120,8 +97,9 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 				// This room is empty
 				continue;
 			}
-			floor[y][x].SpawnedRoom->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
+			floor[y][x].SpawnedRoom->GetMeshComponent()->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
 			floor[y][x].SpawnedRoom->OnRoomGenerationComplete();
+			UE_LOG(LogSpaceGen, Log, TEXT("Generated room %d of %d."), x * floor.YSize() + y + 1, floor.XSize() * floor.YSize());
 		}
 	}
 }
@@ -138,19 +116,7 @@ int UDungeonFloorManager::YSize() const
 
 TSet<FIntVector> UDungeonFloorManager::GetAllTilesOfType(ETileType Type)
 {
-	TSet<FIntVector> tileTypes;
-	for (int x = 0; x < XSize(); x++)
-	{
-		for (int y = 0; y < YSize(); y++)
-		{
-			FFloorRoom room = GetRoomFromTileSpace(FIntVector(x, y, DungeonLevel));
-			if (room.SpawnedRoom != NULL)
-			{
-				tileTypes.Append(room.SpawnedRoom->GetAllTilesOfType(Type));
-			}
-		}
-	}
-	return tileTypes;
+	return DungeonSpaceGenerator->DungeonSpace.GetTileLocations(Type);
 }
 
 FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(const FIntVector& TileSpaceLocation)
@@ -178,9 +144,9 @@ ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomSt
 	roomLocation.Z = Room.Location.Z;
 
 	UE_LOG(LogSpaceGen, Log, TEXT("Spawned in room for %s."), *roomName);
-	room->InitializeRoom(DungeonSpaceGenerator, DefaultFloorTile, DefaultWallTile, DefaultEntranceTile,
-		this, RoomSize, RoomSize, roomLocation.X, roomLocation.Y, roomLocation.Z,
-		Room, Rng);
+
+	room->InitializeRoom(DungeonSpaceGenerator, this, DefaultFloorTile, DefaultWallTile, DefaultEntranceTile, DefaultExitTile,
+		FIntVector(RoomSize, RoomSize, 1), roomLocation, Room, Rng);
 
 	if (room->IsChangedAtRuntime())
 	{
@@ -197,7 +163,7 @@ FLowResDungeonFloor UDungeonFloorManager::GetDungeonFloor() const
 
 void UDungeonFloorManager::CreateEntrances(ADungeonRoom* Room, FRandomStream& Rng)
 {
-	Room->TryToPlaceEntrances(DefaultEntranceTile, Rng);
+	Room->PlaceNeighbors(Rng);
 }
 
 void UDungeonFloorManager::DoTileReplacement(ADungeonRoom* Room, FRandomStream& Rng)
@@ -214,7 +180,7 @@ void UDungeonFloorManager::DoFloorWideTileReplacement(TArray<FRoomReplacements> 
 		while (replacementPatterns.Num() > 0)
 		{
 			int32 rngIndex = Rng.RandRange(0, replacementPatterns.Num() - 1);
-			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(this, Rng))
+			if (!replacementPatterns[rngIndex]->FindAndReplaceFloor(DungeonSpaceGenerator->DungeonSpace, DungeonLevel, Rng))
 			{
 				// Couldn't find a replacement in this room
 				replacementPatterns.RemoveAt(rngIndex);

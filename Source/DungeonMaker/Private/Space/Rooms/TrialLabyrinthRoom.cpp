@@ -2,27 +2,31 @@
 
 void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 {
-	if (EntranceLocations.Num() == 0)
+	FDungeonSpace& dungeon = GetDungeon();
+	TSet<FIntVector> entranceLocations = dungeon.GetTileLocations(ETileType::Entrance, this);
+
+	if (entranceLocations.Num() == 0)
 	{
-		UE_LOG(LogSpaceGen, Error, TEXT("Room had no entrance!"));
+		UE_LOG(LogSpaceGen, Error, TEXT("%s had no entrance to create a labyrinth!"), *GetName());
 		return;
 	}
 
 	if (XSize() <= 3 || YSize() <= 3)
 	{
 		// Not big enough to make a maze
+		UE_LOG(LogSpaceGen, Error, TEXT("%s is too small to be a labyrinth!"), *GetName());
 		return;
 	}
 	// We're technically big enough to be a maze, albeit we may not be a very fun one
 
 	// This stores the tile used as the "default" tile for this room
 	// The walls may already be set, but (1, 1) is guaranteed to become floor
-	const UDungeonTile* defaultTile = GetTile(1, 1);
+	const UDungeonTile* defaultTile = dungeon.GetTile(FIntVector(GetRoomLocation() + FIntVector(1, 1, 0)));
 
 	// Maze is made using a recursive backtracker
 	TArray<FIntVector> cellPositions;
 	// Find the list of entrances
-	TArray<FIntVector> entrances = EntranceLocations.Array();
+	TArray<FIntVector> entrances = entranceLocations.Array();
 	TArray<FIntVector> entranceTileLocations;
 	for (int i = 0; i < entrances.Num(); i++)
 	{
@@ -39,7 +43,7 @@ void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 				{
 					continue;
 				}
-				const UDungeonTile* neighborTile = GetTile(x, y);
+				const UDungeonTile* neighborTile = dungeon.GetTile(FIntVector(x, y, entrances[i].Z));
 				if (neighborTile != defaultTile)
 				{
 					continue;
@@ -66,36 +70,40 @@ void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 	MakeSection(entranceTileLocations[0], defaultTile, true);
 	RecursiveBacktracker(entranceTileLocations[0], defaultTile, Rng);
 
-	for (FIntVector location : EntranceLocations)
+	for (FIntVector location : entranceLocations)
 	{
 		for (int x = -1; x <= 1; x++)
 		{
 			for (int y = -1; y <= 1; y++)
 			{
-				const UDungeonTile* tile = GetTile(location.X + x, location.Y + y);
+				const UDungeonTile* tile = dungeon.GetTile(FIntVector(location.X + x, location.Y + y, 0));
 				if (tile == defaultTile)
 				{
-					Set(location.X + x, location.Y + y, MazeGroundTile);
+					dungeon.SetTile(FIntVector(location.X + x, location.Y + y, 0), MazeGroundTile);
 				}
 			}
 		}
 	}
 }
 
-bool ATrialLabyrinthRoom::PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount) const
+bool ATrialLabyrinthRoom::PositionIsValid(FIntVector Position, const UDungeonTile* DefaultTile, bool bCheckNeighborCount)
 {
 	// Check to see if a position touches exactly one existing passage
 	if (FloorPositions.Contains(Position))
 	{
 		return false;
 	}
-	if (Position.X < 0 || Position.Y < 0 ||
-		Position.X >= XSize() || Position.Y >= YSize())
+
+	FIntVector roomMinExtent = GetRoomLocation();
+	FIntVector roomMaxExtent = roomMinExtent + GetRoomSize();
+
+	if (Position.X < roomMinExtent.X || Position.Y < roomMinExtent.Y ||
+		Position.X >= roomMaxExtent.X || Position.Y >= roomMaxExtent.Y)
 	{
 		return false;
 	}
 
-	const UDungeonTile* tile = GetTile(Position.X, Position.Y);
+	const UDungeonTile* tile = GetDungeon().GetTile(Position);
 	if (tile != DefaultTile)
 	{
 		// Not available for carving
@@ -126,7 +134,7 @@ bool ATrialLabyrinthRoom::MakeSection(FIntVector Location, const UDungeonTile* D
 		return false;
 	}
 	FloorPositions.Add(Location);
-	Set(Location.X, Location.Y, MazeGroundTile);
+	DungeonSpace->DungeonSpace.SetTile(Location, MazeGroundTile);
 	return true;
 }
 
@@ -181,7 +189,7 @@ bool ATrialLabyrinthRoom::RecursiveBacktrackerSearch(const FIntVector& Start, co
 		return false;
 	}
 
-	const UDungeonTile* tile = GetTile(Start.X, Start.Y);
+	const UDungeonTile* tile = GetDungeon().GetTile(Start);
 	if (tile == NULL)
 	{
 		// Wall tile
