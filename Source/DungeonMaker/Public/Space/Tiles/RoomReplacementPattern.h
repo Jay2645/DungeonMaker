@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
+#include "GameplayTagAssetInterface.h"
 
 #include "DungeonTile.h"
 #include "DungeonFloor.h"
@@ -203,7 +204,7 @@ public:
  * 
  */
 UCLASS(BlueprintType)
-class DUNGEONMAKER_API URoomReplacementPattern : public UDataAsset
+class DUNGEONMAKER_API URoomReplacementPattern : public UDataAsset, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -254,6 +255,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generation|Rooms|Tiles|Replacement")
 	float GetActualSelectionChance(ADungeonRoom* InputRoom) const;
+
+	/**
+	* Get any owned gameplay tags on the asset
+	*
+	* @param OutTags	[OUT] Set of tags on the asset
+	*/
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override
+	{
+		TagContainer = PatternTags;
+	}
 
 private:
 	bool FindAndReplaceByLocation(const FIntVector& RoomTileSpaceLocation, const FIntVector& RoomSize, FDungeonSpace& DungeonSpace, FRandomStream &Rng);

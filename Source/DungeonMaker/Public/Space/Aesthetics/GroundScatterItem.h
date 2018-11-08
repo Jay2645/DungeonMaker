@@ -170,7 +170,7 @@ struct FGroundScatterSet
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TArray<const UGroundScatterItem*> GroundScatter;
+	TArray<const UGroundScatterItem*> GroundScatter;
 };
 
 USTRUCT(BlueprintType)

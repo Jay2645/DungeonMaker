@@ -7,6 +7,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/BoxComponent.h"
 #include "GameplayTagContainer.h"
+#include "GameplayTagAssetInterface.h"
 
 #include "../Mission/DungeonMissionSymbol.h"
 #include "DungeonFloorManager.h"
@@ -20,7 +21,7 @@ class URoomTileComponent;
 class UDungeonTile;
 
 UCLASS(Abstract, Blueprintable, HideCategories = (Physics, Rendering, Collision, Tags, Activation, Cooking, Shape, Navigation, Input))
-class DUNGEONMAKER_API ADungeonRoom : public AActor
+class DUNGEONMAKER_API ADungeonRoom : public AActor, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -221,6 +222,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	bool IsChildOf(ADungeonRoom* ParentRoom) const;
+
+	/**
+	* Get any owned gameplay tags on the asset
+	*
+	* @param OutTags	[OUT] Set of tags on the asset
+	*/
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override
+	{
+		TagContainer = RoomTags;
+	}
 
 protected:
 	virtual void DoTileReplacementPreprocessing(FRandomStream& Rng);
