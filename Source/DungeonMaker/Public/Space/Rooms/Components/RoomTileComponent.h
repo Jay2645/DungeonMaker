@@ -32,7 +32,11 @@ public:
 
 	// The max height of this room
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	uint8 MaxRoomHeight;
+		uint8 MaxRoomHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	uint8 DoorYOffset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	uint8 DoorXOffset;
 	// The minimum size this room can possibly be
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	FIntVector MinRoomSize;

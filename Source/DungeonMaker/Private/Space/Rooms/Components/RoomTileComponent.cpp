@@ -128,10 +128,10 @@ TArray<ADungeonRoom*> URoomTileComponent::ConnectToRoom(ADungeonRoom* OtherRoom,
 		// We know it is adjacent to the one on the right
 		
 		// Adjust for the walls
-		firstMinExtent.Y += 1;
-		secondMinExtent.Y += 1;
-		firstMaxExtent.Y -= 1;
-		secondMaxExtent.Y -= 1;
+		firstMinExtent.Y += (1 + DoorYOffset);
+		secondMinExtent.Y += (1 + DoorXOffset);
+		firstMaxExtent.Y -= (1 + DoorYOffset);
+		secondMaxExtent.Y -= (1 + DoorYOffset);
 
 		// Now check the range
 		int32 endRange = FMath::Min(firstMaxExtent.Y, secondMaxExtent.Y) - 1;
@@ -181,10 +181,10 @@ TArray<ADungeonRoom*> URoomTileComponent::ConnectToRoom(ADungeonRoom* OtherRoom,
 		// We know it is adjacent to the one on the right
 
 		// Adjust for the walls
-		firstMinExtent.X += 1;
-		secondMinExtent.X += 1;
-		firstMaxExtent.X -= 1;
-		secondMaxExtent.X -= 1;
+		firstMinExtent.X += (1 + DoorXOffset);
+		secondMinExtent.X += (1 + DoorXOffset);
+		firstMaxExtent.X -= (1 + DoorXOffset);
+		secondMaxExtent.X -= (1 + DoorXOffset);
 
 		// Now check the range
 		int32 endRange = FMath::Min(firstMaxExtent.X, secondMaxExtent.X) - 1;
