@@ -1,6 +1,7 @@
 
 
 #include "RoomTileComponent.h"
+#include "DungeonFloorHelpers.h"
 
 // Sets default values for this component's properties
 URoomTileComponent::URoomTileComponent()
@@ -128,10 +129,10 @@ TArray<ADungeonRoom*> URoomTileComponent::ConnectToRoom(ADungeonRoom* OtherRoom,
 		// We know it is adjacent to the one on the right
 		
 		// Adjust for the walls
-		firstMinExtent.Y += (1 + DoorYOffset);
-		secondMinExtent.Y += (1 + DoorXOffset);
-		firstMaxExtent.Y -= (1 + DoorYOffset);
-		secondMaxExtent.Y -= (1 + DoorYOffset);
+		firstMinExtent.Y += (1 + firstRoom->GetTileComponent()->DoorYOffset);
+		secondMinExtent.Y += (1 + secondRoom->GetTileComponent()->DoorXOffset);
+		firstMaxExtent.Y -= (1 + firstRoom->GetTileComponent()->DoorYOffset);
+		secondMaxExtent.Y -= (1 + secondRoom->GetTileComponent()->DoorYOffset);
 
 		// Now check the range
 		int32 endRange = FMath::Min(firstMaxExtent.Y, secondMaxExtent.Y) - 1;
@@ -181,10 +182,10 @@ TArray<ADungeonRoom*> URoomTileComponent::ConnectToRoom(ADungeonRoom* OtherRoom,
 		// We know it is adjacent to the one on the right
 
 		// Adjust for the walls
-		firstMinExtent.X += (1 + DoorXOffset);
-		secondMinExtent.X += (1 + DoorXOffset);
-		firstMaxExtent.X -= (1 + DoorXOffset);
-		secondMaxExtent.X -= (1 + DoorXOffset);
+		firstMinExtent.X += (1 + firstRoom->GetTileComponent()->DoorXOffset);
+		secondMinExtent.X += (1 + secondRoom->GetTileComponent()->DoorXOffset);
+		firstMaxExtent.X -= (1 + firstRoom->GetTileComponent()->DoorXOffset);
+		secondMaxExtent.X -= (1 + secondRoom->GetTileComponent()->DoorXOffset);
 
 		// Now check the range
 		int32 endRange = FMath::Min(firstMaxExtent.X, secondMaxExtent.X) - 1;
