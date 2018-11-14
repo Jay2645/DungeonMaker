@@ -26,10 +26,12 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	// Check input
 	if (CheckCanSkipProcessing(Node, SpaceHelper))
 	{
+		UE_LOG(LogSpaceGen, Log, TEXT("Skipping processing for %s."), *Node->GetSymbolDescription());
 		return true;
 	}
 	if (!CheckInputIsValid(AvailableRooms, bIsTightCoupling, Node, SpaceHelper))
 	{
+		UE_LOG(LogSpaceGen, Warning, TEXT("Could not place %s due to invalid input."), *Node->GetSymbolDescription());
 		return false;
 	}
 
@@ -46,7 +48,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	else
 	{
 		// This room can be placed alongside any room we have already placed.
-		roomLocation = GetOpenRoom(Node, AvailableRooms, SpaceHelper);
+		roomLocation = GetOpenRoom(Node, SpaceHelper.OpenRooms, SpaceHelper);
 	}
 
 	// The key of the roomLocation is where the next room will be placed

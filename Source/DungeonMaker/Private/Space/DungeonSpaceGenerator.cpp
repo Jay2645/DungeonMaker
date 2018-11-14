@@ -158,9 +158,10 @@ void UDungeonSpaceGenerator::SetRoom(FFloorRoom Room)
 	// Verify that the location is valid
 	if (!IsLocationValid(Room.Location))
 	{
-		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room at (%d, %d, %d) because it was an invalid location!"), Room.Location.X, Room.Location.Y, Room.Location.Z);
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not set room %s at (%d, %d, %d) because it was an invalid location!"), *Room.DungeonSymbol.GetSymbolDescription(), Room.Location.X, Room.Location.Y, Room.Location.Z);
 		return;
 	}
+	UE_LOG(LogSpaceGen, Log, TEXT("Placing %s at (%d, %d, %d)."), *Room.DungeonSymbol.GetSymbolDescription(), Room.Location.X, Room.Location.Y, Room.Location.Z);
 	DungeonSpace.Set(Room, DefaultFloorTile);
 }
 
