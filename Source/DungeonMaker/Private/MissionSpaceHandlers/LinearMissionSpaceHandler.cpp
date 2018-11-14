@@ -51,7 +51,10 @@ void ULinearMissionSpaceHandler::PairNodesToRooms(FFloorRoom Parent, TMap<UDunge
 		}
 		if (Processed.Contains(node))
 		{
-			ConnectRooms(Parent, Processed[node]);
+			// We've already made this child
+			// Make sure that the parent has a connection to it
+			FRoomPairing pairing = FRoomPairing(Processed[node].Location, Parent.Location);
+			UpdateNeighbors(pairing, node->bTightlyCoupledToParent);
 			continue;
 		}
 
@@ -85,7 +88,8 @@ void ULinearMissionSpaceHandler::PairNodesToRooms(FFloorRoom Parent, TMap<UDunge
 		FFloorRoom createdRoom = MakeFloorRoom(node, location, Rng, SymbolCount);
 		rooms.Add(createdRoom);
 		SetRoom(createdRoom);
-		ConnectRooms(Parent, createdRoom);
+		FRoomPairing pairing = FRoomPairing(createdRoom.Location, Parent.Location);
+		UpdateNeighbors(pairing, node->bTightlyCoupledToParent);
 		Processed.Add(node, createdRoom);
 	}
 
@@ -93,18 +97,5 @@ void ULinearMissionSpaceHandler::PairNodesToRooms(FFloorRoom Parent, TMap<UDunge
 	{
 		FFloorRoom room = rooms.Pop();
 		PairNodesToRooms(room, Processed, room.Location, AvailableRooms, Rng, SymbolCount);
-	}
-}
-
-void ULinearMissionSpaceHandler::ConnectRooms(FFloorRoom Parent, FFloorRoom Child)
-{
-	if (UDungeonFloorHelpers::AreFloorRoomsAdjacent(Parent, Child))
-	{
-		FRoomPairing pairing = FRoomPairing(Child.Location, Parent.Location);
-		UpdateNeighbors(pairing, Child.RoomNode->bTightlyCoupledToParent);
-	}
-	else
-	{
-		// Create hallways, link rooms together
 	}
 }

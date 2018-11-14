@@ -26,5 +26,4 @@ public:
 
 protected:
 	void PairNodesToRooms(FFloorRoom Parent, TMap<UDungeonMakerNode*, FFloorRoom>& Processed, FIntVector StartLocation, TSet<FIntVector>& AvailableRooms, FRandomStream &Rng, int32 SymbolCount);
-	void ConnectRooms(FFloorRoom Parent, FFloorRoom Child);
 };

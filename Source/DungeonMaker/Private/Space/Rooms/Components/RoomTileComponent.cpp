@@ -218,7 +218,7 @@ TArray<ADungeonRoom*> URoomTileComponent::ConnectToRoom(ADungeonRoom* OtherRoom,
 	}
 	else
 	{
-		UE_LOG(LogSpaceGen, Log, TEXT("%s needs hallways to connect to %s."), *ParentRoom->GetName(), *OtherRoom->GetName());
+		UE_LOG(LogSpaceGen, Warning, TEXT("%s needs hallways to connect to %s."), *ParentRoom->GetName(), *OtherRoom->GetName());
 	}
 	return hallways;
 }
