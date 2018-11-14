@@ -22,7 +22,7 @@ void UDungeonFloorManager::InitializeFloorManager(UDungeonSpaceGenerator* SpaceG
 	UnresolvedHooks.Empty();
 }
 
-void UDungeonFloorManager::SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter)
+void UDungeonFloorManager::CreateRoomTiles(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter)
 {
 	FLowResDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace.GetLowRes(DungeonLevel);
 	for (int x = 0; x < floor.XSize(); x++)

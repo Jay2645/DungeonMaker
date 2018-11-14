@@ -53,11 +53,13 @@ public:
 	FFloorRoom()
 	{
 		RoomClass = NULL;
+		RoomNode = NULL;
 		Location = FIntVector(-1, -1, -1);
 		NeighboringRooms = TSet<FIntVector>();
 		NeighboringTightlyCoupledRooms = TSet<FIntVector>();
 		IncomingRoom = FIntVector::ZeroValue;
 		Difficulty = 0.0f;
+		MaxRoomSize = -1;
 		SpawnedRoom = NULL;
 		DungeonSymbol = FNumberedGraphSymbol();
 	}
@@ -573,17 +575,31 @@ public:
 		tile.Tile = Tile;
 	}
 
-	void Set(const FFloorRoom& Room, const UDungeonTile* DefaultTile)
+	void Set(const FFloorRoom& Room)
 	{
 		// @TODO: Multi-floor support
-		FFloorRoom& lowResRoom = LowResFloors[Room.Location.Z].Set(Room);
-		
-		// A FRoomTile requires a reference to a "low-res" room
-		// That way, that room can be updated without needing to update
-		// all other rooms.
-		// References are used instead of pointers because of Unreal limitations
-		FRoomTile roomTile = FRoomTile(DefaultTile, Room.Location, FIntVector(-1, -1, Room.Location.Z));
-		HighResFloors[Room.Location.Z].Set(roomTile, Room.MaxRoomSize);
+		LowResFloors[Room.Location.Z].Set(Room);
+	}
+
+	void CopyLosResToHighRes(const UDungeonTile* DefaultTile)
+	{
+		for (int x = 0; x < LowResXSize(); x++)
+		{
+			for (int y = 0; y < LowResYSize(); y++)
+			{
+				for (int z = 0; z < ZSize(); z++)
+				{
+					FIntVector location = FIntVector(x, y, z);
+					FFloorRoom room = GetLowRes(location);
+					if (room.MaxRoomSize <= 0)
+					{
+						continue;
+					}
+					FRoomTile roomTile = FRoomTile(DefaultTile, location, FIntVector(-1, -1, location.Z));
+					HighResFloors[location.Z].Set(roomTile, room.MaxRoomSize);
+				}
+			}
+		}
 	}
 
 	TSet<const UDungeonTile*> FindAllTiles(ADungeonRoom* Room = NULL)

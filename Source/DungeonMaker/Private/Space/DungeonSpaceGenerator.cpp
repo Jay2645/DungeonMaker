@@ -17,6 +17,18 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 {
 	TotalSymbolCount = SymbolCount;
 
+	if (!CreateLowResMap(SymbolCount, Head, Rng))
+	{
+		// Could not create low-res map
+		return false;
+	}
+	CreateTilemap(Rng);
+	PlaceMeshes(Rng);
+	return true;
+}
+
+bool UDungeonSpaceGenerator::CreateLowResMap(int32 SymbolCount, UDungeonMissionNode* Head, FRandomStream& Rng)
+{
 	// Create floors
 	int32 floorSideSize = FMath::CeilToInt(FMath::Sqrt((float)DungeonSize / (float)RoomSize));
 	int32 symbolsPerFloor = floorSideSize * floorSideSize;
@@ -30,18 +42,28 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 	{
 		dungeonLevelSizes[i] = floorSideSize;
 	}
-	
+
 	MissionSpaceHandler = NewObject<UDungeonMissionSpaceHandler>(GetOuter(), MissionToSpaceHandlerClass, TEXT("Mission Space Manager"));
 	MissionSpaceHandler->RoomSize = RoomSize;
 	MissionSpaceHandler->InitializeDungeonFloor(this, dungeonLevelSizes);
 	// Map the mission to the space
-	bool bMadeSpace = MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng);
-
-	if (!bMadeSpace)
+	if (MissionSpaceHandler->CreateDungeonSpace(Head, FIntVector(0, 0, 0), TotalSymbolCount, Rng))
 	{
+		// Successfully created this space
+		return true;
+	}
+	else
+	{
+		// There was an issue; abort
 		MissionSpaceHandler->DestroyComponent();
 		return false;
 	}
+}
+
+void UDungeonSpaceGenerator::CreateTilemap(FRandomStream& Rng)
+{
+	// Convert low-res maps to high-res
+	DungeonSpace.CopyLosResToHighRes(DefaultFloorTile);
 
 	for (int i = 0; i < DungeonSpace.Num(); i++)
 	{
@@ -50,10 +72,19 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 		UDungeonFloorManager* floor = NewObject<UDungeonFloorManager>(GetOuter(), FName(*floorName));
 		floor->InitializeFloorManager(this, i);
 		Floors.Add(floor);
-		floor->SpawnRooms(Rng, GlobalGroundScatter);
+		floor->CreateRoomTiles(Rng, GlobalGroundScatter);
 	}
 
+#if WITH_EDITOR
+	for (int i = 0; i < DungeonSpace.ZSize(); i++)
+	{
+		UE_LOG(LogSpaceGen, Log, TEXT("Dungeon Level %d Tiles:\n%s"), i, *DungeonSpace.GetHighRes(i).ToString());
+	}
+#endif
+}
 
+void UDungeonSpaceGenerator::PlaceMeshes(FRandomStream& Rng)
+{
 	if (bDebugDungeon)
 	{
 		DrawDebugSpace();
@@ -106,12 +137,6 @@ bool UDungeonSpaceGenerator::CreateDungeonSpace(UDungeonMissionNode* Head, int32
 			floor->SpawnRoomMeshes(FloorComponentLookup, CeilingComponentLookup, Rng);
 		}
 	}
-
-	for (int i = 0; i < DungeonSpace.ZSize(); i++)
-	{
-		UE_LOG(LogSpaceGen, Log, TEXT("Dungeon Level %d Tiles:\n%s"), i, *DungeonSpace.GetHighRes(i).ToString());
-	}
-	return true;
 }
 
 bool UDungeonSpaceGenerator::IsLocationValid(FIntVector FloorSpaceCoordinates)
@@ -162,7 +187,7 @@ void UDungeonSpaceGenerator::SetRoom(FFloorRoom Room)
 		return;
 	}
 	UE_LOG(LogSpaceGen, Log, TEXT("Placing %s at (%d, %d, %d)."), *Room.DungeonSymbol.GetSymbolDescription(), Room.Location.X, Room.Location.Y, Room.Location.Z);
-	DungeonSpace.Set(Room, DefaultFloorTile);
+	DungeonSpace.Set(Room);
 }
 
 void UDungeonSpaceGenerator::SetTile(const FIntVector& Location, const UDungeonTile* Tile)

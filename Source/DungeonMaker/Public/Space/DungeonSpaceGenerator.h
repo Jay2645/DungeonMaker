@@ -92,4 +92,12 @@ public:
 	FFloorRoom& GetRoomFromTileSpace(const FIntVector& TileSpaceLocation);
 
 	void DrawDebugSpace();
+
+protected:
+	// Determines how rooms will be placed relative to one another
+	bool CreateLowResMap(int32 SymbolCount, UDungeonMissionNode* Head, FRandomStream& Rng);
+	// Spawns the actual tiles for each room
+	void CreateTilemap(FRandomStream& Rng);
+	// Places all physical meshes for the room.
+	void PlaceMeshes(FRandomStream& Rng);
 };

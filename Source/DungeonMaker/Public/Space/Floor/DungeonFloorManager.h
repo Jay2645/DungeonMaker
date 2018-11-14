@@ -62,7 +62,7 @@ public:
 
 public:
 	void InitializeFloorManager(UDungeonSpaceGenerator* SpaceGenerator, int32 Level);
-	void SpawnRooms(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter);
+	void CreateRoomTiles(FRandomStream& Rng, const FGroundScatterPairing& GlobalGroundScatter);
 	void DrawDebugSpace();
 	// Gets a room based on tile space coordinates.
 
