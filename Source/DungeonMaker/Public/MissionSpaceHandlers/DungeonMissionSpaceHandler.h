@@ -151,7 +151,11 @@ protected:
 	TSet<FIntVector> GetAvailableLocations(FIntVector Location, TSet<FIntVector> IgnoredLocations = TSet<FIntVector>());
 	FFloorRoom MakeFloorRoom(UDungeonMissionNode* Node, FIntVector Location,
 		FRandomStream& Rng, int32 TotalSymbolCount);
-	void SetRoom(FFloorRoom Room);
+	void SetRoom(FFloorRoom Room, bool bShouldIncrementRoomCount = true);
 	virtual void GenerateDungeonRooms(UDungeonMissionNode* Head, FIntVector StartLocation, FRandomStream &Rng, int32 SymbolCount);
 	void ProcessRoomNeighbors();
+	virtual FRoomPairing GetOpenRoom(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms, FMissionSpaceHelper& SpaceHelper);
+	virtual void UpdateNeighbors(const FRoomPairing& RoomPairing, bool bIsTightCoupling);
+	bool CheckInputIsValid(TMap<FIntVector, FIntVector> &AvailableRooms, bool bIsTightCoupling, UDungeonMissionNode* Node, FMissionSpaceHelper &SpaceHelper);
+	bool CheckCanSkipProcessing(UDungeonMissionNode* Node, FMissionSpaceHelper &SpaceHelper);
 };

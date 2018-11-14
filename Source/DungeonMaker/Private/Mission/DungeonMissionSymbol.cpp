@@ -7,6 +7,7 @@
 UDungeonMissionSymbol::UDungeonMissionSymbol()
 {
 	bAllowedToHaveChildren = true;
+	SymbolSkipChances.Add(this, 0.5f);
 }
 
 TSubclassOf<ADungeonRoom> UDungeonMissionSymbol::GetRoomType(FRandomStream& Rng) const

@@ -24,44 +24,12 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	// of that node, assigning them to rooms as well, if needed.
 	
 	// Check input
-	if (Node == NULL)
+	if (CheckCanSkipProcessing(Node, SpaceHelper))
 	{
-		// No rooms to pair
-		UE_LOG(LogSpaceGen, Error, TEXT("Null node was provided to the Mission Space Handler!"));
 		return true;
 	}
-	if (SpaceHelper.HasProcessed(Node))
+	if (!CheckInputIsValid(AvailableRooms, bIsTightCoupling, Node, SpaceHelper))
 	{
-		// Already processed this node
-		return true;
-	}
-
-	if (((UDungeonMissionSymbol*)Node->NodeType)->RoomTypes.Num() == 0)
-	{
-		UE_LOG(LogSpaceGen, Error, TEXT("Mission Space Handler tried handling %s, which had no room types defined!"), *Node->GetNodeTitle());
-		return true;
-	}
-
-	for (int i = 0; i < Node->ParentNodes.Num(); i++)
-	{
-		if (!SpaceHelper.HasProcessed((UDungeonMissionNode*)Node->ParentNodes[i]))
-		{
-			// We haven't processed all our parent nodes yet!
-			// We should be processed further on down the line, once our next parent node
-			// finishes being processed.
-			UE_LOG(LogSpaceGen, Log, TEXT("Deferring processing of %s because not all its parents have been processed yet."), *Node->GetSymbolDescription());
-			return true;
-		}
-	}
-	if (AvailableRooms.Num() == 0 && bIsTightCoupling)
-	{
-		// Out of leaves to process
-		UE_LOG(LogSpaceGen, Warning, TEXT("%s is tightly coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
-		return false;
-	}
-	if (!SpaceHelper.HasOpenRooms() && !bIsTightCoupling)
-	{
-		UE_LOG(LogSpaceGen, Warning, TEXT("%s is loosely coupled to its parent, but ran out of leaves to process."), *Node->GetSymbolDescription());
 		return false;
 	}
 
@@ -230,28 +198,6 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	return true;
 }
 
-void UNeighboringMissionSpaceHandler::UpdateNeighbors(const FRoomPairing& RoomPairing, bool bIsTightCoupling)
-{
-	FIntVector childRoom = RoomPairing.ChildRoom;
-	FIntVector parentRoom = RoomPairing.ParentRoom;
-
-	// Don't bother setting neighbors if one of the neighbors would be invalid
-	if (DungeonSpaceGenerator->IsLocationValid(childRoom) && DungeonSpaceGenerator->IsLocationValid(parentRoom))
-	{
-		// Link the children
-		if (bIsTightCoupling)
-		{
-			DungeonSpaceGenerator->DungeonSpace.GetLowRes(childRoom.Z)[childRoom.Y][childRoom.X].NeighboringTightlyCoupledRooms.Add(parentRoom);
-			DungeonSpaceGenerator->DungeonSpace.GetLowRes(parentRoom.Z)[parentRoom.Y][parentRoom.X].NeighboringTightlyCoupledRooms.Add(childRoom);
-		}
-		else
-		{
-			DungeonSpaceGenerator->DungeonSpace.GetLowRes(childRoom.Z)[childRoom.Y][childRoom.X].NeighboringRooms.Add(parentRoom);
-			DungeonSpaceGenerator->DungeonSpace.GetLowRes(parentRoom.Z)[parentRoom.Y][parentRoom.X].NeighboringRooms.Add(childRoom);
-		}
-	}
-}
-
 TMap<FIntVector, FIntVector> UNeighboringMissionSpaceHandler::GetRoomNeighbors(FIntVector RoomLocation, FMissionSpaceHelper &SpaceHelper)
 {
 	// Grab all our neighbor rooms, excluding those which have already been processed
@@ -263,56 +209,4 @@ TMap<FIntVector, FIntVector> UNeighboringMissionSpaceHandler::GetRoomNeighbors(F
 		roomNeighborMap.Add(neighbor, RoomLocation);
 	}
 	return roomNeighborMap;
-}
-
-FRoomPairing UNeighboringMissionSpaceHandler::GetOpenRoom(UDungeonMissionNode* Node, 
-	TMap<FIntVector, FIntVector>& AvailableRooms, FMissionSpaceHelper& SpaceHelper)
-{
-	TSet<UDungeonMissionNode*> nodesToCheck;
-	// If this node has a tightly-coupled child, ensure that there's room to place the child as well
-	for (UDungeonMakerNode* neighborNode : Node->ChildrenNodes)
-	{
-		if (neighborNode->bTightlyCoupledToParent)
-		{
-			nodesToCheck.Add((UDungeonMissionNode*)neighborNode);
-		}
-	}
-
-	// Initialize our starting location to an invalid location
-	FIntVector roomLocation = INVALID_LOCATION;
-	FIntVector parentLocation = INVALID_LOCATION;
-	do
-	{
-		if (AvailableRooms.Num() == 0)
-		{
-			// Out of rooms; return an invalid input
-			UE_LOG(LogSpaceGen, Warning, TEXT("Ran out of rooms when trying to place %s"), *Node->ToString(0, false));
-			return FRoomPairing();
-		}
-		int32 leafIndex = SpaceHelper.Rng.RandRange(0, AvailableRooms.Num() - 1);
-		TArray<FIntVector> allAvailableRooms;
-		AvailableRooms.GetKeys(allAvailableRooms);
-		roomLocation = allAvailableRooms[leafIndex];
-		parentLocation = AvailableRooms[roomLocation];
-		AvailableRooms.Remove(roomLocation);
-
-		if (SpaceHelper.HasProcessed(roomLocation))
-		{
-			// Already processed this leaf
-			roomLocation = INVALID_LOCATION;
-			parentLocation = INVALID_LOCATION;
-			continue;
-		}
-
-		TSet<FIntVector> neighbors = GetAvailableLocations(roomLocation, SpaceHelper.GetProcessedRooms());
-
-		if (neighbors.Num() < nodesToCheck.Num())
-		{
-			// This leaf wouldn't have enough neighbors to attach all our tightly-coupled nodes
-			roomLocation = INVALID_LOCATION;
-			parentLocation = INVALID_LOCATION;
-			continue;
-		}
-	} while (roomLocation == INVALID_LOCATION);
-	return FRoomPairing(roomLocation, parentLocation);
 }

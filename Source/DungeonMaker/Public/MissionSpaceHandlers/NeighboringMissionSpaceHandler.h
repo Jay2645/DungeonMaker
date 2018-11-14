@@ -22,10 +22,5 @@ private:
 	bool PairNodesToRooms(UDungeonMissionNode* Node, TMap<FIntVector, FIntVector>& AvailableRooms,
 		FMissionSpaceHelper& SpaceHelper, bool bIsTightCoupling, int32 TotalSymbolCount);
 
-	void UpdateNeighbors(const FRoomPairing& RoomPairing, bool bIsTightCoupling);
-
 	TMap<FIntVector, FIntVector> GetRoomNeighbors(FIntVector nextLocation, FMissionSpaceHelper &SpaceHelper);
-
-	FRoomPairing GetOpenRoom(UDungeonMissionNode* Node,
-		TMap<FIntVector, FIntVector>& AvailableRooms, FMissionSpaceHelper& SpaceHelper);
 };

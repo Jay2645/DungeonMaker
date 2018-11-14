@@ -127,12 +127,40 @@ FFloorRoom UDungeonFloorManager::GetRoomFromTileSpace(const FIntVector& TileSpac
 ADungeonRoom* UDungeonFloorManager::CreateRoom(const FFloorRoom& Room, FRandomStream& Rng, 
 	const FGroundScatterPairing& GlobalGroundScatter)
 {
+	UDungeonMissionSymbol* symbol = Cast<UDungeonMissionSymbol>(Room.DungeonSymbol.Symbol);
+	if (symbol == NULL)
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Null symbol passed to create room! Room class: %s"), *Room.RoomClass->GetName());
+		return NULL;
+	}
 	FString roomName = Room.DungeonSymbol.GetSymbolDescription();
 	roomName.Append(" (");
 	roomName.AppendInt(Room.DungeonSymbol.SymbolID);
 	roomName.AppendChar(')');
 
-	ADungeonRoom* room = (ADungeonRoom*)GetWorld()->SpawnActor(((UDungeonMissionSymbol*)Room.DungeonSymbol.Symbol)->GetRoomType(Rng));
+#if WITH_EDITOR
+	// If we're in a debug build, validate our data
+	int roomTypeCount = symbol->RoomTypes.Num();
+	if (roomTypeCount == 0)
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("%s had no room types defined!"), *roomName);
+		return NULL;
+	}
+	for (int i = 0; i < symbol->RoomTypes.Num(); i++)
+	{
+		if (symbol->RoomTypes[i] == NULL)
+		{
+			UE_LOG(LogSpaceGen, Error, TEXT("%s had a null room type at index %d!"), *roomName, i);
+		}
+	}
+#endif
+
+	ADungeonRoom* room = (ADungeonRoom*)GetWorld()->SpawnActor(symbol->GetRoomType(Rng));
+	if (room == NULL)
+	{
+		UE_LOG(LogSpaceGen, Error, TEXT("Could not spawn %s!"), *roomName);
+		return NULL;
+	}
 #if WITH_EDITOR
 	room->SetFolderPath("Rooms");
 #endif

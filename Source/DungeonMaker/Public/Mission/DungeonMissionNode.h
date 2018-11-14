@@ -18,6 +18,7 @@ UCLASS(BlueprintType)
 class DUNGEONMAKER_API UDungeonMissionNode : public UDungeonMakerNode
 {
 	GENERATED_BODY()
+
 public:
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeons|Missions")
 	UDungeonMakerNode* FindChildNodeFromSymbol(FNumberedGraphSymbol ChildSymbol) const;

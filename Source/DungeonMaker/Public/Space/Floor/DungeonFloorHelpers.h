@@ -98,4 +98,7 @@ public:
 	// more than 2 wall tiles to have an accessible path between them), it will return false.
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	static bool AreRoomsAdjacent(ADungeonRoom* First, ADungeonRoom* Second);
+
+	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
+	static bool AreFloorRoomsAdjacent(const FFloorRoom& First, const FFloorRoom& Second);
 };

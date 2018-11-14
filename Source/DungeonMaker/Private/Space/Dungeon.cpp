@@ -40,7 +40,8 @@ void ADungeon::BeginPlay()
 	}
 	UE_LOG(LogMissionGen, Log, TEXT("Creating dungeon out of seed %d."), Seed);
 	bool bSuccessfullyMadeDungeon = false;
-
+	int32 attemptCount = 0;
+	const int32 MAX_ATTEMPTS = 20;
 	do 
 	{
 		Mission->TryToCreateDungeon(rng);
@@ -54,6 +55,11 @@ void ADungeon::BeginPlay()
 		else
 		{
 			bSuccessfullyMadeDungeon = Space->CreateDungeonSpace(Mission->Head, Mission->DungeonSize, rng);
+			if (!bSuccessfullyMadeDungeon)
+			{
+				attemptCount++;
+				checkf(attemptCount < MAX_ATTEMPTS, TEXT("Ran out of attempts (%d) trying to create a dungeon with seed %d!"), attemptCount, Seed);
+			}
 		}
-	} while (!bSuccessfullyMadeDungeon);
+	} while (!bSuccessfullyMadeDungeon && attemptCount < MAX_ATTEMPTS);
 }

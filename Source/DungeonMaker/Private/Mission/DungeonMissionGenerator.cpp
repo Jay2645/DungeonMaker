@@ -21,7 +21,7 @@ void UDungeonMissionGenerator::TryToCreateDungeon(FRandomStream& Stream)
 	Head->NodeID = HeadSymbol.SymbolID;
 	Head->bTightlyCoupledToParent = false;
 	UE_LOG(LogSpaceGen, Log, TEXT("Started with head node %s."), *Head->GetSymbolDescription());
-	DungeonSize = 1;
+	DungeonSize = 0;
 
 	GrammarUsageCount.Empty();
 	TryToCreateDungeon(Head, Grammars, Stream, 255);

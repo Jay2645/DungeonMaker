@@ -45,7 +45,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bAllowedToHaveChildren;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TMap<class UGraphNode*, float> SymbolSkipChances;
+
+public:
 	UDungeonMissionSymbol();
 
+public:
 	TSubclassOf<ADungeonRoom> GetRoomType(FRandomStream& Rng) const;
 };

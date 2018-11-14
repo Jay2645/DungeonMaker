@@ -253,3 +253,20 @@ bool UDungeonFloorHelpers::AreRoomsAdjacent(ADungeonRoom* First, ADungeonRoom* S
 {
 	return AreRoomsLeftRightAdjacent(First, Second) || AreRoomsTopDownAdjacent(First, Second);
 }
+
+bool UDungeonFloorHelpers::AreFloorRoomsAdjacent(const FFloorRoom& First, const FFloorRoom& Second)
+{
+	FIntVector firstLocation = First.Location;
+	FIntVector secondLocation = Second.Location;
+	FIntVector distance = firstLocation - secondLocation;
+	// Get absolute value of the distance
+	distance.X = FMath::Abs(distance.X);
+	distance.Y = FMath::Abs(distance.Y);
+	distance.Z = FMath::Abs(distance.Z);
+
+	// Only adjacent if we are directly next to another room.
+	// Don't count diagonals, and if the rooms are in the same place they're not adjacent
+	return distance.X == 1 && distance.Y == 0 && distance.Z == 0 ||
+		distance.X == 0 && distance.Y == 1 && distance.Z == 0 ||
+		distance.X == 0 && distance.Y == 0 && distance.Z == 1;
+}
