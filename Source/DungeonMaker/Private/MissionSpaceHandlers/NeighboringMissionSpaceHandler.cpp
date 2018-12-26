@@ -26,7 +26,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 	// Check input
 	if (CheckCanSkipProcessing(Node, SpaceHelper))
 	{
-		UE_LOG(LogSpaceGen, Log, TEXT("Skipping processing for %s."), *Node->GetSymbolDescription());
+		UE_LOG(LogSpaceGen, Verbose, TEXT("Skipping processing for %s."), *Node->GetSymbolDescription());
 		return true;
 	}
 	if (!CheckInputIsValid(AvailableRooms, bIsTightCoupling, Node, SpaceHelper))
@@ -74,7 +74,7 @@ bool UNeighboringMissionSpaceHandler::PairNodesToRooms(UDungeonMissionNode* Node
 		{
 			// If we're tightly coupled to our parent, ensure we get added to a neighboring leaf
 			// We do this by going depth-first
-			UE_LOG(LogSpaceGen, Log, TEXT("Placing tightly-coupled room %s next to parent %s."), *childNode->GetNodeTitle(), *Node->GetNodeTitle());
+			UE_LOG(LogSpaceGen, Verbose, TEXT("Placing tightly-coupled room %s next to parent %s."), *childNode->GetNodeTitle(), *Node->GetNodeTitle());
 			bool bSuccesfullyPairedChild = PairNodesToRooms((UDungeonMissionNode*)childNode, roomNeighborMap, SpaceHelper, true, TotalSymbolCount);
 			if (!bSuccesfullyPairedChild)
 			{

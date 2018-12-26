@@ -16,38 +16,25 @@ void UDungeonMissionSpaceHandler::InitializeDungeonFloor(UDungeonSpaceGenerator*
 bool UDungeonMissionSpaceHandler::CreateDungeonSpace(UDungeonMissionNode* Head, FIntVector StartLocation,
 	int32 SymbolCount, FRandomStream& Rng)
 {
-	const int32 MAX_ATTEMPTS = 20;
-	int32 currentAttempts = 0;
 	bool bMadeDungeonSuccessfully = false;
-	do
+	// Create space for each room on the DungeonFloor
+	RoomCount = 0;
+	GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
+	bMadeDungeonSuccessfully = RoomCount == SymbolCount;
+	if (bMadeDungeonSuccessfully)
 	{
-		currentAttempts++;
-
-		// Create space for each room on the DungeonFloor
-		RoomCount = 0;
-		GenerateDungeonRooms(Head, StartLocation, Rng, SymbolCount);
-		bMadeDungeonSuccessfully = RoomCount == SymbolCount;
-		if (bMadeDungeonSuccessfully)
-		{
-			ProcessRoomNeighbors();
-		}
-		else
-		{
-			UE_LOG(LogSpaceGen, Warning, TEXT("Some symbols did not have rooms! Rooms: %d, Symbols: %d. Attempt number %d."), RoomCount, SymbolCount, currentAttempts);
-
-			TArray<int32> levelSizes;
-			for (int i = 0; i < DungeonSpaceGenerator->DungeonSpace.Num(); i++)
-			{
-				levelSizes.Add(DungeonSpaceGenerator->DungeonSpace.GetLowRes(i).XSize());
-			}
-			InitializeDungeonFloor(DungeonSpaceGenerator, levelSizes);
-		}
-	} while (!bMadeDungeonSuccessfully && currentAttempts < MAX_ATTEMPTS);
-
-	if (!bMadeDungeonSuccessfully)
-	{
-		UE_LOG(LogSpaceGen, Warning, TEXT("Aborting this dungeon after trying to make rooms %d times!"), currentAttempts);
+		ProcessRoomNeighbors();
 	}
+	else
+	{
+		TArray<int32> levelSizes;
+		for (int i = 0; i < DungeonSpaceGenerator->DungeonSpace.Num(); i++)
+		{
+			levelSizes.Add(DungeonSpaceGenerator->DungeonSpace.GetLowRes(i).XSize());
+		}
+		InitializeDungeonFloor(DungeonSpaceGenerator, levelSizes);
+	}
+	
 	return bMadeDungeonSuccessfully;
 }
 

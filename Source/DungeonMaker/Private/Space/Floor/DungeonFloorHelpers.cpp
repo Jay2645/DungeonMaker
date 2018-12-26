@@ -175,7 +175,6 @@ bool UDungeonFloorHelpers::AreRoomsLeftRightAdjacent(ADungeonRoom* First, ADunge
 	{
 		// Not on the same level
 		// @TODO: Maybe check if we can add stairs/ladder to connect?
-		UE_LOG(LogSpaceGen, Log, TEXT("Rooms are not adjacent because they are on different floors!"));
 		return false;
 	}
 	FIntVector firstMaxExtent = firstMinExtent + First->GetRoomSize();
@@ -187,8 +186,6 @@ bool UDungeonFloorHelpers::AreRoomsLeftRightAdjacent(ADungeonRoom* First, ADunge
 	if (firstMaxExtent.X == secondMinExtent.X || secondMaxExtent.X == firstMinExtent.X)
 	{
 		// Second is to the right of first or first is to the right of second
-		UE_LOG(LogSpaceGen, Log, TEXT("Rooms may be left-right adjacent! First: (%d, %d, %d) - (%d, %d, %d); Second: (%d, %d %d) - (%d, %d, %d)."), firstMinExtent.X, firstMinExtent.Y, firstMinExtent.Z, firstMaxExtent.X, firstMaxExtent.Y, firstMaxExtent.Z, secondMinExtent.X, secondMinExtent.Y, secondMinExtent.Z, secondMaxExtent.X, secondMaxExtent.Y, secondMaxExtent.Z);
-
 		// Adjust for the walls
 		firstMinExtent.Y += 1;
 		secondMinExtent.Y += 1;
@@ -219,7 +216,6 @@ bool UDungeonFloorHelpers::AreRoomsTopDownAdjacent(ADungeonRoom* First, ADungeon
 	{
 		// Not on the same level
 		// @TODO: Maybe check if we can add stairs/ladder to connect?
-		UE_LOG(LogSpaceGen, Log, TEXT("Rooms are not adjacent because they are on different floors!"));
 		return false;
 	}
 	FIntVector firstMaxExtent = firstMinExtent + First->GetRoomSize();
@@ -231,8 +227,6 @@ bool UDungeonFloorHelpers::AreRoomsTopDownAdjacent(ADungeonRoom* First, ADungeon
 	if (firstMaxExtent.Y == secondMinExtent.Y || secondMaxExtent.Y == firstMinExtent.Y)
 	{
 		// Second is below first or first is below second
-		UE_LOG(LogSpaceGen, Log, TEXT("Rooms may be top-down adjacent! First: (%d, %d, %d) - (%d, %d, %d); Second: (%d, %d %d) - (%d, %d, %d)."), firstMinExtent.X, firstMinExtent.Y, firstMinExtent.Z, firstMaxExtent.X, firstMaxExtent.Y, firstMaxExtent.Z, secondMinExtent.X, secondMinExtent.Y, secondMinExtent.Z, secondMaxExtent.X, secondMaxExtent.Y, secondMaxExtent.Z);
-
 		// Adjust for the walls
 		firstMinExtent.X += 1;
 		secondMinExtent.X += 1;

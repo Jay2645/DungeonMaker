@@ -227,7 +227,7 @@ float ADungeonRoom::GetRoomDifficulty() const
 
 void ADungeonRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 {
-	UE_LOG(LogSpaceGen, Log, TEXT("Doing pre-processing of %s (%s) with RNG seed %d."), *GetName(), *GetClass()->GetName(), Rng.GetInitialSeed());
+	UE_LOG(LogSpaceGen, Verbose, TEXT("Doing pre-processing of %s (%s) with RNG seed %d."), *GetName(), *GetClass()->GetName(), Rng.GetInitialSeed());
 }
 
 void ADungeonRoom::SpawnInterfaces(FRandomStream &Rng)
@@ -299,7 +299,7 @@ void ADungeonRoom::SpawnInterfaces(FRandomStream &Rng)
 	}
 }
 
-void ADungeonRoom::PlaceNeighbors(FRandomStream& Rng)
+void ADungeonRoom::CreateEntranceToNeighbors(FRandomStream& Rng)
 {
 	FDungeonSpace& dungeon = GetDungeon();
 
@@ -331,8 +331,6 @@ void ADungeonRoom::PlaceNeighbors(FRandomStream& Rng)
 		room->TightlyCoupledNeighbors.Add(this);
 		TightlyCoupledNeighbors.Add(room);
 	}
-
-	UE_LOG(LogSpaceGen, Log, TEXT("Created entrances to %d rooms."), AllNeighbors.Num());
 }
 
 bool ADungeonRoom::IsChildOf(ADungeonRoom* ParentRoom) const

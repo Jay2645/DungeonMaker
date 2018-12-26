@@ -58,7 +58,7 @@ void ULinearMissionSpaceHandler::PairNodesToRooms(FFloorRoom Parent, TMap<UDunge
 			continue;
 		}
 
-		UE_LOG(LogSpaceGen, Log, TEXT("Trying to place %s with %d available rooms."), *node->ToGraphSymbol().GetSymbolDescription(), AvailableRooms.Num());
+		UE_LOG(LogSpaceGen, Verbose, TEXT("Trying to place %s with %d available rooms."), *node->ToGraphSymbol().GetSymbolDescription(), AvailableRooms.Num());
 
 		TArray<FIntVector> possibleLocations;
 		for (int x = -((int32)MaxDistanceBetweenRooms); x <= ((int32)MaxDistanceBetweenRooms); x++)

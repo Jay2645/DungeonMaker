@@ -21,7 +21,7 @@ void UGroundScatterManager::DetermineGroundScatter(TMap<const UDungeonTile*, TAr
 		return;
 	}
 
-	UE_LOG(LogSpaceGen, Log, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *Room->GetName(), TileLocations.Num());
+	UE_LOG(LogSpaceGen, Verbose, TEXT("%s is analyzing %d different tiles to determine ground scatter."), *Room->GetName(), TileLocations.Num());
 #if !UE_BUILD_SHIPPING
 	int32 scatterCount = 0;
 #endif
@@ -45,7 +45,7 @@ void UGroundScatterManager::DetermineGroundScatter(TMap<const UDungeonTile*, TAr
 		}
 	}
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogSpaceGen, Log, TEXT("%s placed a total of %d scatter objects."), *Room->GetName(), scatterCount);
+	UE_LOG(LogSpaceGen, Verbose, TEXT("%s placed a total of %d scatter objects."), *Room->GetName(), scatterCount);
 #endif
 }
 

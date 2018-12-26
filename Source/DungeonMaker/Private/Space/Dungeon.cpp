@@ -41,7 +41,7 @@ void ADungeon::BeginPlay()
 	UE_LOG(LogMissionGen, Log, TEXT("Creating dungeon out of seed %d."), Seed);
 	bool bSuccessfullyMadeDungeon = false;
 	int32 attemptCount = 0;
-	const int32 MAX_ATTEMPTS = 20;
+	const int32 MAX_ATTEMPTS = 100;
 	do 
 	{
 		Mission->TryToCreateDungeon(rng);

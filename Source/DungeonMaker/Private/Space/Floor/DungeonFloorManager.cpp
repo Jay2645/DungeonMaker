@@ -88,6 +88,9 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 	FRandomStream& Rng)
 {
 	FLowResDungeonFloor& floor = DungeonSpaceGenerator->DungeonSpace.GetLowRes(DungeonLevel);
+#if WITH_EDITOR
+	int32 roomCount = 0;
+#endif
 	for (int x = 0; x < floor.XSize(); x++)
 	{
 		for (int y = 0; y < floor.YSize(); y++)
@@ -99,7 +102,10 @@ void UDungeonFloorManager::SpawnRoomMeshes(TMap<const UDungeonTile*, ASpaceMeshA
 			}
 			floor[y][x].SpawnedRoom->GetMeshComponent()->PlaceRoomTiles(FloorComponentLookup, CeilingComponentLookup, Rng);
 			floor[y][x].SpawnedRoom->OnRoomGenerationComplete();
-			UE_LOG(LogSpaceGen, Log, TEXT("Generated room %d of %d."), x * floor.YSize() + y + 1, floor.XSize() * floor.YSize());
+#if WITH_EDITOR
+			roomCount++;
+			UE_LOG(LogSpaceGen, Log, TEXT("Generated %s (room %d of %d)"), *floor[y][x].DungeonSymbol.GetSymbolDescription(), roomCount, DungeonSpaceGenerator->MissionRooms.Num());
+#endif
 		}
 	}
 }
@@ -191,7 +197,7 @@ FLowResDungeonFloor UDungeonFloorManager::GetDungeonFloor() const
 
 void UDungeonFloorManager::CreateEntrances(ADungeonRoom* Room, FRandomStream& Rng)
 {
-	Room->PlaceNeighbors(Rng);
+	Room->CreateEntranceToNeighbors(Rng);
 }
 
 void UDungeonFloorManager::DoTileReplacement(ADungeonRoom* Room, FRandomStream& Rng)

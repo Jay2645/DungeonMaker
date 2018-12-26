@@ -218,7 +218,7 @@ public:
 	float GetRoomDifficulty() const;
 
 	UFUNCTION(BlueprintCallable, Category = "World Generation|Dungeon Generaton|Rooms")
-	void PlaceNeighbors(FRandomStream& Rng);
+	void CreateEntranceToNeighbors(FRandomStream& Rng);
 
 	UFUNCTION(BlueprintPure, Category = "World Generation|Dungeon Generation|Rooms")
 	bool IsChildOf(ADungeonRoom* ParentRoom) const;

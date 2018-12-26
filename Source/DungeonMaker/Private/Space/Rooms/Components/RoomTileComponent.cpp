@@ -288,7 +288,7 @@ void URoomTileComponent::DoTileReplacement(FRandomStream &Rng)
 	}
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(LogSpaceGen, Log, TEXT("%s made a total of %d tile replacements."), *ParentRoom->GetName(), totalReplacements);
+	UE_LOG(LogSpaceGen, Verbose, TEXT("%s made a total of %d tile replacements."), *ParentRoom->GetName(), totalReplacements);
 
 	if (bPrintRoomTiles)
 	{

@@ -31,25 +31,27 @@ void ATrialLabyrinthRoom::DoTileReplacementPreprocessing(FRandomStream& Rng)
 	for (int i = 0; i < entrances.Num(); i++)
 	{
 		bool bFoundEntranceDirection = false;
-		for (int x = entrances[i].X - 1; x <= entrances[i].X + 1; x++)
+		// Find what direction the entrance is facing
+		for (int x = -1; x <= 1; x++)
 		{
-			for (int y = entrances[i].Y - 1; y < entrances[i].Y + 1; y++)
+			for (int y = -1; y <= 1; y++)
 			{
 				// Skip diagonals
-				if (x == entrances[i].X - 1 && y == entrances[i].Y - 1 ||
-					x == entrances[i].X + 1 && y == entrances[i].Y - 1 ||
-					x == entrances[i].X - 1 && y == entrances[i].Y + 1 ||
-					x == entrances[i].X + 1 && y == entrances[i].Y + 1)
+				if (x == -1 && y == -1 ||
+					x == 1 && y == -1 ||
+					x == -1 && y == 1 ||
+					x == 1 && y == 1)
 				{
 					continue;
 				}
-				const UDungeonTile* neighborTile = dungeon.GetTile(FIntVector(x, y, entrances[i].Z));
+				FIntVector position = entrances[i] + FIntVector(x, y, 0);
+				const UDungeonTile* neighborTile = dungeon.GetTile(position);
 				if (neighborTile != defaultTile)
 				{
 					continue;
 				}
 				bFoundEntranceDirection = true;
-				FIntVector position = FIntVector(x, y, entrances[i].Z);
+				// This is a spot next to an entrance
 				entranceTileLocations.Add(position);
 				break;
 			}

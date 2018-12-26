@@ -554,7 +554,6 @@ public:
 		{
 			locations.Append(HighResFloors[z].GetTileLocations(TileType, z, LowResFloors, Room));
 		}
-		UE_LOG(LogSpaceGen, Log, TEXT("Found %d locations for %d."), locations.Num(), (int32)TileType);
 		return locations;
 	}
 

@@ -98,7 +98,7 @@ void UDungeonSpaceGenerator::PlaceMeshes(FRandomStream& Rng)
 			{
 				// Otherwise, create a new InstancedStaticMeshComponent
 				FString componentName = tile->TileID.ToString() + " Floor";
-				UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
+				UE_LOG(LogSpaceGen, Verbose, TEXT("Generating new dungeon space actor %s."), *componentName);
 
 				ASpaceMeshActor* floorMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
 				floorMeshComponent->Rename(*componentName);
@@ -109,7 +109,7 @@ void UDungeonSpaceGenerator::PlaceMeshes(FRandomStream& Rng)
 			{
 				// Otherwise, create a new InstancedStaticMeshComponent
 				FString componentName = tile->TileID.ToString() + " Ceiling";
-				UE_LOG(LogSpaceGen, Log, TEXT("Generating new dungeon space actor %s."), *componentName);
+				UE_LOG(LogSpaceGen, Verbose, TEXT("Generating new dungeon space actor %s."), *componentName);
 
 				ASpaceMeshActor* ceilingMeshComponent = (ASpaceMeshActor*)GetWorld()->SpawnActor(ASpaceMeshActor::StaticClass());
 				ceilingMeshComponent->Rename(*componentName);
